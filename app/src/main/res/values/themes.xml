@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme: content is drawn by Jetpack Compose (see ui/theme/Theme.kt).
+         This XML theme only needs to set the window background before Compose takes over. -->
+    <style name="Theme.HomeSajja" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

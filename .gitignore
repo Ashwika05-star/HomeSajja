@@ -1,0 +1,38 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Android Studio / IntelliJ
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/gradle.xml
+.idea/**/assetWizardSettings.xml
+.idea/**/dictionaries
+.idea/**/libraries
+.idea/caches
+.idea/modules.xml
+.idea/navEditor.xml
+
+# Gradle
+.gradle
+**/build/
+gradle-app.setting
+!gradle-wrapper.jar
+
+# Keystore files
+*.jks
+*.keystore
+
+# Log files
+*.log
+
+# Firebase config — contains project keys/identifiers, kept out of source control.
+# Each developer places their own copy locally before building.
+app/google-services.json
