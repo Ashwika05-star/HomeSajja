@@ -15,21 +15,28 @@ class ListingRepository(firestore: FirebaseFirestore) {
 
     private val listings = firestore.collection(COLLECTION)
 
+    /** Reserves an id up front so photos can be uploaded to listings/{owner}/{id}/ before the document exists. */
+    fun newListingId(): String = listings.document().id
+
+    /** Saves a new listing. Uses [FurnitureListing.id] if set (see [newListingId]), else generates one. */
     suspend fun createListing(listing: FurnitureListing): FurnitureListing {
-        val ref = listings.document()
-        val saved = listing.copy(id = ref.id)
-        ref.set(saved).await()
+        val saved = if (listing.id.isBlank()) listing.copy(id = newListingId()) else listing
+        listings.document(saved.id).set(saved).await()
         return saved
     }
 
     suspend fun getListing(id: String): FurnitureListing? = listings.document(id).getAs()
 
     /** City-scoped discovery of ACTIVE listings, newest first. Needs the
-     * composite indexes declared in firestore.indexes.json. */
+     * composite indexes declared in firestore.indexes.json.
+     *
+     * Paging uses a cursor: pass the `createdAt` of the last listing you already
+     * have as [afterCreatedAt] to get the next batch. */
     suspend fun getListings(
         city: String,
         category: FurnitureCategory? = null,
         actionType: ListingActionType? = null,
+        afterCreatedAt: Long? = null,
         limit: Int = DEFAULT_PAGE_SIZE,
     ): List<FurnitureListing> {
         var query: Query = listings
@@ -37,7 +44,9 @@ class ListingRepository(firestore: FirebaseFirestore) {
             .whereEqualTo("status", ListingStatus.ACTIVE.name)
         category?.let { query = query.whereEqualTo("category", it.name) }
         actionType?.let { query = query.whereEqualTo("actionType", it.name) }
-        return query.orderBy("createdAt", Query.Direction.DESCENDING).limit(limit.toLong()).getAllAs()
+        query = query.orderBy("createdAt", Query.Direction.DESCENDING)
+        afterCreatedAt?.let { query = query.startAfter(it) }
+        return query.limit(limit.toLong()).getAllAs()
     }
 
     /** Everything one owner has listed, in any status — for their "My listings" view. */

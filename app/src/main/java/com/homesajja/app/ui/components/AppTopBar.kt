@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.components
 
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -18,10 +19,12 @@ fun AppTopBar(
     title: String,
     modifier: Modifier = Modifier,
     onBackClick: (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
 ) {
     CenterAlignedTopAppBar(
         title = { Text(title, style = MaterialTheme.typography.titleLarge) },
         modifier = modifier,
+        actions = actions,
         navigationIcon = {
             if (onBackClick != null) {
                 IconButton(onClick = onBackClick) {

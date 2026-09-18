@@ -1,6 +1,7 @@
 package com.homesajja.app.di
 
 import android.content.Context
+import com.homesajja.app.BuildConfig
 import com.homesajja.app.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -19,6 +20,7 @@ import com.homesajja.app.repository.RecyclingRepository
 import com.homesajja.app.repository.RepairRepository
 import com.homesajja.app.repository.ReviewRepository
 import com.homesajja.app.repository.SessionRepository
+import com.homesajja.app.repository.StorageRepository
 import com.homesajja.app.repository.UserRepository
 import com.homesajja.app.repository.VendorRepository
 
@@ -31,9 +33,24 @@ import com.homesajja.app.repository.VendorRepository
  * without Hilt's annotation-processing setup.
  */
 class AppContainer(private val appContext: Context) {
-    val firebaseAuth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
-    val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
-    val storage: FirebaseStorage by lazy { FirebaseStorage.getInstance() }
+
+    // Debug-only: -PuseEmulator=true points Auth, Firestore and Storage at the
+    // local emulators (10.0.2.2 is the host machine as seen from the Android emulator).
+    private val useEmulator = BuildConfig.DEBUG && BuildConfig.USE_FIREBASE_EMULATOR
+
+    val firebaseAuth: FirebaseAuth by lazy {
+        FirebaseAuth.getInstance().also { if (useEmulator) it.useEmulator(EMULATOR_HOST, 9099) }
+    }
+    val firestore: FirebaseFirestore by lazy {
+        FirebaseFirestore.getInstance().also { if (useEmulator) it.useEmulator(EMULATOR_HOST, 8080) }
+    }
+    val storage: FirebaseStorage by lazy {
+        FirebaseStorage.getInstance().also {
+            // Fail a stalled photo upload after 30s instead of the 10-minute default.
+            it.maxUploadRetryTimeMillis = 30_000
+            if (useEmulator) it.useEmulator(EMULATOR_HOST, 9199)
+        }
+    }
     val functions: FirebaseFunctions by lazy { FirebaseFunctions.getInstance() }
 
     val sessionRepository: SessionRepository by lazy { SessionRepository(appContext) }
@@ -41,6 +58,7 @@ class AppContainer(private val appContext: Context) {
     val userRepository: UserRepository by lazy { UserRepository(firestore) }
     val vendorRepository: VendorRepository by lazy { VendorRepository(firestore) }
     val listingRepository: ListingRepository by lazy { ListingRepository(firestore) }
+    val storageRepository: StorageRepository by lazy { StorageRepository(storage, appContext.contentResolver) }
     val purchaseRequestRepository: PurchaseRequestRepository by lazy { PurchaseRequestRepository(firestore) }
     val exchangeRepository: ExchangeRepository by lazy { ExchangeRepository(firestore) }
     val repairRepository: RepairRepository by lazy { RepairRepository(firestore) }
@@ -54,5 +72,9 @@ class AppContainer(private val appContext: Context) {
     fun googleSignInManager(context: Context): GoogleSignInManager {
         val webClientId = context.getString(R.string.default_web_client_id)
         return GoogleSignInManager(context, webClientId)
+    }
+
+    private companion object {
+        const val EMULATOR_HOST = "10.0.2.2"
     }
 }

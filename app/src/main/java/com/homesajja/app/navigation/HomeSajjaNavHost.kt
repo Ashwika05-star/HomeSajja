@@ -5,10 +5,14 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.homesajja.app.BuildConfig
 import com.homesajja.app.data.model.UserRole
 import com.homesajja.app.ui.screens.ComponentPreviewScreen
 import com.homesajja.app.ui.screens.LoginScreen
+import com.homesajja.app.ui.screens.listing.ListingDetailScreen
+import com.homesajja.app.ui.screens.sell.SellFlowScreen
 import com.homesajja.app.ui.screens.SignupScreen
 import com.homesajja.app.ui.screens.SplashScreen
 import com.homesajja.app.ui.screens.UserHomeScreen
@@ -74,9 +78,41 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
         }
         composable(Routes.UserHome.route) {
             UserHomeScreen(
+                onOpenListing = { navController.navigate(Routes.ListingDetail.createRoute(it)) },
+                onSell = { navController.navigate(Routes.Sell.createRoute()) },
+                onEditListing = { navController.navigate(Routes.Sell.createRoute(it)) },
                 onLoggedOut = {
                     navController.navigate(Routes.Welcome.route) {
                         popUpTo(0) { inclusive = true }
+                    }
+                },
+            )
+        }
+        composable(
+            route = Routes.ListingDetail.route,
+            arguments = listOf(navArgument("listingId") { type = NavType.StringType }),
+        ) {
+            ListingDetailScreen(
+                onBackClick = { navController.popBackStack() },
+                onEditListing = { navController.navigate(Routes.Sell.createRoute(it)) },
+            )
+        }
+        composable(
+            route = Routes.Sell.route,
+            arguments = listOf(
+                navArgument("listingId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) {
+            SellFlowScreen(
+                onExit = { navController.popBackStack() },
+                onPublished = { listingId ->
+                    // Replace the sell flow with the listing itself as confirmation.
+                    navController.navigate(Routes.ListingDetail.createRoute(listingId)) {
+                        popUpTo(Routes.UserHome.route)
                     }
                 },
             )

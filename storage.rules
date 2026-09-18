@@ -1,0 +1,16 @@
+rules_version = '2';
+
+// Listing photos live at listings/{ownerId}/{listingId}/{fileName}.
+// Any signed-in user can view them; only the owner can add or remove them.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /listings/{ownerId}/{listingId}/{fileName} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.auth.uid == ownerId
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null && request.auth.uid == ownerId;
+    }
+  }
+}

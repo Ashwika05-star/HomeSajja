@@ -32,3 +32,24 @@ class FirestoreIdsTest {
         assertEquals("alice_REPAIR_REQUEST_r1", FirestoreIds.reviewId("alice", EntityType.REPAIR_REQUEST, "r1"))
     }
 }
+
+class StoragePathTest {
+
+    @Test
+    fun productionDownloadUrl_yieldsDecodedObjectPath() {
+        val url = "https://firebasestorage.googleapis.com/v0/b/proj.appspot.com/o/" +
+            "listings%2Fuid1%2Flisting1%2Fabc-123?alt=media&token=t0k3n"
+        assertEquals("listings/uid1/listing1/abc-123", storagePathFromDownloadUrl(url))
+    }
+
+    @Test
+    fun emulatorDownloadUrl_worksToo() {
+        val url = "http://10.0.2.2:9199/v0/b/proj.appspot.com/o/listings%2Fu%2Fl%2Ff?alt=media&token=x"
+        assertEquals("listings/u/l/f", storagePathFromDownloadUrl(url))
+    }
+
+    @Test
+    fun urlWithoutAnObjectPath_isIgnored() {
+        assertEquals(null, storagePathFromDownloadUrl("https://picsum.photos/seed/x/400/300"))
+    }
+}

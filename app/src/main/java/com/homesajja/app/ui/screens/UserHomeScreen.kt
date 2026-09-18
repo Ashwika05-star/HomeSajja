@@ -1,47 +1,111 @@
 package com.homesajja.app.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Sell
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
-import com.homesajja.app.ui.components.OutlinedButton
+import com.homesajja.app.ui.components.AppTopBar
+import com.homesajja.app.ui.screens.explore.ExploreScreen
+import com.homesajja.app.ui.screens.mylistings.MyListingsScreen
+import com.homesajja.app.ui.screens.requests.MyRequestsScreen
 import com.homesajja.app.viewmodel.HomeViewModel
 
-@Composable
-fun UserHomeScreen(onLoggedOut: () -> Unit) {
-    val container = LocalAppContainer.current
-    val viewModel: HomeViewModel = viewModel(factory = ViewModelFactory(container))
+private enum class HomeTab(val label: String, val icon: ImageVector) {
+    EXPLORE("Explore", Icons.Filled.Explore),
+    MY_LISTINGS("My listings", Icons.Filled.Sell),
+    MY_REQUESTS("Requests", Icons.AutoMirrored.Filled.ReceiptLong),
+}
 
-    Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(
-                text = "Logged in as ${viewModel.displayName} — User",
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onBackground,
+/** The user's space: Explore, My listings and Requests behind a bottom bar. Detail, sell and edit are separate full-screen routes. */
+@Composable
+fun UserHomeScreen(
+    onOpenListing: (String) -> Unit,
+    onSell: () -> Unit,
+    onEditListing: (String) -> Unit,
+    onLoggedOut: () -> Unit,
+) {
+    val homeViewModel: HomeViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
+    var selectedTab by rememberSaveable { mutableStateOf(HomeTab.EXPLORE) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    Scaffold(
+        topBar = {
+            AppTopBar(
+                title = selectedTab.label,
+                actions = {
+                    IconButton(onClick = { homeViewModel.logout(onLoggedOut) }) {
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Log out")
+                    }
+                },
             )
-            Spacer(modifier = Modifier.height(24.dp))
-            OutlinedButton(
-                text = "Logout",
-                onClick = { viewModel.logout(onLoggedOut) },
-                modifier = Modifier.fillMaxWidth(),
+        },
+        bottomBar = {
+            NavigationBar {
+                HomeTab.entries.forEach { tab ->
+                    NavigationBarItem(
+                        selected = selectedTab == tab,
+                        onClick = { selectedTab = tab },
+                        icon = { Icon(tab.icon, contentDescription = null) },
+                        label = { Text(tab.label) },
+                    )
+                }
+            }
+        },
+        floatingActionButton = {
+            if (selectedTab != HomeTab.MY_REQUESTS) {
+                ExtendedFloatingActionButton(
+                    onClick = onSell,
+                    modifier = Modifier.semantics { contentDescription = "Sell an item" },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    text = { Text("Sell") },
+                )
+            }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { padding ->
+        val contentModifier = Modifier.padding(padding)
+        when (selectedTab) {
+            HomeTab.EXPLORE -> ExploreScreen(onOpenListing = onOpenListing, onSell = onSell, modifier = contentModifier)
+            HomeTab.MY_LISTINGS -> MyListingsScreen(
+                snackbarHostState = snackbarHostState,
+                onOpenListing = onOpenListing,
+                onEditListing = onEditListing,
+                onSell = onSell,
+                modifier = contentModifier,
+            )
+            HomeTab.MY_REQUESTS -> MyRequestsScreen(
+                snackbarHostState = snackbarHostState,
+                onOpenListing = onOpenListing,
+                modifier = contentModifier,
             )
         }
     }

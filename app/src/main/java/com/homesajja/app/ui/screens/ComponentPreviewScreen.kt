@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -27,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.homesajja.app.data.model.PurchaseStatus
 import com.homesajja.app.ui.components.AppTextField
 import com.homesajja.app.ui.components.AppTopBar
 import com.homesajja.app.ui.components.CategoryChip
@@ -37,6 +39,7 @@ import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.NoResultsState
 import com.homesajja.app.ui.components.OutlinedButton
 import com.homesajja.app.ui.components.PrimaryButton
+import com.homesajja.app.ui.components.PurchaseStatusTracker
 import com.homesajja.app.ui.components.SecondaryButton
 import com.homesajja.app.ui.components.StatusBadge
 
@@ -87,7 +90,12 @@ fun ComponentPreviewScreen() {
             }
 
             PreviewSection("Furniture card") {
-                FurnitureCard(title = "Teakwood Dining Table", price = "Rs. 8,500")
+                FurnitureCard(
+                    title = "Teakwood Dining Table",
+                    price = "₹8,500",
+                    subtitle = "Mumbai · Good",
+                    modifier = Modifier.width(180.dp),
+                )
             }
 
             PreviewSection("Category chips") {
@@ -108,6 +116,11 @@ fun ComponentPreviewScreen() {
                     StatusBadge(status = "Accepted")
                     StatusBadge(status = "Rejected")
                 }
+            }
+
+            PreviewSection("Purchase status tracker") {
+                PurchaseStatusTracker(status = PurchaseStatus.ACCEPTED)
+                PurchaseStatusTracker(status = PurchaseStatus.CANCELLED)
             }
 
             PreviewSection("Loading state") {

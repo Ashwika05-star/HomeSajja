@@ -20,6 +20,7 @@ fun AppTextField(
     isError: Boolean = false,
     errorMessage: String? = null,
     singleLine: Boolean = true,
+    minLines: Int = 1,
     keyboardType: KeyboardType = KeyboardType.Text,
     visualTransformation: VisualTransformation = VisualTransformation.None,
 ) {
@@ -36,6 +37,7 @@ fun AppTextField(
             null
         },
         singleLine = singleLine,
+        minLines = minLines,
         shape = RoundedCornerShape(14.dp),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         visualTransformation = visualTransformation,

@@ -1,9 +1,11 @@
 package com.homesajja.app.data.model
 
+/** Also used to describe what a listing is made of. */
 enum class MaterialType(val displayName: String) {
     WOOD("Wood"),
     METAL("Metal"),
     FABRIC("Fabric"),
+    LEATHER("Leather"),
     GLASS("Glass"),
     PLASTIC("Plastic"),
     OTHER("Other"),

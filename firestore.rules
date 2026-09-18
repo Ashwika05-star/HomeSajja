@@ -60,7 +60,7 @@ service cloud.firestore {
         && incoming().status == 'ACTIVE'
         && incoming().title is string && incoming().title.size() > 0
         && incoming().price is int && incoming().price >= 0
-        && incoming().images.size() <= 10;
+        && incoming().images.size() >= 1 && incoming().images.size() <= 5;
       allow update: if isSelf(existing().ownerId) && incoming().ownerId == existing().ownerId;
       allow delete: if isSelf(existing().ownerId);
     }
@@ -77,12 +77,12 @@ service cloud.firestore {
         && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId);
       allow create: if isSelf(incoming().buyerId)
         && incoming().sellerId != incoming().buyerId
-        && incoming().status == 'PENDING'
+        && incoming().status == 'REQUESTED'
         && get(/databases/$(database)/documents/listings/$(incoming().listingId)).data.ownerId == incoming().sellerId;
       allow update: if changedKeys().hasOnly(['status', 'updatedAt'])
         && (isSelf(existing().sellerId)
             || (isSelf(existing().buyerId) && incoming().status == 'CANCELLED'));
-      allow delete: if isSelf(existing().buyerId) && existing().status == 'PENDING';
+      allow delete: if isSelf(existing().buyerId) && existing().status == 'REQUESTED';
     }
 
     // Requester <-> listing owner, only for listings marked EXCHANGE.

@@ -23,6 +23,8 @@ fun NoResultsState(
     icon: ImageVector? = null,
     title: String = "No results found",
     subtitle: String = "Try adjusting your filters or search terms.",
+    actionLabel: String? = null,
+    onActionClick: (() -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -48,5 +50,9 @@ fun NoResultsState(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
+        if (actionLabel != null && onActionClick != null) {
+            Spacer(modifier = Modifier.height(20.dp))
+            OutlinedButton(text = actionLabel, onClick = onActionClick)
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.homesajja.app.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.homesajja.app.data.model.ListingStatus
 import com.homesajja.app.data.model.PurchaseRequest
 import com.homesajja.app.data.model.PurchaseStatus
 import kotlinx.coroutines.tasks.await
@@ -10,7 +11,7 @@ private const val COLLECTION = "purchaseRequests"
 
 /** Marketplace buy requests at `purchaseRequests/{id}`. Mutation after creation
  * is status-only (see firestore.rules), so there is no full-document update. */
-class PurchaseRequestRepository(firestore: FirebaseFirestore) {
+class PurchaseRequestRepository(private val firestore: FirebaseFirestore) {
 
     private val requests = firestore.collection(COLLECTION)
 
@@ -40,6 +41,22 @@ class PurchaseRequestRepository(firestore: FirebaseFirestore) {
     suspend fun updateStatus(id: String, status: PurchaseStatus) {
         requests.document(id)
             .update(mapOf("status" to status.name, "updatedAt" to System.currentTimeMillis()))
+            .await()
+    }
+
+    /** Seller-side transition that also moves the listing (e.g. ACCEPTED reserves it,
+     * COMPLETED marks it sold). One batch, so the two never disagree. */
+    suspend fun updateStatusAndListing(
+        id: String,
+        status: PurchaseStatus,
+        listingId: String,
+        listingStatus: ListingStatus,
+    ) {
+        val now = System.currentTimeMillis()
+        firestore.batch()
+            .update(requests.document(id), mapOf("status" to status.name, "updatedAt" to now))
+            .update(firestore.collection("listings").document(listingId), mapOf("status" to listingStatus.name, "updatedAt" to now))
+            .commit()
             .await()
     }
 

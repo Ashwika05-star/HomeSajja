@@ -17,9 +17,16 @@ android {
         versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Debug builds can talk to local Firebase emulators: ./gradlew installDebug -PuseEmulator=true
+        buildConfigField("boolean", "USE_FIREBASE_EMULATOR", "false")
     }
 
     buildTypes {
+        debug {
+            val useEmulator = providers.gradleProperty("useEmulator").orNull ?: "false"
+            buildConfigField("boolean", "USE_FIREBASE_EMULATOR", useEmulator)
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -48,6 +55,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
@@ -58,6 +66,8 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.google.id)

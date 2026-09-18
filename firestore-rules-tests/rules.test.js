@@ -1,8 +1,10 @@
 const fs = require('fs');
 const { initializeTestEnvironment, assertSucceeds, assertFails } = require('@firebase/rules-unit-testing');
+const { ref, uploadBytes, deleteObject, getBytes } = require('firebase/storage');
 const { setLogLevel, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, orderBy, writeBatch } = require('firebase/firestore');
 
 const RULES = require('path').join(__dirname, '..', 'firestore.rules');
+const STORAGE_RULES = require('path').join(__dirname, '..', 'storage.rules');
 setLogLevel('silent');
 let env, passed = 0, failed = 0;
 
@@ -19,7 +21,8 @@ const allow = (n, p) => check(n, p, true);
 const deny = (n, p) => check(n, p, false);
 
 (async () => {
-  env = await initializeTestEnvironment({ projectId: 'demo-homesajja', firestore: { rules: fs.readFileSync(RULES, 'utf8'), host: '127.0.0.1', port: 8181 } });
+  env = await initializeTestEnvironment({ projectId: 'demo-homesajja', firestore: { rules: fs.readFileSync(RULES, 'utf8'), host: '127.0.0.1', port: 8181 },
+    storage: { rules: fs.readFileSync(STORAGE_RULES, 'utf8'), host: '127.0.0.1', port: 9299 } });
   const now = Date.now();
   const as = (uid) => env.authenticatedContext(uid).firestore();
   const anon = env.unauthenticatedContext().firestore();
@@ -32,7 +35,7 @@ const deny = (n, p) => check(n, p, false);
     await setDoc(doc(db, 'vendors/vic'), { uid: 'vic', name: 'Vic', city: 'Mumbai' });
     await setDoc(doc(db, 'listings/sell1'), { ownerId: 'bob', title: 'Sofa', price: 100, status: 'ACTIVE', actionType: 'SELL', images: [] });
     await setDoc(doc(db, 'listings/swap1'), { ownerId: 'bob', title: 'Chair', price: 0, status: 'ACTIVE', actionType: 'EXCHANGE', images: [] });
-    await setDoc(doc(db, 'purchaseRequests/p1'), { buyerId: 'alice', sellerId: 'bob', listingId: 'sell1', status: 'PENDING', offeredPrice: 90 });
+    await setDoc(doc(db, 'purchaseRequests/p1'), { buyerId: 'alice', sellerId: 'bob', listingId: 'sell1', status: 'REQUESTED', offeredPrice: 90 });
     await setDoc(doc(db, 'repairRequests/r1'), { userId: 'alice', vendorId: 'vic', status: 'REQUESTED', quotedPrice: null });
     await setDoc(doc(db, 'recyclingRequests/c1'), { userId: 'alice', vendorId: 'vic', status: 'REQUESTED', pickupDate: null });
     await setDoc(doc(db, 'chats/ch1'), { participantIds: ['alice', 'bob'], lastMessage: '', lastMessageAt: 0, lastMessageSenderId: '' });
@@ -55,9 +58,11 @@ const deny = (n, p) => check(n, p, false);
   // listings
   await allow('signed-in reads listing', getDoc(doc(as('alice'), 'listings/sell1')));
   await deny('anonymous reads listing', getDoc(doc(anon, 'listings/sell1')));
-  await allow('owner creates listing', setDoc(doc(as('alice'), 'listings/new1'), { ownerId: 'alice', title: 'Desk', price: 50, status: 'ACTIVE', images: [] }));
-  await deny('create listing for another owner', setDoc(doc(as('alice'), 'listings/new2'), { ownerId: 'bob', title: 'Desk', price: 50, status: 'ACTIVE', images: [] }));
-  await deny('negative price', setDoc(doc(as('alice'), 'listings/new3'), { ownerId: 'alice', title: 'Desk', price: -5, status: 'ACTIVE', images: [] }));
+  await allow('owner creates listing', setDoc(doc(as('alice'), 'listings/new1'), { ownerId: 'alice', title: 'Desk', price: 50, status: 'ACTIVE', images: ['a.jpg'] }));
+  await deny('create listing for another owner', setDoc(doc(as('alice'), 'listings/new2'), { ownerId: 'bob', title: 'Desk', price: 50, status: 'ACTIVE', images: ['a.jpg'] }));
+  await deny('listing with no photos', setDoc(doc(as('alice'), 'listings/new4'), { ownerId: 'alice', title: 'Desk', price: 50, status: 'ACTIVE', images: [] }));
+  await deny('listing with too many photos', setDoc(doc(as('alice'), 'listings/new5'), { ownerId: 'alice', title: 'Desk', price: 50, status: 'ACTIVE', images: ['1','2','3','4','5','6'] }));
+  await deny('negative price', setDoc(doc(as('alice'), 'listings/new3'), { ownerId: 'alice', title: 'Desk', price: -5, status: 'ACTIVE', images: ['a.jpg'] }));
   await deny('non-owner edits listing', updateDoc(doc(as('alice'), 'listings/sell1'), { price: 1 }));
   await deny('owner reassigns listing', updateDoc(doc(as('bob'), 'listings/sell1'), { ownerId: 'alice' }));
   await allow('owner edits listing', updateDoc(doc(as('bob'), 'listings/sell1'), { price: 120 }));
@@ -66,7 +71,7 @@ const deny = (n, p) => check(n, p, false);
   await env.withSecurityRulesDisabled(async (c) => setDoc(doc(c.firestore(), 'listings/swap1'), { ownerId: 'bob', title: 'Chair', price: 0, status: 'ACTIVE', actionType: 'EXCHANGE', images: [] }));
 
   // purchase requests
-  const pr = { buyerId: 'alice', sellerId: 'bob', listingId: 'sell1', status: 'PENDING', offeredPrice: 80 };
+  const pr = { buyerId: 'alice', sellerId: 'bob', listingId: 'sell1', status: 'REQUESTED', offeredPrice: 80 };
   await allow('buyer creates purchase request', setDoc(doc(as('alice'), 'purchaseRequests/p2'), pr));
   await deny('purchase request naming wrong seller', setDoc(doc(as('alice'), 'purchaseRequests/p3'), { ...pr, sellerId: 'carol' }));
   await deny('purchase request as someone else', setDoc(doc(as('carol'), 'purchaseRequests/p4'), pr));
@@ -168,6 +173,20 @@ const deny = (n, p) => check(n, p, false);
   await allow('list own favourites', getDocs(query(collection(as('alice'), 'favourites'), where('userId', '==', 'alice'))));
   await deny('list another user\'s favourites', getDocs(query(collection(as('carol'), 'favourites'), where('userId', '==', 'alice'))));
   await allow('remove favourite', deleteDoc(doc(as('alice'), 'favourites/alice_sell1')));
+
+  // storage (listing photos)
+  const st = (uid) => env.authenticatedContext(uid).storage();
+  const photo = (s, path) => ref(s, path);
+  const jpeg = { contentType: 'image/jpeg' };
+  await allow('owner uploads a listing photo', uploadBytes(photo(st('alice'), 'listings/alice/l1/p1'), new Uint8Array([1, 2, 3]), jpeg));
+  await deny('upload into someone else\'s folder', uploadBytes(photo(st('bob'), 'listings/alice/l1/p2'), new Uint8Array([1]), jpeg));
+  await deny('upload a non-image', uploadBytes(photo(st('alice'), 'listings/alice/l1/p3'), new Uint8Array([1]), { contentType: 'text/plain' }));
+  await deny('upload over 10 MB', uploadBytes(photo(st('alice'), 'listings/alice/l1/p4'), new Uint8Array(11 * 1024 * 1024), jpeg));
+  await deny('upload outside listings/', uploadBytes(photo(st('alice'), 'other/alice/x'), new Uint8Array([1]), jpeg));
+  await allow('signed-in user reads a photo', getBytes(photo(st('bob'), 'listings/alice/l1/p1')));
+  await deny('anonymous reads a photo', getBytes(photo(env.unauthenticatedContext().storage(), 'listings/alice/l1/p1')));
+  await deny('non-owner deletes a photo', deleteObject(photo(st('bob'), 'listings/alice/l1/p1')));
+  await allow('owner deletes a photo', deleteObject(photo(st('alice'), 'listings/alice/l1/p1')));
 
   console.log(`\n${passed} passed, ${failed} failed`);
   await env.cleanup();
