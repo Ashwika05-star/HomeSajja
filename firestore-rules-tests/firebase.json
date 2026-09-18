@@ -1,1 +1,1 @@
-{ "emulators": { "firestore": { "port": 8181 }, "storage": { "port": 9299 }, "ui": { "enabled": false } } }
+{ "emulators": { "firestore": { "port": 8181 }, "ui": { "enabled": false } } }

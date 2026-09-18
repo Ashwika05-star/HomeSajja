@@ -9,7 +9,6 @@ import com.homesajja.app.data.model.FurnitureListing
 import com.homesajja.app.data.model.ListingStatus
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ListingRepository
-import com.homesajja.app.repository.StorageRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +32,6 @@ private val ACTIVE_STATUSES = setOf(ListingStatus.ACTIVE, ListingStatus.RESERVED
 class MyListingsViewModel(
     private val authRepository: AuthRepository,
     private val listingRepository: ListingRepository,
-    private val storageRepository: StorageRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<MyListingsUiState>(MyListingsUiState.Loading)
@@ -69,7 +67,6 @@ class MyListingsViewModel(
 
     fun delete(listing: FurnitureListing) = runAction(listing, "Couldn't delete the listing.") {
         listingRepository.deleteListing(listing.id)
-        storageRepository.deleteImages(listing.images)
         _messages.tryEmit("Deleted \"${listing.title}\".")
     }
 

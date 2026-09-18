@@ -14,7 +14,7 @@ import com.homesajja.app.data.model.UserRole
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ListingRepository
 import com.homesajja.app.repository.SessionRepository
-import com.homesajja.app.repository.StorageRepository
+import com.homesajja.app.repository.ImageRepository
 import com.homesajja.app.repository.UserRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
@@ -44,7 +44,7 @@ class SellViewModel(
     private val userRepository: UserRepository,
     private val sessionRepository: SessionRepository,
     private val listingRepository: ListingRepository,
-    private val storageRepository: StorageRepository,
+    private val imageRepository: ImageRepository,
 ) : ViewModel() {
 
     private val editingListingId: String? = savedStateHandle["listingId"]
@@ -137,7 +137,6 @@ class SellViewModel(
     private fun publish() {
         val uid = authRepository.currentUserId ?: return
         viewModelScope.launch {
-            val uploaded = mutableListOf<String>()
             try {
                 val editing = editingListing
                 val listingId = editing?.id ?: listingRepository.newListingId()
@@ -149,10 +148,7 @@ class SellViewModel(
                         is SellPhoto.Remote -> photo.url
                         is SellPhoto.Local -> {
                             publishState = PublishState.Publishing("Uploading photo ${done + 1} of $localCount…")
-                            storageRepository.uploadListingImage(uid, listingId, photo.uri).also {
-                                uploaded += it
-                                done++
-                            }
+                            imageRepository.uploadListingImage(uid, listingId, photo.uri).also { done++ }
                         }
                     }
                 }
@@ -162,12 +158,10 @@ class SellViewModel(
                 val listing = buildListing(listingId, uid, imageUrls, editing, role)
                 if (editing == null) listingRepository.createListing(listing) else listingRepository.updateListing(listing)
 
-                if (editing != null) storageRepository.deleteImages(editing.images - imageUrls.toSet())
                 publishState = PublishState.Published(listingId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                storageRepository.deleteImages(uploaded)
                 publishState = PublishState.Failed(mapError(e, "Couldn't publish your listing. Please try again."))
             }
         }

@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HomeSajja</string>
-    <!-- Replace with the real "Web client (auto created by Google Service)" OAuth
-         client ID from the Firebase project's Authentication > Sign-in method >
-         Google settings once a real google-services.json is in place. -->
-    <string name="default_web_client_id" translatable="false">REPLACE_WITH_FIREBASE_WEB_CLIENT_ID</string>
+    <!-- "Web client (auto created by Google Service)" OAuth client ID, from the Firebase
+         console: Authentication > Sign-in method > Google. -->
+    <string name="default_web_client_id" translatable="false">1080394641505-4nq4mun60v4q7dk355be0v0mm35bv9fp.apps.googleusercontent.com</string>
+    <!-- Cloudinary (free) hosts listing photos. Both values are public by design:
+         uploads use an unsigned preset, so no API secret is in the app. -->
+    <string name="cloudinary_cloud_name" translatable="false">oi19l6zq</string>
+    <string name="cloudinary_upload_preset" translatable="false">homesajja_listings</string>
 </resources>

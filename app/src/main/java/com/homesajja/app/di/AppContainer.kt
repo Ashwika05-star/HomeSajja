@@ -6,12 +6,12 @@ import com.homesajja.app.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.functions.FirebaseFunctions
-import com.google.firebase.storage.FirebaseStorage
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ChatRepository
 import com.homesajja.app.repository.ExchangeRepository
 import com.homesajja.app.repository.FavouriteRepository
 import com.homesajja.app.repository.GoogleSignInManager
+import com.homesajja.app.repository.ImageRepository
 import com.homesajja.app.repository.ListingRepository
 import com.homesajja.app.repository.MaterialRequestRepository
 import com.homesajja.app.repository.NotificationRepository
@@ -20,7 +20,6 @@ import com.homesajja.app.repository.RecyclingRepository
 import com.homesajja.app.repository.RepairRepository
 import com.homesajja.app.repository.ReviewRepository
 import com.homesajja.app.repository.SessionRepository
-import com.homesajja.app.repository.StorageRepository
 import com.homesajja.app.repository.UserRepository
 import com.homesajja.app.repository.VendorRepository
 
@@ -34,7 +33,7 @@ import com.homesajja.app.repository.VendorRepository
  */
 class AppContainer(private val appContext: Context) {
 
-    // Debug-only: -PuseEmulator=true points Auth, Firestore and Storage at the
+    // Debug-only: -PuseEmulator=true points Auth and Firestore at the
     // local emulators (10.0.2.2 is the host machine as seen from the Android emulator).
     private val useEmulator = BuildConfig.DEBUG && BuildConfig.USE_FIREBASE_EMULATOR
 
@@ -44,13 +43,6 @@ class AppContainer(private val appContext: Context) {
     val firestore: FirebaseFirestore by lazy {
         FirebaseFirestore.getInstance().also { if (useEmulator) it.useEmulator(EMULATOR_HOST, 8080) }
     }
-    val storage: FirebaseStorage by lazy {
-        FirebaseStorage.getInstance().also {
-            // Fail a stalled photo upload after 30s instead of the 10-minute default.
-            it.maxUploadRetryTimeMillis = 30_000
-            if (useEmulator) it.useEmulator(EMULATOR_HOST, 9199)
-        }
-    }
     val functions: FirebaseFunctions by lazy { FirebaseFunctions.getInstance() }
 
     val sessionRepository: SessionRepository by lazy { SessionRepository(appContext) }
@@ -58,7 +50,13 @@ class AppContainer(private val appContext: Context) {
     val userRepository: UserRepository by lazy { UserRepository(firestore) }
     val vendorRepository: VendorRepository by lazy { VendorRepository(firestore) }
     val listingRepository: ListingRepository by lazy { ListingRepository(firestore) }
-    val storageRepository: StorageRepository by lazy { StorageRepository(storage, appContext.contentResolver) }
+    val imageRepository: ImageRepository by lazy {
+        ImageRepository(
+            appContext.contentResolver,
+            appContext.getString(R.string.cloudinary_cloud_name),
+            appContext.getString(R.string.cloudinary_upload_preset),
+        )
+    }
     val purchaseRequestRepository: PurchaseRequestRepository by lazy { PurchaseRequestRepository(firestore) }
     val exchangeRepository: ExchangeRepository by lazy { ExchangeRepository(firestore) }
     val repairRepository: RepairRepository by lazy { RepairRepository(firestore) }

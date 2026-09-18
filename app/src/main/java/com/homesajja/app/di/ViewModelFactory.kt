@@ -71,12 +71,11 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.userRepository,
                 container.sessionRepository,
                 container.listingRepository,
-                container.storageRepository,
+                container.imageRepository,
             )
             MyListingsViewModel::class.java -> MyListingsViewModel(
                 container.authRepository,
                 container.listingRepository,
-                container.storageRepository,
             )
             MyRequestsViewModel::class.java -> MyRequestsViewModel(
                 container.authRepository,

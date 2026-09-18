@@ -1,10 +1,8 @@
 const fs = require('fs');
 const { initializeTestEnvironment, assertSucceeds, assertFails } = require('@firebase/rules-unit-testing');
-const { ref, uploadBytes, deleteObject, getBytes } = require('firebase/storage');
 const { setLogLevel, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, orderBy, writeBatch } = require('firebase/firestore');
 
 const RULES = require('path').join(__dirname, '..', 'firestore.rules');
-const STORAGE_RULES = require('path').join(__dirname, '..', 'storage.rules');
 setLogLevel('silent');
 let env, passed = 0, failed = 0;
 
@@ -21,8 +19,7 @@ const allow = (n, p) => check(n, p, true);
 const deny = (n, p) => check(n, p, false);
 
 (async () => {
-  env = await initializeTestEnvironment({ projectId: 'demo-homesajja', firestore: { rules: fs.readFileSync(RULES, 'utf8'), host: '127.0.0.1', port: 8181 },
-    storage: { rules: fs.readFileSync(STORAGE_RULES, 'utf8'), host: '127.0.0.1', port: 9299 } });
+  env = await initializeTestEnvironment({ projectId: 'demo-homesajja', firestore: { rules: fs.readFileSync(RULES, 'utf8'), host: '127.0.0.1', port: 8181 } });
   const now = Date.now();
   const as = (uid) => env.authenticatedContext(uid).firestore();
   const anon = env.unauthenticatedContext().firestore();
@@ -251,20 +248,6 @@ const deny = (n, p) => check(n, p, false);
   await allow('list own favourites', getDocs(query(collection(as('alice'), 'favourites'), where('userId', '==', 'alice'))));
   await deny('list another user\'s favourites', getDocs(query(collection(as('carol'), 'favourites'), where('userId', '==', 'alice'))));
   await allow('remove favourite', deleteDoc(doc(as('alice'), 'favourites/alice_sell1')));
-
-  // storage (listing photos)
-  const st = (uid) => env.authenticatedContext(uid).storage();
-  const photo = (s, path) => ref(s, path);
-  const jpeg = { contentType: 'image/jpeg' };
-  await allow('owner uploads a listing photo', uploadBytes(photo(st('alice'), 'listings/alice/l1/p1'), new Uint8Array([1, 2, 3]), jpeg));
-  await deny('upload into someone else\'s folder', uploadBytes(photo(st('bob'), 'listings/alice/l1/p2'), new Uint8Array([1]), jpeg));
-  await deny('upload a non-image', uploadBytes(photo(st('alice'), 'listings/alice/l1/p3'), new Uint8Array([1]), { contentType: 'text/plain' }));
-  await deny('upload over 10 MB', uploadBytes(photo(st('alice'), 'listings/alice/l1/p4'), new Uint8Array(11 * 1024 * 1024), jpeg));
-  await deny('upload outside listings/', uploadBytes(photo(st('alice'), 'other/alice/x'), new Uint8Array([1]), jpeg));
-  await allow('signed-in user reads a photo', getBytes(photo(st('bob'), 'listings/alice/l1/p1')));
-  await deny('anonymous reads a photo', getBytes(photo(env.unauthenticatedContext().storage(), 'listings/alice/l1/p1')));
-  await deny('non-owner deletes a photo', deleteObject(photo(st('bob'), 'listings/alice/l1/p1')));
-  await allow('owner deletes a photo', deleteObject(photo(st('alice'), 'listings/alice/l1/p1')));
 
   console.log(`\n${passed} passed, ${failed} failed`);
   await env.cleanup();

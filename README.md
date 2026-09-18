@@ -10,7 +10,7 @@ signup, User or Vendor, each with its own dedicated dashboard and experience.
 
 - **Language & UI:** Kotlin, Jetpack Compose, Material 3
 - **Architecture:** MVVM (ViewModel + StateFlow), Coroutines, Repository pattern
-- **Backend:** Firebase (Authentication, Cloud Firestore, Storage, Cloud Functions, Cloud Messaging)
+- **Backend:** Firebase (Authentication, Cloud Firestore, Cloud Messaging); listing photos on Cloudinary (free tier)
 - **Maps:** Google Maps SDK + Places API (vendor shop locations)
 - **AI:** Google Gemini API, called via Cloud Functions (no client-side keys)
 - **Dependency injection:** Manual DI (`di/AppContainer`) — the dependency graph is small
@@ -19,10 +19,10 @@ signup, User or Vendor, each with its own dedicated dashboard and experience.
 ## Local development with Firebase emulators
 
 There is no need for a real Firebase project to try the app. With the Firebase CLI installed, start
-the Auth, Firestore and Storage emulators (they load `firestore.rules` and `storage.rules`):
+the Auth and Firestore emulators (they load `firestore.rules`):
 
 ```bash
-firebase emulators:start --only auth,firestore,storage --project homesajja-placeholder
+firebase emulators:start --only auth,firestore --project homesajja-placeholder
 ```
 
 then install a debug build that points at them (off by default; debug builds only):

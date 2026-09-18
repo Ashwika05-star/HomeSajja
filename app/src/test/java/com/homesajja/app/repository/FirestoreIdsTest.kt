@@ -33,23 +33,23 @@ class FirestoreIdsTest {
     }
 }
 
-class StoragePathTest {
+class ImageUploadTest {
 
     @Test
-    fun productionDownloadUrl_yieldsDecodedObjectPath() {
-        val url = "https://firebasestorage.googleapis.com/v0/b/proj.appspot.com/o/" +
-            "listings%2Fuid1%2Flisting1%2Fabc-123?alt=media&token=t0k3n"
-        assertEquals("listings/uid1/listing1/abc-123", storagePathFromDownloadUrl(url))
+    fun secureUrl_isReadAndUnescaped() {
+        val json = """{"public_id":"a","secure_url":"https:\/\/res.cloudinary.com\/demo\/image\/upload\/v1\/a.jpg"}"""
+        assertEquals("https://res.cloudinary.com/demo/image/upload/v1/a.jpg", extractSecureUrl(json))
     }
 
     @Test
-    fun emulatorDownloadUrl_worksToo() {
-        val url = "http://10.0.2.2:9199/v0/b/proj.appspot.com/o/listings%2Fu%2Fl%2Ff?alt=media&token=x"
-        assertEquals("listings/u/l/f", storagePathFromDownloadUrl(url))
+    fun replyWithoutSecureUrl_isNull() {
+        assertEquals(null, extractSecureUrl("""{"error":{"message":"bad preset"}}"""))
     }
 
     @Test
-    fun urlWithoutAnObjectPath_isIgnored() {
-        assertEquals(null, storagePathFromDownloadUrl("https://picsum.photos/seed/x/400/300"))
+    fun sampleSize_keepsLongEdgeAtLeastTarget() {
+        assertEquals(1, sampleSizeFor(1200, 800, 1600))
+        assertEquals(2, sampleSizeFor(4000, 3000, 1600))
+        assertEquals(4, sampleSizeFor(6400, 4800, 1600))
     }
 }
