@@ -1,33 +1,42 @@
 package com.homesajja.app.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
-// Placeholder color schemes only — replaced with HomeSajja's full Material 3
-// scheme (built from the warm/natural palette) in Phase 1. Dynamic color is
-// intentionally not used, since the brand palette should not be overridden
-// by the device wallpaper.
-private val DarkColorScheme = darkColorScheme(
-    primary = PlaceholderPrimaryDark
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = PlaceholderPrimaryLight
+// Light theme only for now — dark theme is a later phase.
+private val HomeSajjaLightColorScheme = lightColorScheme(
+    primary = CabernetPrimary,
+    onPrimary = OnCabernetPrimary,
+    primaryContainer = CabernetPrimaryContainer,
+    onPrimaryContainer = OnCabernetPrimaryContainer,
+    secondary = PoignantPinkSecondary,
+    onSecondary = OnPoignantPinkSecondary,
+    secondaryContainer = PoignantPinkSecondaryContainer,
+    onSecondaryContainer = OnPoignantPinkSecondaryContainer,
+    tertiary = RoseTertiary,
+    onTertiary = OnRoseTertiary,
+    tertiaryContainer = RoseTertiaryContainer,
+    onTertiaryContainer = OnRoseTertiaryContainer,
+    background = PearlBackground,
+    onBackground = OnPearlBackground,
+    surface = PearlSurface,
+    onSurface = OnPearlSurface,
+    surfaceVariant = PearlSurfaceVariant,
+    onSurfaceVariant = OnPearlSurfaceVariant,
+    error = ErrorRed,
+    onError = OnErrorRed,
+    errorContainer = ErrorContainer,
+    onErrorContainer = OnErrorContainer,
+    outline = OutlineNeutral,
+    outlineVariant = OutlineVariantNeutral,
 )
 
 @Composable
-fun HomeSajjaTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit
-) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
-
+fun HomeSajjaTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = HomeSajjaLightColorScheme,
         typography = Typography,
-        content = content
+        content = content,
     )
 }

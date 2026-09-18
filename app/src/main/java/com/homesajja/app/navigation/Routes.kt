@@ -7,4 +7,5 @@ sealed class Routes(val route: String) {
     data object RoleSelection : Routes("role_selection")
     data object UserHome : Routes("user_home")
     data object VendorHome : Routes("vendor_home")
+    data object ComponentPreview : Routes("component_preview")
 }
