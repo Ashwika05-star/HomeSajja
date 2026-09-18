@@ -13,6 +13,16 @@ sealed class Routes(val route: String) {
         fun createRoute(listingId: String) = "listing/$listingId"
     }
 
+    /** Propose an exchange; with a requestedListingId the wanted item is already chosen. */
+    data object ExchangeNew : Routes("exchange_new?requestedListingId={requestedListingId}") {
+        fun createRoute(requestedListingId: String? = null) =
+            if (requestedListingId == null) "exchange_new" else "exchange_new?requestedListingId=$requestedListingId"
+    }
+
+    data object ExchangeDetail : Routes("exchange/{requestId}") {
+        fun createRoute(requestId: String) = "exchange/$requestId"
+    }
+
     /** Sell flow; with a listingId it edits that listing instead. */
     data object Sell : Routes("sell?listingId={listingId}") {
         fun createRoute(listingId: String? = null) = if (listingId == null) "sell" else "sell?listingId=$listingId"

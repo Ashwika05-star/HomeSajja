@@ -58,11 +58,12 @@ import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.FurnitureCard
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.NoResultsState
-import com.homesajja.app.ui.util.formatPrice
-import com.homesajja.app.viewmodel.ExploreUiState
+import com.homesajja.app.ui.util.priceLabel
+import com.homesajja.app.viewmodel.BrowseUiState
 import com.homesajja.app.viewmodel.ExploreViewModel
+import com.homesajja.app.viewmodel.ListingBrowseViewModel
 
-/** Browse listings in the user's city: search, category chips, filters, paged grid. */
+/** Buy & Sell: browse listings that are for sale in the user's city. */
 @Composable
 fun ExploreScreen(
     onOpenListing: (String) -> Unit,
@@ -70,6 +71,32 @@ fun ExploreScreen(
     modifier: Modifier = Modifier,
 ) {
     val viewModel: ExploreViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
+    ListingBrowser(
+        viewModel = viewModel,
+        onListingClick = { onOpenListing(it.id) },
+        emptyTitle = { city -> "No listings in $city yet" },
+        emptySubtitle = "Be the first to list something for sale here.",
+        emptyActionLabel = "Sell an item",
+        onEmptyAction = onSell,
+        modifier = modifier,
+    )
+}
+
+/**
+ * Search bar, category chips, filter sheet and the paged listing grid, driven by any
+ * [ListingBrowseViewModel]. Shared by Buy (Explore) and Exchange; each passes its own
+ * ViewModel and decides what tapping a card and the empty screen do.
+ */
+@Composable
+fun ListingBrowser(
+    viewModel: ListingBrowseViewModel,
+    onListingClick: (FurnitureListing) -> Unit,
+    emptyTitle: (city: String) -> String,
+    emptySubtitle: String,
+    emptyActionLabel: String?,
+    onEmptyAction: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showFilters by rememberSaveable { mutableStateOf(false) }
 
@@ -84,9 +111,9 @@ fun ExploreScreen(
 
         Box(modifier = Modifier.weight(1f)) {
             when (val current = state) {
-                ExploreUiState.Loading -> LoadingState()
-                is ExploreUiState.Error -> ErrorState(message = current.message, onRetry = viewModel::retry)
-                is ExploreUiState.Content -> ExploreContent(
+                BrowseUiState.Loading -> LoadingState()
+                is BrowseUiState.Error -> ErrorState(message = current.message, onRetry = viewModel::retry)
+                is BrowseUiState.Content -> ExploreContent(
                     content = current,
                     city = viewModel.city,
                     hasActiveNarrowing = viewModel.hasActiveNarrowing,
@@ -94,8 +121,11 @@ fun ExploreScreen(
                     onRefresh = viewModel::refresh,
                     onLoadMore = viewModel::loadMore,
                     onClearNarrowing = viewModel::clearNarrowing,
-                    onOpenListing = onOpenListing,
-                    onSell = onSell,
+                    onListingClick = onListingClick,
+                    emptyTitle = emptyTitle,
+                    emptySubtitle = emptySubtitle,
+                    emptyActionLabel = emptyActionLabel,
+                    onEmptyAction = onEmptyAction,
                 )
             }
         }
@@ -169,15 +199,18 @@ private fun CategoryRow(selected: FurnitureCategory?, onSelect: (FurnitureCatego
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ExploreContent(
-    content: ExploreUiState.Content,
+    content: BrowseUiState.Content,
     city: String,
     hasActiveNarrowing: Boolean,
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     onClearNarrowing: () -> Unit,
-    onOpenListing: (String) -> Unit,
-    onSell: () -> Unit,
+    onListingClick: (FurnitureListing) -> Unit,
+    emptyTitle: (String) -> String,
+    emptySubtitle: String,
+    emptyActionLabel: String?,
+    onEmptyAction: (() -> Unit)?,
 ) {
     if (content.listings.isEmpty() && content.isLoadingMore) {
         // Search/filters hid everything fetched so far, and more is being fetched.
@@ -203,10 +236,10 @@ private fun ExploreContent(
                         } else {
                             EmptyState(
                                 icon = Icons.Filled.Inventory2,
-                                title = "No listings in $city yet",
-                                subtitle = "Be the first to list something for sale here.",
-                                actionLabel = "Sell an item",
-                                onActionClick = onSell,
+                                title = emptyTitle(city),
+                                subtitle = emptySubtitle,
+                                actionLabel = emptyActionLabel,
+                                onActionClick = onEmptyAction,
                             )
                         }
                     }
@@ -240,10 +273,10 @@ private fun ExploreContent(
             items(content.listings, key = { it.id }) { listing ->
                 FurnitureCard(
                     title = listing.title,
-                    price = formatPrice(listing.price),
+                    price = listing.priceLabel(),
                     imageUrl = listing.images.firstOrNull(),
                     subtitle = cardSubtitle(listing),
-                    onClick = { onOpenListing(listing.id) },
+                    onClick = { onListingClick(listing) },
                 )
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
@@ -257,7 +290,7 @@ private fun cardSubtitle(listing: FurnitureListing): String =
     "${listing.city} · ${if (listing.refurbished) "Refurbished" else listing.condition.displayName}"
 
 @Composable
-private fun GridFooter(content: ExploreUiState.Content, city: String, onRetry: () -> Unit) {
+private fun GridFooter(content: BrowseUiState.Content, city: String, onRetry: () -> Unit) {
     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
         when {
             content.isLoadingMore -> CircularProgressIndicator(strokeWidth = 2.dp)

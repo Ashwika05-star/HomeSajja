@@ -24,8 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -64,9 +62,9 @@ fun MyRequestsScreen(
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
     }
 
-    var firstResume by remember { mutableStateOf(true) }
+    // Coming back from another screen (detail, sell, exchange...): reload if the data is old.
     LifecycleResumeEffect(viewModel) {
-        if (firstResume) firstResume = false else viewModel.refresh()
+        viewModel.refreshIfStale()
         onPauseOrDispose {}
     }
 

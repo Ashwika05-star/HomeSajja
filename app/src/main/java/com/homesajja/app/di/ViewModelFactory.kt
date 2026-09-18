@@ -5,6 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.createSavedStateHandle
+import com.homesajja.app.viewmodel.ExchangeBrowseViewModel
+import com.homesajja.app.viewmodel.ExchangeDetailViewModel
+import com.homesajja.app.viewmodel.ExchangeProposalViewModel
+import com.homesajja.app.viewmodel.ExchangeRequestsViewModel
 import com.homesajja.app.viewmodel.ExploreViewModel
 import com.homesajja.app.viewmodel.HomeViewModel
 import com.homesajja.app.viewmodel.ListingDetailViewModel
@@ -77,6 +81,28 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
             MyRequestsViewModel::class.java -> MyRequestsViewModel(
                 container.authRepository,
                 container.purchaseRequestRepository,
+            )
+            ExchangeBrowseViewModel::class.java -> ExchangeBrowseViewModel(
+                container.authRepository,
+                container.userRepository,
+                container.listingRepository,
+            )
+            ExchangeProposalViewModel::class.java -> ExchangeProposalViewModel(
+                handle,
+                container.authRepository,
+                container.listingRepository,
+                container.exchangeRepository,
+            )
+            ExchangeRequestsViewModel::class.java -> ExchangeRequestsViewModel(
+                container.authRepository,
+                container.exchangeRepository,
+            )
+            ExchangeDetailViewModel::class.java -> ExchangeDetailViewModel(
+                handle,
+                container.authRepository,
+                container.exchangeRepository,
+                container.listingRepository,
+                container.chatRepository,
             )
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }

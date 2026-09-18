@@ -1,6 +1,8 @@
 package com.homesajja.app.ui.util
 
 import com.homesajja.app.data.model.FurnitureDimensions
+import com.homesajja.app.data.model.FurnitureListing
+import com.homesajja.app.data.model.ListingActionType
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -8,6 +10,10 @@ private val indianNumbers: NumberFormat = NumberFormat.getNumberInstance(Locale(
 
 /** Whole rupees with Indian digit grouping, e.g. 125000 -> "₹1,25,000". */
 fun formatPrice(price: Long): String = "₹" + indianNumbers.format(price)
+
+/** The price line shown on cards and headers: the asking price, or "For exchange" for exchange items. */
+fun FurnitureListing.priceLabel(): String =
+    if (actionType == ListingActionType.EXCHANGE) "For exchange" else formatPrice(price)
 
 fun formatAge(years: Int): String = when (years) {
     0 -> "Less than a year"

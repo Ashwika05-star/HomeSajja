@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.homesajja.app.data.model.EntityType
 import com.homesajja.app.data.model.FurnitureListing
+import com.homesajja.app.data.model.ListingActionType
 import com.homesajja.app.data.model.ListingStatus
 import com.homesajja.app.data.model.PurchaseRequest
 import com.homesajja.app.data.model.PurchaseStatus
@@ -32,9 +33,10 @@ sealed interface ListingDetailUiState {
         val myRequest: PurchaseRequest?,
         val isBusy: Boolean = false,
     ) : ListingDetailUiState {
-        /** A buyer can send a request while the listing is open and they have no live request. */
+        /** A buyer can send a request while a for-sale listing is open and they have no live request.
+         * Exchange listings are never bought — they get exchange proposals instead. */
         val canRequestPurchase: Boolean
-            get() = !isOwner && listing.status == ListingStatus.ACTIVE &&
+            get() = !isOwner && listing.actionType == ListingActionType.SELL && listing.status == ListingStatus.ACTIVE &&
                 (myRequest == null || myRequest.status in ENDED_STATUSES)
     }
 }

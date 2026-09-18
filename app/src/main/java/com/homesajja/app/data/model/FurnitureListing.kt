@@ -39,7 +39,8 @@ data class AiAnalysis(
     val analyzedAt: Long = 0L,
 )
 
-/** Stored at `listings/{id}`. Prices are whole rupees; [city] drives discovery. */
+/** Stored at `listings/{id}`. Prices are whole rupees; [city] drives discovery.
+ * For [ListingActionType.EXCHANGE] listings [price] is an optional estimated value (0 = not given). */
 data class FurnitureListing(
     val id: String = "",
     val ownerId: String = "",
@@ -59,6 +60,9 @@ data class FurnitureListing(
     val city: String = "",
     val status: ListingStatus = ListingStatus.ACTIVE,
     val aiAnalysis: AiAnalysis? = null,
+    /** The accepted exchange this listing is part of, if any. It is what lets the other party
+     * of that exchange update this listing's status (see firestore.rules). */
+    val exchangeRequestId: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 )

@@ -28,8 +28,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +47,7 @@ import com.homesajja.app.data.model.Cities
 import com.homesajja.app.data.model.FurnitureCategory
 import com.homesajja.app.data.model.FurnitureCondition
 import com.homesajja.app.data.model.FurnitureDimensions
+import com.homesajja.app.data.model.ListingActionType
 import com.homesajja.app.data.model.MaterialType
 import com.homesajja.app.ui.components.AppDropdownField
 import com.homesajja.app.ui.components.AppTextField
@@ -243,13 +248,33 @@ private fun ConditionStep(form: SellForm, update: FormUpdate) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PriceStep(form: SellForm, update: FormUpdate) {
-    StepTitle("Set your price", "Whole rupees. Buyers can also make lower offers.")
+    val isExchange = form.actionType == ListingActionType.EXCHANGE
+    StepTitle(
+        title = if (isExchange) "List it for exchange" else "Set your price",
+        hint = if (isExchange) {
+            "People will offer you a swap instead of buying it. An estimated value is optional."
+        } else {
+            "Whole rupees. Buyers can also make lower offers."
+        },
+    )
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        ListingActionType.entries.forEachIndexed { index, type ->
+            SegmentedButton(
+                selected = form.actionType == type,
+                onClick = { update { it.copy(actionType = type) } },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = ListingActionType.entries.size),
+            ) {
+                Text(type.displayName)
+            }
+        }
+    }
     AppTextField(
         value = form.price,
         onValueChange = { v -> update { it.copy(price = v.filter(Char::isDigit)) } },
-        label = "Price (₹)",
+        label = if (isExchange) "Estimated value (₹, optional)" else "Price (₹)",
         keyboardType = KeyboardType.Number,
         modifier = Modifier.fillMaxWidth(),
     )
@@ -281,7 +306,7 @@ private fun PreviewStep(form: SellForm) {
     )
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            formatPrice(form.price.trim().toLongOrNull() ?: 0),
+            if (form.actionType == ListingActionType.EXCHANGE) "For exchange" else formatPrice(form.price.trim().toLongOrNull() ?: 0),
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.primary,
         )

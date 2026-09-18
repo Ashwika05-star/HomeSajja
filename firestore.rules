@@ -54,6 +54,8 @@ service cloud.firestore {
 
     // ---------- marketplace ----------
     // Readable by any signed-in user; only the owner can create, edit or delete.
+    // One exception: the two parties of an exchange may move the status of the two
+    // listings in it (see exchangeMovesListing).
     match /listings/{listingId} {
       allow read: if isSignedIn();
       allow create: if isSelf(incoming().ownerId)
@@ -61,13 +63,23 @@ service cloud.firestore {
         && incoming().title is string && incoming().title.size() > 0
         && incoming().price is int && incoming().price >= 0
         && incoming().images.size() >= 1 && incoming().images.size() <= 5;
-      allow update: if isSelf(existing().ownerId) && incoming().ownerId == existing().ownerId;
+      allow update: if (isSelf(existing().ownerId) && incoming().ownerId == existing().ownerId)
+        || exchangeMovesListing(listingId);
       allow delete: if isSelf(existing().ownerId);
     }
 
-    // Note on `list` rules below: they spell out `uid == a || uid == b` rather than
-    // `uid in [a, b]`, because Firestore can only prove a query is allowed when
-    // it can match the query's filter against one side of an explicit OR.
+    // The exchange this write refers to (`exchangeRequestId` on the listing) is read as it
+    // will be *after* the same batch/transaction, so the request and both listings must
+    // change together: ACCEPTED reserves the item, COMPLETED marks it exchanged.
+    function exchangeMovesListing(listingId) {
+      let exchange = getAfter(/databases/$(database)/documents/exchangeRequests/$(incoming().exchangeRequestId)).data;
+      return isSignedIn()
+        && changedKeys().hasOnly(['status', 'updatedAt', 'exchangeRequestId'])
+        && request.auth.uid in [exchange.senderId, exchange.receiverId]
+        && listingId in [exchange.offeredListingId, exchange.requestedListingId]
+        && ((exchange.status == 'ACCEPTED' && existing().status == 'ACTIVE' && incoming().status == 'RESERVED')
+            || (exchange.status == 'COMPLETED' && existing().status == 'RESERVED' && incoming().status == 'EXCHANGED'));
+    }
 
     // Buyer <-> seller. The seller answers; the buyer can only cancel.
     match /purchaseRequests/{requestId} {
@@ -85,21 +97,32 @@ service cloud.firestore {
       allow delete: if isSelf(existing().buyerId) && existing().status == 'REQUESTED';
     }
 
-    // Requester <-> listing owner, only for listings marked EXCHANGE.
+    // Sender <-> receiver. The sender offers one of their own active listings for the
+    // receiver's active exchange listing. Unlike the other systems, the status pipeline is
+    // enforced here: PENDING -> ACCEPTED/DECLINED (receiver) or CANCELLED (sender), and
+    // ACCEPTED -> COMPLETED (either party).
     match /exchangeRequests/{requestId} {
       allow get: if isSignedIn()
-        && (resource == null || (request.auth.uid == resource.data.requesterId || request.auth.uid == resource.data.ownerId));
+        && (resource == null
+            || (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId));
       allow list: if isSignedIn()
-        && (request.auth.uid == resource.data.requesterId || request.auth.uid == resource.data.ownerId);
-      allow create: if isSelf(incoming().requesterId)
-        && incoming().ownerId != incoming().requesterId
+        && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
+      allow create: if isSelf(incoming().senderId)
+        && incoming().receiverId != incoming().senderId
         && incoming().status == 'PENDING'
-        && get(/databases/$(database)/documents/listings/$(incoming().targetListingId)).data.ownerId == incoming().ownerId
-        && get(/databases/$(database)/documents/listings/$(incoming().targetListingId)).data.actionType == 'EXCHANGE';
+        && get(/databases/$(database)/documents/listings/$(incoming().offeredListingId)).data.ownerId == incoming().senderId
+        && get(/databases/$(database)/documents/listings/$(incoming().offeredListingId)).data.status == 'ACTIVE'
+        && get(/databases/$(database)/documents/listings/$(incoming().requestedListingId)).data.ownerId == incoming().receiverId
+        && get(/databases/$(database)/documents/listings/$(incoming().requestedListingId)).data.status == 'ACTIVE'
+        && get(/databases/$(database)/documents/listings/$(incoming().requestedListingId)).data.actionType == 'EXCHANGE';
       allow update: if changedKeys().hasOnly(['status', 'updatedAt'])
-        && (isSelf(existing().ownerId)
-            || (isSelf(existing().requesterId) && incoming().status == 'CANCELLED'));
-      allow delete: if isSelf(existing().requesterId) && existing().status == 'PENDING';
+        && ((existing().status == 'PENDING'
+              && ((isSelf(existing().receiverId) && incoming().status in ['ACCEPTED', 'DECLINED'])
+                  || (isSelf(existing().senderId) && incoming().status == 'CANCELLED')))
+            || (existing().status == 'ACCEPTED'
+                && (isSelf(existing().senderId) || isSelf(existing().receiverId))
+                && incoming().status == 'COMPLETED'));
+      allow delete: if isSelf(existing().senderId) && existing().status == 'PENDING';
     }
 
     // ---------- repair & recycling ----------

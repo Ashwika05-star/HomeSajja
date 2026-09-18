@@ -4,6 +4,7 @@ import android.net.Uri
 import com.homesajja.app.data.model.Cities
 import com.homesajja.app.data.model.FurnitureCategory
 import com.homesajja.app.data.model.FurnitureCondition
+import com.homesajja.app.data.model.ListingActionType
 import com.homesajja.app.data.model.MaterialType
 
 const val MAX_PHOTOS = 5
@@ -40,6 +41,7 @@ data class SellForm(
     val condition: FurnitureCondition? = null,
     val refurbished: Boolean = false,
     val price: String = "",
+    val actionType: ListingActionType = ListingActionType.SELL,
     val city: String = "",
 ) {
     /** Returns the first problem with [step], or null if it can be left. */
@@ -52,12 +54,20 @@ data class SellForm(
         }
         SellStep.DETAILS -> validateDetails()
         SellStep.CONDITION -> if (condition == null) "Select the item's condition." else null
-        SellStep.PRICE -> {
-            val value = price.trim().toLongOrNull()
-            if (value == null || value <= 0) "Enter a price greater than zero." else null
-        }
+        SellStep.PRICE -> validatePrice()
         SellStep.LOCATION -> if (city !in Cities.ALL) "Select a city." else null
         SellStep.PREVIEW -> null
+    }
+
+    /** A sale needs a price; for an exchange the price is only an optional estimated value. */
+    private fun validatePrice(): String? {
+        val text = price.trim()
+        val value = text.toLongOrNull()
+        return when {
+            actionType == ListingActionType.EXCHANGE && text.isEmpty() -> null
+            value == null || value <= 0 -> "Enter a price greater than zero."
+            else -> null
+        }
     }
 
     private fun validateDetails(): String? {

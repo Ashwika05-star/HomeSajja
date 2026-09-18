@@ -190,7 +190,8 @@ class SellViewModel(
             title = form.title.trim(),
             description = form.description.trim(),
             images = imageUrls,
-            price = form.price.trim().toLong(),
+            price = form.price.trim().toLongOrNull() ?: 0L,
+            actionType = form.actionType,
             condition = checkNotNull(form.condition),
             refurbished = form.refurbished,
             category = checkNotNull(form.category),
@@ -217,7 +218,8 @@ class SellViewModel(
         heightCm = dimensions.heightCm?.toString().orEmpty(),
         condition = condition,
         refurbished = refurbished,
-        price = price.toString(),
+        price = if (price == 0L) "" else price.toString(),
+        actionType = actionType,
         city = city,
     )
 }

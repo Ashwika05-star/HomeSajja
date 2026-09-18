@@ -50,7 +50,7 @@ import com.homesajja.app.ui.components.EmptyState
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.StatusBadge
-import com.homesajja.app.ui.util.formatPrice
+import com.homesajja.app.ui.util.priceLabel
 import com.homesajja.app.viewmodel.MyListingsUiState
 import com.homesajja.app.viewmodel.MyListingsViewModel
 
@@ -72,10 +72,9 @@ fun MyListingsScreen(
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
     }
 
-    // Coming back from the sell/edit/detail screens: pick up any changes quietly.
-    var firstResume by remember { mutableStateOf(true) }
+    // Coming back from another screen (detail, sell, exchange...): reload if the data is old.
     LifecycleResumeEffect(viewModel) {
-        if (firstResume) firstResume = false else viewModel.refresh()
+        viewModel.refreshIfStale()
         onPauseOrDispose {}
     }
 
@@ -188,7 +187,7 @@ private fun MyListingCard(
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(listing.title, style = MaterialTheme.typography.titleSmall, maxLines = 2)
                     Text(
-                        formatPrice(listing.price),
+                        listing.priceLabel(),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )

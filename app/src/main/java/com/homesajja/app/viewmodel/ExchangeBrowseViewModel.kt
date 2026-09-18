@@ -5,9 +5,9 @@ import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ListingRepository
 import com.homesajja.app.repository.UserRepository
 
-/** Buy & Sell: browses listings that are for sale. */
-class ExploreViewModel(
+/** Exchange: browses listings that people put up for exchange, not for sale. */
+class ExchangeBrowseViewModel(
     authRepository: AuthRepository,
     userRepository: UserRepository,
     listingRepository: ListingRepository,
-) : ListingBrowseViewModel(authRepository, userRepository, listingRepository, ListingActionType.SELL)
+) : ListingBrowseViewModel(authRepository, userRepository, listingRepository, ListingActionType.EXCHANGE)

@@ -11,6 +11,8 @@ import com.homesajja.app.BuildConfig
 import com.homesajja.app.data.model.UserRole
 import com.homesajja.app.ui.screens.ComponentPreviewScreen
 import com.homesajja.app.ui.screens.LoginScreen
+import com.homesajja.app.ui.screens.exchange.ExchangeDetailScreen
+import com.homesajja.app.ui.screens.exchange.ExchangeProposalScreen
 import com.homesajja.app.ui.screens.listing.ListingDetailScreen
 import com.homesajja.app.ui.screens.sell.SellFlowScreen
 import com.homesajja.app.ui.screens.SignupScreen
@@ -81,6 +83,8 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onOpenListing = { navController.navigate(Routes.ListingDetail.createRoute(it)) },
                 onSell = { navController.navigate(Routes.Sell.createRoute()) },
                 onEditListing = { navController.navigate(Routes.Sell.createRoute(it)) },
+                onNewExchange = { navController.navigate(Routes.ExchangeNew.createRoute()) },
+                onOpenExchange = { navController.navigate(Routes.ExchangeDetail.createRoute(it)) },
                 onLoggedOut = {
                     navController.navigate(Routes.Welcome.route) {
                         popUpTo(0) { inclusive = true }
@@ -95,6 +99,37 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
             ListingDetailScreen(
                 onBackClick = { navController.popBackStack() },
                 onEditListing = { navController.navigate(Routes.Sell.createRoute(it)) },
+                onProposeExchange = { navController.navigate(Routes.ExchangeNew.createRoute(it)) },
+            )
+        }
+        composable(
+            route = Routes.ExchangeNew.route,
+            arguments = listOf(
+                navArgument("requestedListingId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) {
+            ExchangeProposalScreen(
+                onExit = { navController.popBackStack() },
+                onSent = { requestId ->
+                    // Replace the proposal flow with the request itself as confirmation.
+                    navController.navigate(Routes.ExchangeDetail.createRoute(requestId)) {
+                        popUpTo(Routes.UserHome.route)
+                    }
+                },
+                onSell = { navController.navigate(Routes.Sell.createRoute()) },
+            )
+        }
+        composable(
+            route = Routes.ExchangeDetail.route,
+            arguments = listOf(navArgument("requestId") { type = NavType.StringType }),
+        ) {
+            ExchangeDetailScreen(
+                onBackClick = { navController.popBackStack() },
+                onOpenListing = { navController.navigate(Routes.ListingDetail.createRoute(it)) },
             )
         }
         composable(

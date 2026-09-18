@@ -1,28 +1,35 @@
 package com.homesajja.app.data.model
 
-/** PENDING -> ACCEPTED -> COMPLETED, or REJECTED (owner) / CANCELLED (requester). */
+/** PENDING -> ACCEPTED (by receiver) -> COMPLETED (by either party).
+ * A PENDING request can instead be DECLINED (receiver) or CANCELLED (sender). */
 enum class ExchangeStatus(val displayName: String) {
     PENDING("Pending"),
     ACCEPTED("Accepted"),
-    REJECTED("Rejected"),
+    DECLINED("Declined"),
     CANCELLED("Cancelled"),
     COMPLETED("Completed"),
 }
 
-/** Stored at `exchangeRequests/{id}`. The requester proposes their own item
- * (the `offeredItem*` fields) for a listing marked EXCHANGE.
- * Parties: [requesterId] and [ownerId]. */
+/**
+ * Stored at `exchangeRequests/{id}`. The sender offers one of their own listings
+ * ([offeredListingId]) for the receiver's exchange listing ([requestedListingId]).
+ * Parties: [senderId] and [receiverId].
+ *
+ * The titles and image URLs are snapshots taken when the request is made, so the
+ * request cards keep working even if a listing is later edited or removed.
+ */
 data class ExchangeRequest(
     val id: String = "",
-    val targetListingId: String = "",
-    val targetListingTitle: String = "",
-    val requesterId: String = "",
-    val requesterName: String = "",
-    val ownerId: String = "",
-    val offeredItemTitle: String = "",
-    val offeredItemDescription: String = "",
-    val offeredItemImages: List<String> = emptyList(),
-    val offeredItemCondition: FurnitureCondition = FurnitureCondition.GOOD,
+    val offeredListingId: String = "",
+    val offeredTitle: String = "",
+    val offeredImageUrl: String? = null,
+    val requestedListingId: String = "",
+    val requestedTitle: String = "",
+    val requestedImageUrl: String? = null,
+    val senderId: String = "",
+    val senderName: String = "",
+    val receiverId: String = "",
+    val receiverName: String = "",
     val message: String = "",
     val status: ExchangeStatus = ExchangeStatus.PENDING,
     val createdAt: Long = System.currentTimeMillis(),

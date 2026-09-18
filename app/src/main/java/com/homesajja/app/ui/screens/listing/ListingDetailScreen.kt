@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -52,6 +53,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.homesajja.app.data.model.FurnitureListing
 import com.homesajja.app.data.model.ItemState
+import com.homesajja.app.data.model.ListingActionType
 import com.homesajja.app.data.model.ListingStatus
 import com.homesajja.app.data.model.PurchaseRequest
 import com.homesajja.app.data.model.SellerType
@@ -70,6 +72,7 @@ import com.homesajja.app.ui.components.StatusBadge
 import com.homesajja.app.ui.util.displayText
 import com.homesajja.app.ui.util.formatAge
 import com.homesajja.app.ui.util.formatPrice
+import com.homesajja.app.ui.util.priceLabel
 import com.homesajja.app.viewmodel.ListingDetailUiState
 import com.homesajja.app.viewmodel.ListingDetailViewModel
 import com.homesajja.app.viewmodel.validateOffer
@@ -78,6 +81,7 @@ import com.homesajja.app.viewmodel.validateOffer
 fun ListingDetailScreen(
     onBackClick: () -> Unit,
     onEditListing: (String) -> Unit,
+    onProposeExchange: (String) -> Unit,
 ) {
     val viewModel: ListingDetailViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -93,7 +97,7 @@ fun ListingDetailScreen(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             (state as? ListingDetailUiState.Content)?.takeIf { !it.isOwner }?.let {
-                ActionBar(content = it, viewModel = viewModel)
+                ActionBar(content = it, viewModel = viewModel, onProposeExchange = onProposeExchange)
             }
         },
     ) { padding ->
@@ -120,7 +124,7 @@ private fun DetailContent(content: ListingDetailUiState.Content, onEditListing: 
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    formatPrice(listing.price),
+                    listing.priceLabel(),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -172,6 +176,8 @@ private fun DetailsTable(listing: FurnitureListing) {
         "Condition" to listing.condition.displayName,
         "Age" to formatAge(listing.ageYears),
         listing.dimensions.displayText()?.let { "Dimensions" to it },
+        listing.price.takeIf { listing.actionType == ListingActionType.EXCHANGE && it > 0 }
+            ?.let { "Est. value" to formatPrice(it) },
     )
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -264,7 +270,11 @@ private fun OwnerNotice(onEdit: () -> Unit) {
 }
 
 @Composable
-private fun ActionBar(content: ListingDetailUiState.Content, viewModel: ListingDetailViewModel) {
+private fun ActionBar(
+    content: ListingDetailUiState.Content,
+    viewModel: ListingDetailViewModel,
+    onProposeExchange: (String) -> Unit,
+) {
     val context = LocalContext.current
     val listing = content.listing
     var showBuyDialog by remember { mutableStateOf(false) }
@@ -273,22 +283,31 @@ private fun ActionBar(content: ListingDetailUiState.Content, viewModel: ListingD
 
     Surface(color = MaterialTheme.colorScheme.background, shadowElevation = 8.dp) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (listing.actionType == ListingActionType.EXCHANGE) {
                 PrimaryButton(
-                    text = "Buy",
-                    onClick = { showBuyDialog = true },
-                    enabled = enabled && content.canRequestPurchase,
-                    modifier = Modifier.weight(1f),
+                    text = "Propose exchange",
+                    onClick = { onProposeExchange(listing.id) },
+                    enabled = enabled && listing.status == ListingStatus.ACTIVE,
+                    modifier = Modifier.fillMaxWidth(),
                 )
-                SecondaryButton(
-                    text = "Make offer",
-                    onClick = { showOfferDialog = true },
-                    enabled = enabled && content.canRequestPurchase,
-                    modifier = Modifier.weight(1f),
-                )
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PrimaryButton(
+                        text = "Buy",
+                        onClick = { showBuyDialog = true },
+                        enabled = enabled && content.canRequestPurchase,
+                        modifier = Modifier.weight(1f),
+                    )
+                    SecondaryButton(
+                        text = "Make offer",
+                        onClick = { showOfferDialog = true },
+                        enabled = enabled && content.canRequestPurchase,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 ActionTextButton("Chat", Icons.AutoMirrored.Filled.Chat, enabled, viewModel::chatWithSeller)

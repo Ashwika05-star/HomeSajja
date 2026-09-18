@@ -90,18 +90,96 @@ const deny = (n, p) => check(n, p, false);
   await deny('third party updates request', updateDoc(doc(as('carol'), 'purchaseRequests/p1'), { status: 'REJECTED', updatedAt: now }));
 
   await allow('seller lists received requests', getDocs(query(collection(as('bob'), 'purchaseRequests'), where('sellerId', '==', 'bob'), orderBy('createdAt', 'desc'))));
-  await allow('requester lists exchange proposals', getDocs(query(collection(as('alice'), 'exchangeRequests'), where('requesterId', '==', 'alice'))));
-  await allow('owner lists exchange proposals', getDocs(query(collection(as('bob'), 'exchangeRequests'), where('ownerId', '==', 'bob'))));
   await allow('user lists repair requests', getDocs(query(collection(as('alice'), 'repairRequests'), where('userId', '==', 'alice'))));
   await allow('vendor lists repair requests', getDocs(query(collection(as('vic'), 'repairRequests'), where('vendorId', '==', 'vic'))));
   await allow('user lists recycling requests', getDocs(query(collection(as('alice'), 'recyclingRequests'), where('userId', '==', 'alice'))));
   await allow('vendor lists recycling requests', getDocs(query(collection(as('vic'), 'recyclingRequests'), where('vendorId', '==', 'vic'))));
   await deny('user lists another user\'s repair requests', getDocs(query(collection(as('carol'), 'repairRequests'), where('userId', '==', 'alice'))));
 
-  // exchange
-  const ex = { requesterId: 'alice', ownerId: 'bob', targetListingId: 'swap1', status: 'PENDING' };
-  await allow('exchange proposal on EXCHANGE listing', setDoc(doc(as('alice'), 'exchangeRequests/e1'), ex));
-  await deny('exchange proposal on SELL listing', setDoc(doc(as('alice'), 'exchangeRequests/e2'), { ...ex, targetListingId: 'sell1' }));
+  // exchange: creating and reading requests
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore(); const L = (owner, status, actionType) => ({ ownerId: owner, title: 'Item', price: 0, status, actionType, images: ['a.jpg'] });
+    await setDoc(doc(db, 'listings/alice1'), L('alice', 'ACTIVE', 'SELL'));
+    await setDoc(doc(db, 'listings/aliceReserved'), L('alice', 'RESERVED', 'SELL'));
+    await setDoc(doc(db, 'listings/bobReserved'), L('bob', 'RESERVED', 'EXCHANGE'));
+    const R = (status, offered, requested) => ({ senderId: 'alice', receiverId: 'bob', offeredListingId: offered, requestedListingId: requested, status, message: 'swap?' });
+    await setDoc(doc(db, 'exchangeRequests/exRead'), R('PENDING', 'alice1', 'swap1'));
+    await setDoc(doc(db, 'exchangeRequests/exAcc'), R('ACCEPTED', 'alice1', 'swap1'));
+    await setDoc(doc(db, 'exchangeRequests/exPend1'), R('PENDING', 'alice1', 'swap1'));
+    await setDoc(doc(db, 'exchangeRequests/exPend2'), R('PENDING', 'alice1', 'swap1'));
+    await setDoc(doc(db, 'exchangeRequests/exPend3'), R('PENDING', 'alice1', 'swap1'));
+    await setDoc(doc(db, 'exchangeRequests/exPend4'), R('PENDING', 'alice1', 'swap1'));
+    await setDoc(doc(db, 'exchangeRequests/exAcc2'), R('ACCEPTED', 'alice1', 'swap1'));
+  });
+  const ex = { senderId: 'alice', receiverId: 'bob', offeredListingId: 'alice1', requestedListingId: 'swap1', status: 'PENDING', message: 'swap?', offeredTitle: 'Item', requestedTitle: 'Chair' };
+  await allow('propose an exchange', setDoc(doc(as('alice'), 'exchangeRequests/e1'), ex));
+  await deny('offer a listing that is not yours', setDoc(doc(as('alice'), 'exchangeRequests/e2'), { ...ex, offeredListingId: 'sell1' }));
+  await deny('request a for-sale listing', setDoc(doc(as('alice'), 'exchangeRequests/e3'), { ...ex, requestedListingId: 'sell1' }));
+  await deny('offer a listing that is not active', setDoc(doc(as('alice'), 'exchangeRequests/e4'), { ...ex, offeredListingId: 'aliceReserved' }));
+  await deny('request a listing that is not active', setDoc(doc(as('alice'), 'exchangeRequests/e5'), { ...ex, requestedListingId: 'bobReserved' }));
+  await deny('receiver does not own the requested listing', setDoc(doc(as('alice'), 'exchangeRequests/e6'), { ...ex, receiverId: 'carol' }));
+  await deny('propose as someone else', setDoc(doc(as('carol'), 'exchangeRequests/e7'), ex));
+  await deny('propose with status already accepted', setDoc(doc(as('alice'), 'exchangeRequests/e8'), { ...ex, status: 'ACCEPTED' }));
+  await allow('sender reads exchange request', getDoc(doc(as('alice'), 'exchangeRequests/exRead')));
+  await allow('receiver reads exchange request', getDoc(doc(as('bob'), 'exchangeRequests/exRead')));
+  await deny('third party reads exchange request', getDoc(doc(as('carol'), 'exchangeRequests/exRead')));
+  await allow('get of a missing exchange request returns empty', getDoc(doc(as('alice'), 'exchangeRequests/missing')));
+  await allow('sender lists outgoing exchanges', getDocs(query(collection(as('alice'), 'exchangeRequests'), where('senderId', '==', 'alice'), orderBy('createdAt', 'desc'))));
+  await allow('receiver lists incoming exchanges', getDocs(query(collection(as('bob'), 'exchangeRequests'), where('receiverId', '==', 'bob'))));
+  await deny('listing another user\'s exchanges', getDocs(query(collection(as('carol'), 'exchangeRequests'), where('senderId', '==', 'alice'))));
+
+  // exchange: status pipeline
+  const U = (status) => ({ status, updatedAt: now });
+  await allow('receiver accepts a pending request', updateDoc(doc(as('bob'), 'exchangeRequests/exPend1'), U('ACCEPTED')));
+  await deny('sender accepts their own request', updateDoc(doc(as('alice'), 'exchangeRequests/exPend2'), U('ACCEPTED')));
+  await allow('receiver declines a pending request', updateDoc(doc(as('bob'), 'exchangeRequests/exPend2'), U('DECLINED')));
+  await allow('sender cancels a pending request', updateDoc(doc(as('alice'), 'exchangeRequests/exPend3'), U('CANCELLED')));
+  await deny('receiver cancels', updateDoc(doc(as('bob'), 'exchangeRequests/exPend4'), U('CANCELLED')));
+  await deny('sender cancels after acceptance', updateDoc(doc(as('alice'), 'exchangeRequests/exAcc'), U('CANCELLED')));
+  await deny('receiver declines after acceptance', updateDoc(doc(as('bob'), 'exchangeRequests/exAcc'), U('DECLINED')));
+  await deny('complete a request that is still pending', updateDoc(doc(as('bob'), 'exchangeRequests/exPend4'), U('COMPLETED')));
+  await deny('third party completes', updateDoc(doc(as('carol'), 'exchangeRequests/exAcc'), U('COMPLETED')));
+  await deny('edit the message', updateDoc(doc(as('bob'), 'exchangeRequests/exPend4'), { message: 'changed', updatedAt: now }));
+  await allow('receiver completes an accepted request', updateDoc(doc(as('bob'), 'exchangeRequests/exAcc'), U('COMPLETED')));
+  await allow('sender completes an accepted request', updateDoc(doc(as('alice'), 'exchangeRequests/exAcc2'), U('COMPLETED')));
+  await deny('receiver deletes a request', deleteDoc(doc(as('bob'), 'exchangeRequests/exRead')));
+  await allow('sender deletes a pending request', deleteDoc(doc(as('alice'), 'exchangeRequests/exRead')));
+  await deny('sender deletes an accepted request', deleteDoc(doc(as('alice'), 'exchangeRequests/exAcc2')));
+
+  // exchange: moving both listings together with the request
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore(); const L = (owner, status, extra = {}) => ({ ownerId: owner, title: 'Item', price: 100, status, actionType: 'EXCHANGE', images: ['a.jpg'], ...extra });
+    for (const k of ['A', 'B', 'C', 'D']) {
+      await setDoc(doc(db, `listings/mine${k}`), L('alice', 'ACTIVE'));
+      await setDoc(doc(db, `listings/theirs${k}`), L('bob', 'ACTIVE'));
+      await setDoc(doc(db, `exchangeRequests/pend${k}`), { senderId: 'alice', receiverId: 'bob', offeredListingId: `mine${k}`, requestedListingId: `theirs${k}`, status: 'PENDING' });
+    }
+    await setDoc(doc(db, 'listings/aliceOther'), L('alice', 'ACTIVE'));
+    for (const k of ['E', 'F']) {
+      await setDoc(doc(db, `listings/mine${k}`), L('alice', 'RESERVED', { exchangeRequestId: `acc${k}` }));
+      await setDoc(doc(db, `listings/theirs${k}`), L('bob', 'RESERVED', { exchangeRequestId: `acc${k}` }));
+      await setDoc(doc(db, `exchangeRequests/acc${k}`), { senderId: 'alice', receiverId: 'bob', offeredListingId: `mine${k}`, requestedListingId: `theirs${k}`, status: 'ACCEPTED' });
+    }
+  });
+  const swapBatch = (uid, k, reqStatus, itemStatus, extraDoc) => {
+    const db = as(uid); const b = writeBatch(db);
+    b.update(doc(db, `exchangeRequests/${reqStatus === 'ACCEPTED' ? 'pend' : 'acc'}${k}`), { status: reqStatus, updatedAt: now });
+    b.update(doc(db, `listings/mine${k}`), { status: itemStatus, exchangeRequestId: `${reqStatus === 'ACCEPTED' ? 'pend' : 'acc'}${k}`, updatedAt: now });
+    b.update(doc(db, `listings/theirs${k}`), { status: itemStatus, exchangeRequestId: `${reqStatus === 'ACCEPTED' ? 'pend' : 'acc'}${k}`, updatedAt: now });
+    if (extraDoc) b.update(doc(db, extraDoc), { status: itemStatus, exchangeRequestId: `pend${k}`, updatedAt: now });
+    return b.commit();
+  };
+  await allow('accepting reserves both listings in one batch', swapBatch('bob', 'A', 'ACCEPTED', 'RESERVED'));
+  await deny('a third party cannot accept and reserve', swapBatch('carol', 'B', 'ACCEPTED', 'RESERVED'));
+  await deny('reserving one of the sender\'s listings that is not part of the request', swapBatch('bob', 'B', 'ACCEPTED', 'RESERVED', 'listings/aliceOther'));
+  await deny('reserving the other party\'s listing while the request is still pending',
+    updateDoc(doc(as('bob'), 'listings/mineC'), { status: 'RESERVED', exchangeRequestId: 'pendC', updatedAt: now }));
+  await deny('changing the price of the other party\'s listing',
+    updateDoc(doc(as('bob'), 'listings/mineD'), { price: 1, status: 'RESERVED', exchangeRequestId: 'pendD', updatedAt: now }));
+  await deny('reserving without naming a request', updateDoc(doc(as('bob'), 'listings/mineD'), { status: 'RESERVED', updatedAt: now }));
+  await allow('completing marks both listings exchanged in one batch', swapBatch('alice', 'E', 'COMPLETED', 'EXCHANGED'));
+  await deny('marking the other party\'s listing exchanged while the request is only accepted',
+    updateDoc(doc(as('alice'), 'listings/theirsF'), { status: 'EXCHANGED', exchangeRequestId: 'accF', updatedAt: now }));
 
   // repair & recycling
   await allow('user creates repair request', setDoc(doc(as('alice'), 'repairRequests/r2'), { userId: 'alice', vendorId: 'vic', status: 'REQUESTED' }));

@@ -7,6 +7,7 @@ import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Sell
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
 import com.homesajja.app.ui.components.AppTopBar
+import com.homesajja.app.ui.screens.exchange.ExchangeRequestsScreen
 import com.homesajja.app.ui.screens.explore.ExploreScreen
 import com.homesajja.app.ui.screens.mylistings.MyListingsScreen
 import com.homesajja.app.ui.screens.requests.MyRequestsScreen
@@ -38,6 +40,7 @@ import com.homesajja.app.viewmodel.HomeViewModel
 
 private enum class HomeTab(val label: String, val icon: ImageVector) {
     EXPLORE("Explore", Icons.Filled.Explore),
+    EXCHANGE("Exchange", Icons.Filled.SwapHoriz),
     MY_LISTINGS("My listings", Icons.Filled.Sell),
     MY_REQUESTS("Requests", Icons.AutoMirrored.Filled.ReceiptLong),
 }
@@ -48,6 +51,8 @@ fun UserHomeScreen(
     onOpenListing: (String) -> Unit,
     onSell: () -> Unit,
     onEditListing: (String) -> Unit,
+    onNewExchange: () -> Unit,
+    onOpenExchange: (String) -> Unit,
     onLoggedOut: () -> Unit,
 ) {
     val homeViewModel: HomeViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
@@ -78,8 +83,8 @@ fun UserHomeScreen(
             }
         },
         floatingActionButton = {
-            if (selectedTab != HomeTab.MY_REQUESTS) {
-                ExtendedFloatingActionButton(
+            when (selectedTab) {
+                HomeTab.EXPLORE, HomeTab.MY_LISTINGS -> ExtendedFloatingActionButton(
                     onClick = onSell,
                     modifier = Modifier.semantics { contentDescription = "Sell an item" },
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -87,6 +92,15 @@ fun UserHomeScreen(
                     icon = { Icon(Icons.Filled.Add, contentDescription = null) },
                     text = { Text("Sell") },
                 )
+                HomeTab.EXCHANGE -> ExtendedFloatingActionButton(
+                    onClick = onNewExchange,
+                    modifier = Modifier.semantics { contentDescription = "Propose an exchange" },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    text = { Text("New exchange") },
+                )
+                HomeTab.MY_REQUESTS -> Unit
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -95,6 +109,11 @@ fun UserHomeScreen(
         val contentModifier = Modifier.padding(padding)
         when (selectedTab) {
             HomeTab.EXPLORE -> ExploreScreen(onOpenListing = onOpenListing, onSell = onSell, modifier = contentModifier)
+            HomeTab.EXCHANGE -> ExchangeRequestsScreen(
+                onOpenRequest = onOpenExchange,
+                onNewExchange = onNewExchange,
+                modifier = contentModifier,
+            )
             HomeTab.MY_LISTINGS -> MyListingsScreen(
                 snackbarHostState = snackbarHostState,
                 onOpenListing = onOpenListing,

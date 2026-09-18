@@ -69,6 +69,8 @@ class MyRequestsViewModel(
     var busyRequestId by mutableStateOf<String?>(null)
         private set
 
+    private val refreshGate = RefreshGate()
+
     init {
         load(showLoading = true)
     }
@@ -76,6 +78,11 @@ class MyRequestsViewModel(
     fun retry() = load(showLoading = true)
 
     fun refresh() = load(showLoading = false)
+
+    /** Called whenever the screen resumes; reloads only if the data is old. */
+    fun refreshIfStale() {
+        if (refreshGate.isStale()) refresh()
+    }
 
     /** Buyers can withdraw a request only until the seller accepts it. */
     fun cancelRequest(request: PurchaseRequest) = runAction(request, "Couldn't cancel the request.") {
@@ -103,6 +110,7 @@ class MyRequestsViewModel(
             return
         }
         if (showLoading) _uiState.value = MyRequestsUiState.Loading
+        refreshGate.markLoaded()
         viewModelScope.launch {
             try {
                 _uiState.value = MyRequestsUiState.Content(
@@ -115,6 +123,8 @@ class MyRequestsViewModel(
                 if (showLoading || _uiState.value !is MyRequestsUiState.Content) {
                     _uiState.value = MyRequestsUiState.Error(mapError(e, "Couldn't load your requests."))
                 }
+            } finally {
+                refreshGate.markLoaded()
             }
         }
     }

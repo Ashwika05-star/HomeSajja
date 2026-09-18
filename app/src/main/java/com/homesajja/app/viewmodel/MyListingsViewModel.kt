@@ -46,6 +46,8 @@ class MyListingsViewModel(
     var busyListingId by mutableStateOf<String?>(null)
         private set
 
+    private val refreshGate = RefreshGate()
+
     init {
         load(showLoading = true)
     }
@@ -54,6 +56,11 @@ class MyListingsViewModel(
 
     /** Silent reload, used when returning to the screen (e.g. after editing). */
     fun refresh() = load(showLoading = false)
+
+    /** Called whenever the screen resumes; reloads only if the data is old. */
+    fun refreshIfStale() {
+        if (refreshGate.isStale()) refresh()
+    }
 
     fun markAsSold(listing: FurnitureListing) = runAction(listing, "Couldn't mark it as sold.") {
         listingRepository.updateListingStatus(listing.id, ListingStatus.SOLD)
@@ -73,6 +80,7 @@ class MyListingsViewModel(
             return
         }
         if (showLoading) _uiState.value = MyListingsUiState.Loading
+        refreshGate.markLoaded()
         viewModelScope.launch {
             try {
                 val all = listingRepository.getListingsByOwner(uid)
@@ -87,6 +95,8 @@ class MyListingsViewModel(
                 if (showLoading || _uiState.value !is MyListingsUiState.Content) {
                     _uiState.value = MyListingsUiState.Error(mapError(e, "Couldn't load your listings."))
                 }
+            } finally {
+                refreshGate.markLoaded()
             }
         }
     }
