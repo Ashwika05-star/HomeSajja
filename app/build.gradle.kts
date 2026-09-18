@@ -70,5 +70,7 @@ dependencies {
     implementation(libs.firebase.functions)
     implementation(libs.firebase.messaging)
 
+    testImplementation(libs.junit)
+
     debugImplementation(libs.androidx.ui.tooling)
 }

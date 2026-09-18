@@ -1,0 +1,217 @@
+rules_version = '2';
+
+// Baseline HomeSajja rules. Status changes are limited to the right party and
+// the right fields, but the exact allowed transitions (e.g. PENDING -> ACCEPTED
+// only) are not enforced here — that hardening belongs with Cloud Functions.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Fields that differ between the stored document and the incoming write.
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    function vendorExists(uid) {
+      return exists(/databases/$(database)/documents/vendors/$(uid));
+    }
+
+    function userExists(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid));
+    }
+
+    // ---------- accounts ----------
+    // The two roles are permanent: a uid may own a users doc or a vendors doc, never both.
+    match /users/{uid} {
+      allow read: if isSelf(uid);
+      allow create: if isSelf(uid) && incoming().uid == uid && !vendorExists(uid);
+      allow update: if isSelf(uid) && incoming().uid == uid;
+      allow delete: if isSelf(uid);
+    }
+
+    match /vendors/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSelf(uid) && incoming().uid == uid && !userExists(uid);
+      allow update: if isSelf(uid) && incoming().uid == uid;
+      allow delete: if isSelf(uid);
+    }
+
+    // ---------- marketplace ----------
+    // Readable by any signed-in user; only the owner can create, edit or delete.
+    match /listings/{listingId} {
+      allow read: if isSignedIn();
+      allow create: if isSelf(incoming().ownerId)
+        && incoming().status == 'ACTIVE'
+        && incoming().title is string && incoming().title.size() > 0
+        && incoming().price is int && incoming().price >= 0
+        && incoming().images.size() <= 10;
+      allow update: if isSelf(existing().ownerId) && incoming().ownerId == existing().ownerId;
+      allow delete: if isSelf(existing().ownerId);
+    }
+
+    // Note on `list` rules below: they spell out `uid == a || uid == b` rather than
+    // `uid in [a, b]`, because Firestore can only prove a query is allowed when
+    // it can match the query's filter against one side of an explicit OR.
+
+    // Buyer <-> seller. The seller answers; the buyer can only cancel.
+    match /purchaseRequests/{requestId} {
+      allow get: if isSignedIn()
+        && (resource == null || (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId));
+      allow list: if isSignedIn()
+        && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId);
+      allow create: if isSelf(incoming().buyerId)
+        && incoming().sellerId != incoming().buyerId
+        && incoming().status == 'PENDING'
+        && get(/databases/$(database)/documents/listings/$(incoming().listingId)).data.ownerId == incoming().sellerId;
+      allow update: if changedKeys().hasOnly(['status', 'updatedAt'])
+        && (isSelf(existing().sellerId)
+            || (isSelf(existing().buyerId) && incoming().status == 'CANCELLED'));
+      allow delete: if isSelf(existing().buyerId) && existing().status == 'PENDING';
+    }
+
+    // Requester <-> listing owner, only for listings marked EXCHANGE.
+    match /exchangeRequests/{requestId} {
+      allow get: if isSignedIn()
+        && (resource == null || (request.auth.uid == resource.data.requesterId || request.auth.uid == resource.data.ownerId));
+      allow list: if isSignedIn()
+        && (request.auth.uid == resource.data.requesterId || request.auth.uid == resource.data.ownerId);
+      allow create: if isSelf(incoming().requesterId)
+        && incoming().ownerId != incoming().requesterId
+        && incoming().status == 'PENDING'
+        && get(/databases/$(database)/documents/listings/$(incoming().targetListingId)).data.ownerId == incoming().ownerId
+        && get(/databases/$(database)/documents/listings/$(incoming().targetListingId)).data.actionType == 'EXCHANGE';
+      allow update: if changedKeys().hasOnly(['status', 'updatedAt'])
+        && (isSelf(existing().ownerId)
+            || (isSelf(existing().requesterId) && incoming().status == 'CANCELLED'));
+      allow delete: if isSelf(existing().requesterId) && existing().status == 'PENDING';
+    }
+
+    // ---------- repair & recycling ----------
+    // User <-> the one vendor they chose. The vendor quotes/schedules and moves the
+    // job forward; the user can accept a quote or cancel.
+    match /repairRequests/{requestId} {
+      allow get: if isSignedIn()
+        && (resource == null || (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.vendorId));
+      allow list: if isSignedIn()
+        && (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.vendorId);
+      allow create: if isSelf(incoming().userId)
+        && userExists(incoming().userId)
+        && vendorExists(incoming().vendorId)
+        && incoming().status == 'REQUESTED';
+      allow update: if (isSelf(existing().vendorId)
+            && changedKeys().hasOnly(['status', 'quotedPrice', 'updatedAt']))
+        || (isSelf(existing().userId)
+            && changedKeys().hasOnly(['status', 'updatedAt'])
+            && incoming().status in ['ACCEPTED', 'CANCELLED']);
+      allow delete: if isSelf(existing().userId) && existing().status == 'REQUESTED';
+    }
+
+    match /recyclingRequests/{requestId} {
+      allow get: if isSignedIn()
+        && (resource == null || (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.vendorId));
+      allow list: if isSignedIn()
+        && (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.vendorId);
+      allow create: if isSelf(incoming().userId)
+        && userExists(incoming().userId)
+        && vendorExists(incoming().vendorId)
+        && incoming().status == 'REQUESTED';
+      allow update: if (isSelf(existing().vendorId)
+            && changedKeys().hasOnly(['status', 'pickupDate', 'updatedAt']))
+        || (isSelf(existing().userId)
+            && changedKeys().hasOnly(['status', 'updatedAt'])
+            && incoming().status == 'CANCELLED');
+      allow delete: if isSelf(existing().userId) && existing().status == 'REQUESTED';
+    }
+
+    // ---------- vendor material board ----------
+    // Public board: any signed-in user reads; only the owning vendor writes.
+    match /materialRequests/{requestId} {
+      allow read: if isSignedIn();
+      allow create: if isSelf(incoming().vendorId)
+        && vendorExists(request.auth.uid)
+        && incoming().status == 'OPEN';
+      allow update: if isSelf(existing().vendorId) && incoming().vendorId == existing().vendorId;
+      allow delete: if isSelf(existing().vendorId);
+    }
+
+    // ---------- chat ----------
+    match /chats/{chatId} {
+      allow get: if isSignedIn()
+        && (resource == null || request.auth.uid in resource.data.participantIds);
+      allow list: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      allow create: if isSignedIn()
+        && request.auth.uid in incoming().participantIds
+        && incoming().participantIds.size() == 2;
+      // Participants can only refresh the last-message preview.
+      allow update: if isSignedIn()
+        && request.auth.uid in existing().participantIds
+        && changedKeys().hasOnly(['lastMessage', 'lastMessageAt', 'lastMessageSenderId']);
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        function chatParticipants() {
+          return get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds;
+        }
+
+        allow read: if isSignedIn() && request.auth.uid in chatParticipants();
+        allow create: if isSignedIn()
+          && request.auth.uid in chatParticipants()
+          && incoming().senderId == request.auth.uid;
+        allow update: if false;
+        allow delete: if isSelf(existing().senderId);
+      }
+    }
+
+    // ---------- notifications ----------
+    // Created from the client for now (senderId must be the caller); only the
+    // recipient can read, mark as seen, or delete.
+    match /notifications/{notificationId} {
+      allow get: if isSignedIn()
+        && (resource == null || resource.data.recipientId == request.auth.uid);
+      allow list: if isSignedIn() && resource.data.recipientId == request.auth.uid;
+      allow create: if isSelf(incoming().senderId);
+      allow update: if isSelf(existing().recipientId) && changedKeys().hasOnly(['seen']);
+      allow delete: if isSelf(existing().recipientId);
+    }
+
+    // ---------- reviews ----------
+    // One review per person per transaction: the doc id encodes all three.
+    match /reviews/{reviewId} {
+      allow read: if isSignedIn();
+      allow create: if isSelf(incoming().reviewerId)
+        && incoming().targetUserId != incoming().reviewerId
+        && incoming().rating is int && incoming().rating >= 1 && incoming().rating <= 5
+        && reviewId == incoming().reviewerId + '_' + incoming().contextType + '_' + incoming().contextId;
+      allow update: if isSelf(existing().reviewerId)
+        && changedKeys().hasOnly(['rating', 'comment', 'updatedAt'])
+        && incoming().rating is int && incoming().rating >= 1 && incoming().rating <= 5;
+      allow delete: if isSelf(existing().reviewerId);
+    }
+
+    // ---------- favourites ----------
+    match /favourites/{favouriteId} {
+      allow get: if isSignedIn()
+        && (resource == null || resource.data.userId == request.auth.uid);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSelf(incoming().userId)
+        && favouriteId == incoming().userId + '_' + incoming().listingId;
+      allow delete: if isSelf(existing().userId);
+    }
+  }
+}

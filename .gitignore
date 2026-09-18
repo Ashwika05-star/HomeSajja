@@ -36,3 +36,6 @@ gradle-app.setting
 # Firebase config — contains project keys/identifiers, kept out of source control.
 # Each developer places their own copy locally before building.
 app/google-services.json
+
+# Node (firestore-rules-tests)
+node_modules/

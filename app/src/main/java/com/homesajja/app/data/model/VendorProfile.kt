@@ -1,7 +1,8 @@
 package com.homesajja.app.data.model
 
 /** Stored at `vendors/{uid}`. [businessType] stores [VendorBusinessType.name] so
- * display strings can change later without touching stored data. */
+ * display strings can change later without touching stored data. The shop
+ * location is filled in later via Google Maps/Places, so it starts empty. */
 data class VendorProfile(
     val uid: String = "",
     val name: String = "",
@@ -10,5 +11,8 @@ data class VendorProfile(
     val businessName: String = "",
     val businessType: String = "",
     val city: String = "",
+    val shopAddress: String = "",
+    val shopLatitude: Double? = null,
+    val shopLongitude: Double? = null,
     val createdAt: Long = System.currentTimeMillis(),
 )

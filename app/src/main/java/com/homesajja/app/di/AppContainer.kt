@@ -7,7 +7,17 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.storage.FirebaseStorage
 import com.homesajja.app.repository.AuthRepository
+import com.homesajja.app.repository.ChatRepository
+import com.homesajja.app.repository.ExchangeRepository
+import com.homesajja.app.repository.FavouriteRepository
 import com.homesajja.app.repository.GoogleSignInManager
+import com.homesajja.app.repository.ListingRepository
+import com.homesajja.app.repository.MaterialRequestRepository
+import com.homesajja.app.repository.NotificationRepository
+import com.homesajja.app.repository.PurchaseRequestRepository
+import com.homesajja.app.repository.RecyclingRepository
+import com.homesajja.app.repository.RepairRepository
+import com.homesajja.app.repository.ReviewRepository
 import com.homesajja.app.repository.SessionRepository
 import com.homesajja.app.repository.UserRepository
 import com.homesajja.app.repository.VendorRepository
@@ -30,6 +40,16 @@ class AppContainer(private val appContext: Context) {
     val authRepository: AuthRepository by lazy { AuthRepository(firebaseAuth) }
     val userRepository: UserRepository by lazy { UserRepository(firestore) }
     val vendorRepository: VendorRepository by lazy { VendorRepository(firestore) }
+    val listingRepository: ListingRepository by lazy { ListingRepository(firestore) }
+    val purchaseRequestRepository: PurchaseRequestRepository by lazy { PurchaseRequestRepository(firestore) }
+    val exchangeRepository: ExchangeRepository by lazy { ExchangeRepository(firestore) }
+    val repairRepository: RepairRepository by lazy { RepairRepository(firestore) }
+    val recyclingRepository: RecyclingRepository by lazy { RecyclingRepository(firestore) }
+    val materialRequestRepository: MaterialRequestRepository by lazy { MaterialRequestRepository(firestore) }
+    val chatRepository: ChatRepository by lazy { ChatRepository(firestore) }
+    val notificationRepository: NotificationRepository by lazy { NotificationRepository(firestore) }
+    val reviewRepository: ReviewRepository by lazy { ReviewRepository(firestore) }
+    val favouriteRepository: FavouriteRepository by lazy { FavouriteRepository(firestore) }
 
     fun googleSignInManager(context: Context): GoogleSignInManager {
         val webClientId = context.getString(R.string.default_web_client_id)

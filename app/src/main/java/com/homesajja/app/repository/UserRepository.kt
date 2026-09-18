@@ -6,14 +6,22 @@ import kotlinx.coroutines.tasks.await
 
 private const val COLLECTION = "users"
 
-class UserRepository(private val firestore: FirebaseFirestore) {
+/** `users/{uid}` — private to the account owner, so there is no list query. */
+class UserRepository(firestore: FirebaseFirestore) {
+
+    private val users = firestore.collection(COLLECTION)
 
     suspend fun createUserProfile(profile: UserProfile) {
-        firestore.collection(COLLECTION).document(profile.uid).set(profile).await()
+        users.document(profile.uid).set(profile).await()
     }
 
-    suspend fun getUserProfile(uid: String): UserProfile? {
-        val snapshot = firestore.collection(COLLECTION).document(uid).get().await()
-        return snapshot.toObject(UserProfile::class.java)
+    suspend fun getUserProfile(uid: String): UserProfile? = users.document(uid).getAs()
+
+    suspend fun updateUserProfile(profile: UserProfile) {
+        users.document(profile.uid).set(profile).await()
+    }
+
+    suspend fun deleteUserProfile(uid: String) {
+        users.document(uid).delete().await()
     }
 }
