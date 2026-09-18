@@ -30,6 +30,16 @@ private val HomeSajjaLightColorScheme = lightColorScheme(
     onErrorContainer = OnErrorContainer,
     outline = OutlineNeutral,
     outlineVariant = OutlineVariantNeutral,
+    surfaceDim = PearlSurfaceDim,
+    surfaceBright = PearlSurfaceBright,
+    surfaceContainerLowest = PearlSurfaceContainerLowest,
+    surfaceContainerLow = PearlSurfaceContainerLow,
+    surfaceContainer = PearlSurfaceContainer,
+    surfaceContainerHigh = PearlSurfaceContainerHigh,
+    surfaceContainerHighest = PearlSurfaceContainerHighest,
+    inverseSurface = InverseSurface,
+    inverseOnSurface = InverseOnSurface,
+    inversePrimary = InversePrimary,
 )
 
 @Composable

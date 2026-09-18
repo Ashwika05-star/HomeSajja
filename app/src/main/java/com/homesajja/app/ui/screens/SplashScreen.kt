@@ -12,6 +12,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,14 +22,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.homesajja.app.di.LocalAppContainer
+import com.homesajja.app.di.ViewModelFactory
+import com.homesajja.app.viewmodel.SplashDestination
+import com.homesajja.app.viewmodel.SplashViewModel
 import kotlinx.coroutines.delay
 
 private const val SPLASH_ANIM_MILLIS = 500
 private const val SPLASH_HOLD_MILLIS = 1200L
 
 @Composable
-fun SplashScreen(onFinished: () -> Unit) {
+fun SplashScreen(onNavigate: (SplashDestination) -> Unit) {
+    val container = LocalAppContainer.current
+    val viewModel: SplashViewModel = viewModel(factory = ViewModelFactory(container))
+    val destination by viewModel.destination.collectAsState()
+
     var visible by remember { mutableStateOf(false) }
+    var minHoldElapsed by remember { mutableStateOf(false) }
 
     val alpha by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
@@ -44,7 +55,14 @@ fun SplashScreen(onFinished: () -> Unit) {
     LaunchedEffect(Unit) {
         visible = true
         delay(SPLASH_ANIM_MILLIS + SPLASH_HOLD_MILLIS)
-        onFinished()
+        minHoldElapsed = true
+    }
+
+    LaunchedEffect(destination, minHoldElapsed) {
+        val resolved = destination
+        if (minHoldElapsed && resolved != null) {
+            onNavigate(resolved)
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

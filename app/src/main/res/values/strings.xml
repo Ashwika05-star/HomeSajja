@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HomeSajja</string>
+    <!-- Replace with the real "Web client (auto created by Google Service)" OAuth
+         client ID from the Firebase project's Authentication > Sign-in method >
+         Google settings once a real google-services.json is in place. -->
+    <string name="default_web_client_id" translatable="false">REPLACE_WITH_FIREBASE_WEB_CLIENT_ID</string>
 </resources>
