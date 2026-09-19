@@ -26,6 +26,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.homesajja.app.ui.util.ImageWidth
+import com.homesajja.app.ui.util.optimizedImage
 
 /**
  * Marketplace listing card: photo, title, price and an optional one-line
@@ -85,7 +87,7 @@ private fun FurnitureCardContent(
                 )
             } else {
                 AsyncImage(
-                    model = imageUrl,
+                    model = optimizedImage(imageUrl, ImageWidth.CARD),
                     contentDescription = title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f),
@@ -93,20 +95,19 @@ private fun FurnitureCardContent(
             }
             // The heart: filled when the listing is saved. Shown only where the caller can save.
             if (onToggleSaved != null) {
-                IconButton(
-                    onClick = onToggleSaved,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(6.dp)
-                        .size(34.dp)
-                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.85f), CircleShape),
-                ) {
-                    Icon(
-                        imageVector = if (isSaved) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        contentDescription = if (isSaved) "Remove from saved" else "Save",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp),
-                    )
+                // The button is the standard 48dp touch target; only the round backdrop drawn inside it is smaller.
+                IconButton(onClick = onToggleSaved, modifier = Modifier.align(Alignment.TopEnd)) {
+                    Box(
+                        modifier = Modifier.size(34.dp).background(MaterialTheme.colorScheme.background.copy(alpha = 0.85f), CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = if (isSaved) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                            contentDescription = if (isSaved) "Remove from saved" else "Save",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                 }
             }
         }

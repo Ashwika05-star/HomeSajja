@@ -199,6 +199,7 @@ class ListingDetailViewModel(
                     buyerId = uid,
                     buyerName = myName,
                     sellerId = content.listing.ownerId,
+                    sellerName = content.listing.ownerName,
                     offeredPrice = price,
                 ),
             )

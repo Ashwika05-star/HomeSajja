@@ -51,13 +51,22 @@ class PurchaseRequestRepository(private val firestore: FirebaseFirestore) {
         status: PurchaseStatus,
         listingId: String,
         listingStatus: ListingStatus,
+        upiId: String? = null,
     ) {
         val now = System.currentTimeMillis()
+        val requestChanges = mutableMapOf<String, Any>("status" to status.name, "updatedAt" to now)
+        upiId?.let { requestChanges["upiId"] = it }
         firestore.batch()
-            .update(requests.document(id), mapOf("status" to status.name, "updatedAt" to now))
+            .update(requests.document(id), requestChanges)
             .update(firestore.collection("listings").document(listingId), mapOf("status" to listingStatus.name, "updatedAt" to now))
             .commit()
             .await()
+    }
+
+    /** Either party records that the money has changed hands (outside HomeSajja). */
+    suspend fun markPaid(id: String) {
+        val now = System.currentTimeMillis()
+        requests.document(id).update(mapOf("paid" to true, "paidAt" to now, "updatedAt" to now)).await()
     }
 
     suspend fun deleteRequest(id: String) {

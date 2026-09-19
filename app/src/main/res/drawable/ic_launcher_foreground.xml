@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- The HomeSajja mark: a house with an armchair inside it. Kept inside the 66dp safe zone of the adaptive icon. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Placeholder mark; replaced with the final HomeSajja brand icon in Phase 1. -->
     <path
-        android:fillColor="#3F6B4A"
-        android:pathData="M54,24 L84,50 L78,50 L78,84 L60,84 L60,64 L48,64 L48,84 L30,84 L30,50 L24,50 Z" />
+        android:fillColor="#F3DCE0"
+        android:pathData="M54,24 L86,50 L79,50 L79,84 L29,84 L29,50 L22,50 Z" />
+    <path
+        android:fillColor="#6D1F2B"
+        android:pathData="M49,54 h10 a4,4 0 0 1 4,4 v8 h-18 v-8 a4,4 0 0 1 4,-4 z M44,65 h20 a3,3 0 0 1 3,3 v2 a3,3 0 0 1 -3,3 h-20 a3,3 0 0 1 -3,-3 v-2 a3,3 0 0 1 3,-3 z M44,72 h4 v8 h-4 z M60,72 h4 v8 h-4 z" />
 </vector>

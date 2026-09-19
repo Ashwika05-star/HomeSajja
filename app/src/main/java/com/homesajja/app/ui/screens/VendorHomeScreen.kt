@@ -146,6 +146,7 @@ fun VendorHomeScreen(
                 onOpenListing = onOpenListing,
                 onEditProfile = onEditProfile,
                 onOpenBlocked = onOpenBlocked,
+                onAccountDeleted = onLoggedOut,
                 modifier = contentModifier,
             )
         }

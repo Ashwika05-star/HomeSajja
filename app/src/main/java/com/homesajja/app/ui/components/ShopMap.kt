@@ -142,11 +142,26 @@ private fun OsmMap(
     AndroidView(factory = { mapView }, modifier = modifier, update = { onUpdate(it) })
 }
 
-/** Points osmdroid at the app's cache folder (so no storage permission is needed) and gives tile servers a user agent. */
-private fun configureOsm(context: Context) {
-    Configuration.getInstance().apply {
-        userAgentValue = context.packageName
-        osmdroidBasePath = context.cacheDir
-        osmdroidTileCache = context.cacheDir.resolve("osm-tiles")
+/**
+ * Points osmdroid at the app's cache folder (so no storage permission is needed) and gives tile servers a user agent.
+ * It touches the disk, so the app calls it once on a background thread at start-up; later calls do nothing.
+ */
+object OsmSetup {
+    @Volatile
+    private var configured = false
+
+    @Synchronized
+    fun configure(context: Context) {
+        if (configured) return
+        Configuration.getInstance().apply {
+            userAgentValue = context.packageName
+            osmdroidBasePath = context.cacheDir
+            osmdroidTileCache = context.cacheDir.resolve("osm-tiles")
+        }
+        // Opening the tile cache database is the slow part of the first map; do it now, where it can't stall the screen.
+        runCatching { org.osmdroid.tileprovider.modules.SqlTileWriter().onDetach() }
+        configured = true
     }
 }
+
+private fun configureOsm(context: Context) = OsmSetup.configure(context)

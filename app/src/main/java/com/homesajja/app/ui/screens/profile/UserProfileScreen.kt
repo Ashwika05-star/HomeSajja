@@ -18,6 +18,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
+import com.homesajja.app.ui.components.DeleteAccountSection
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.OutlinedButton
@@ -36,6 +37,7 @@ fun UserProfileScreen(
     onOpenSaved: () -> Unit = {},
     onOpenBlocked: () -> Unit = {},
     onLogout: () -> Unit = {},
+    onAccountDeleted: () -> Unit = {},
 ) {
     val viewModel: UserProfileViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -64,7 +66,10 @@ fun UserProfileScreen(
                 OutlinedButton(text = "Blocked people", onClick = onOpenBlocked, modifier = Modifier.fillMaxWidth())
             }
             ReviewsSection(current.reviews)
-            if (current.isOwn) OutlinedButton(text = "Log out", onClick = onLogout, modifier = Modifier.fillMaxWidth())
+            if (current.isOwn) {
+                OutlinedButton(text = "Log out", onClick = onLogout, modifier = Modifier.fillMaxWidth())
+                DeleteAccountSection(onDeleted = onAccountDeleted)
+            }
         }
     }
 }

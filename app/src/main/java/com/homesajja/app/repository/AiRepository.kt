@@ -18,6 +18,8 @@ import com.homesajja.app.data.model.RecycleCondition
 import com.homesajja.app.data.model.RecycleMaterial
 import com.homesajja.app.data.model.RepairProblemType
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Why an AI request failed, in terms a person can act on. */
 enum class AiFailure { NOT_AVAILABLE, BUSY, NO_CONNECTION, BAD_ANSWER, OTHER }
@@ -55,7 +57,8 @@ class GeminiAiRepository(
 
     override suspend fun assessFurniture(photo: Uri, notes: String, ageYears: Int?, city: String): FurnitureAssessment =
         guarded {
-            val bitmap = decodeScaledBitmap(contentResolver, photo, PHOTO_EDGE_PX) ?: throw AiException(AiFailure.OTHER)
+            // Decoding a photo is disk and CPU work, so it runs off the main thread.
+            val bitmap = withContext(Dispatchers.IO) { decodeScaledBitmap(contentResolver, photo, PHOTO_EDGE_PX) } ?: throw AiException(AiFailure.OTHER)
             val model = backend.generativeModel(
                 modelName = modelName,
                 generationConfig = generationConfig {

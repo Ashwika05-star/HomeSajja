@@ -39,3 +39,7 @@ app/google-services.json
 
 # Node (firestore-rules-tests)
 node_modules/
+
+# Release signing (never commit these)
+keystore.properties
+release/

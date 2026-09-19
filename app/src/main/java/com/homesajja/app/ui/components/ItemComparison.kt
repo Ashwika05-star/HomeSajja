@@ -26,6 +26,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.homesajja.app.ui.util.ImageWidth
+import com.homesajja.app.ui.util.optimizedImage
 
 /** What one side of a comparison shows. [note] flags problems such as a removed listing. */
 data class ComparisonItem(
@@ -123,7 +125,7 @@ fun ItemThumbnail(imageUrl: String?, description: String, modifier: Modifier = M
             Icon(Icons.Filled.Chair, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
         } else {
             AsyncImage(
-                model = imageUrl,
+                model = optimizedImage(imageUrl, ImageWidth.THUMBNAIL),
                 contentDescription = description,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f),

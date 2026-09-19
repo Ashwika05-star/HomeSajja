@@ -217,3 +217,30 @@ class SavedItemTest {
         }
     }
 }
+
+class ImageUrlTest {
+
+    private val original = "https://res.cloudinary.com/demo/image/upload/v1789763882/listings/u/l/photo.jpg"
+
+    @Test
+    fun cloudinaryPhotos_areAskedForInASmallerCompressedVersion() {
+        assertEquals(
+            "https://res.cloudinary.com/demo/image/upload/w_560,c_limit,q_auto,f_auto/v1789763882/listings/u/l/photo.jpg",
+            com.homesajja.app.ui.util.optimizedImage(original, 560),
+        )
+    }
+
+    @Test
+    fun otherImages_areLeftAlone() {
+        assertEquals("https://picsum.photos/seed/x/400/300", com.homesajja.app.ui.util.optimizedImage("https://picsum.photos/seed/x/400/300", 560))
+        assertNull(com.homesajja.app.ui.util.optimizedImage(null, 560))
+        val localPhoto = Any()
+        assertEquals(localPhoto, com.homesajja.app.ui.util.optimizedImage(localPhoto, 560))
+    }
+
+    @Test
+    fun anAlreadyResizedUrl_isNotResizedTwice() {
+        val resized = "https://res.cloudinary.com/demo/image/upload/w_100/v1/x.jpg"
+        assertEquals(resized, com.homesajja.app.ui.util.optimizedImage(resized, 560))
+    }
+}

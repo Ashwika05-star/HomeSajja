@@ -25,6 +25,7 @@ import com.homesajja.app.data.model.VendorBusinessType
 import com.homesajja.app.data.model.VendorProfile
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
+import com.homesajja.app.ui.components.DeleteAccountSection
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.FurnitureCard
 import com.homesajja.app.ui.components.ImageCarousel
@@ -48,6 +49,7 @@ fun VendorPublicProfileScreen(
     modifier: Modifier = Modifier,
     onEditProfile: (() -> Unit)? = null,
     onOpenBlocked: (() -> Unit)? = null,
+    onAccountDeleted: (() -> Unit)? = null,
 ) {
     val viewModel: VendorPublicProfileViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -65,6 +67,7 @@ fun VendorPublicProfileScreen(
             onOpenListing = onOpenListing,
             onEditProfile = onEditProfile,
             onOpenBlocked = onOpenBlocked,
+            onAccountDeleted = onAccountDeleted,
             savedIds = viewModel.savedIds,
             onToggleSaved = viewModel::toggleSaved,
             modifier = modifier,
@@ -78,6 +81,7 @@ private fun ProfileContent(
     onOpenListing: (String) -> Unit,
     onEditProfile: (() -> Unit)?,
     onOpenBlocked: (() -> Unit)?,
+    onAccountDeleted: (() -> Unit)?,
     savedIds: Set<String>,
     onToggleSaved: (String) -> Unit,
     modifier: Modifier,
@@ -98,6 +102,7 @@ private fun ProfileContent(
             if (content.isOwner && onOpenBlocked != null) {
                 OutlinedButton(text = "Blocked people", onClick = onOpenBlocked, modifier = Modifier.fillMaxWidth())
             }
+            if (content.isOwner && onAccountDeleted != null) DeleteAccountSection(onDeleted = onAccountDeleted)
 
             Section("About") {
                 Text(

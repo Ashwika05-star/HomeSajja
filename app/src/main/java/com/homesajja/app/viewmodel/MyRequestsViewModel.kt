@@ -94,7 +94,8 @@ class MyRequestsViewModel(
         _messages.tryEmit("Request cancelled.")
     }
 
-    fun performSellerAction(request: PurchaseRequest, action: SellerAction) =
+    /** [upiId] is only meaningful when accepting: the id the buyer can pay to (null means "pay in person"). */
+    fun performSellerAction(request: PurchaseRequest, action: SellerAction, upiId: String? = null) =
         runAction(request, "Couldn't update the request.") {
             val listingStatus = action.listingStatus()
             if (listingStatus == null) {
@@ -102,6 +103,7 @@ class MyRequestsViewModel(
             } else {
                 purchaseRequestRepository.updateStatusAndListing(
                     request.id, action.resultingStatus, request.listingId, listingStatus,
+                    upiId = upiId.takeIf { action == SellerAction.ACCEPT },
                 )
             }
             authRepository.currentUserId?.let {
@@ -109,6 +111,18 @@ class MyRequestsViewModel(
             }
             _messages.tryEmit("Request marked as ${action.resultingStatus.displayName.lowercase()}.")
         }
+
+    /** Records that the money has changed hands. Payment itself happened in GPay or in person. */
+    fun markPaid(request: PurchaseRequest) = runAction(request, "Couldn't mark it as paid.") {
+        purchaseRequestRepository.markPaid(request.id)
+        authRepository.currentUserId?.let { notificationSender.send(NotificationTemplates.purchasePaid(request, it)) }
+        _messages.tryEmit("Marked as paid.")
+    }
+
+    /** Shows a message from the screen, e.g. when GPay isn't installed. */
+    fun say(message: String) {
+        _messages.tryEmit(message)
+    }
 
     private fun load(showLoading: Boolean) {
         val uid = authRepository.currentUserId

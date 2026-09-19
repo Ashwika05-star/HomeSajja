@@ -314,6 +314,9 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                             navController.navigate(Routes.Welcome.route) { popUpTo(0) { inclusive = true } }
                         }
                     },
+                    onAccountDeleted = {
+                        navController.navigate(Routes.Welcome.route) { popUpTo(0) { inclusive = true } }
+                    },
                 )
             }
         }

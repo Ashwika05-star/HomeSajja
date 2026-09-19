@@ -107,9 +107,17 @@ service cloud.firestore {
         && !blocked(incoming().buyerId, incoming().sellerId)
         && incoming().status == 'REQUESTED'
         && get(/databases/$(database)/documents/listings/$(incoming().listingId)).data.ownerId == incoming().sellerId;
-      allow update: if changedKeys().hasOnly(['status', 'updatedAt'])
-        && (isSelf(existing().sellerId)
-            || (isSelf(existing().buyerId) && incoming().status == 'CANCELLED'));
+      // Status moves: the seller answers (and may attach a UPI id while doing so); the buyer can only cancel.
+      // Payment: either party can mark an accepted request paid, and nothing else changes with it.
+      allow update: if (changedKeys().hasOnly(['status', 'updatedAt', 'upiId'])
+          && (isSelf(existing().sellerId)
+              || (isSelf(existing().buyerId) && incoming().status == 'CANCELLED' && !('upiId' in changedKeys())))
+          && (!('upiId' in changedKeys())
+              || (incoming().upiId is string && incoming().upiId.matches('^[A-Za-z0-9._-]{2,256}@[A-Za-z]{2,64}$'))))
+        || (changedKeys().hasOnly(['paid', 'paidAt', 'updatedAt'])
+          && incoming().paid == true
+          && existing().status in ['ACCEPTED', 'READY_FOR_PICKUP']
+          && (isSelf(existing().sellerId) || isSelf(existing().buyerId)));
       allow delete: if isSelf(existing().buyerId) && existing().status == 'REQUESTED';
     }
 

@@ -20,6 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
@@ -63,7 +65,16 @@ private fun StepperStep(
     // The line to the left of a step is coloured once that step is reached.
     val lineColor = if (reached) active else idle
 
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    // Read out as "Accepted, done" / "In progress, current step" / "Ready, not reached yet" instead of a bare label.
+    val stateText = when {
+        isCurrent -> "current step"
+        reached -> "done"
+        else -> "not reached yet"
+    }
+    Column(
+        modifier = modifier.semantics(mergeDescendants = true) { contentDescription = "$label, $stateText" },
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Line(color = if (isFirst) Color.Transparent else lineColor, modifier = Modifier.weight(1f))
             Surface(

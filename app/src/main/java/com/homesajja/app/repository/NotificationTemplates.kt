@@ -67,6 +67,21 @@ object NotificationTemplates {
         )
     }
 
+    /** Someone marked the request as paid; the other party is told. */
+    fun purchasePaid(request: PurchaseRequest, actorId: String): Notification {
+        val toBuyer = actorId == request.sellerId
+        return Notification(
+            recipientId = if (toBuyer) request.buyerId else request.sellerId,
+            senderId = actorId,
+            type = NotificationType.PURCHASE_UPDATE,
+            title = "Marked as paid",
+            body = if (toBuyer) "The seller marked ${request.listingTitle} as paid."
+            else "${request.buyerName} says they paid ${formatPrice(request.offeredPrice)} for ${request.listingTitle}.",
+            relatedType = EntityType.LISTING,
+            relatedId = request.listingId,
+        )
+    }
+
     fun listingPublished(listing: FurnitureListing) = Notification(
         recipientId = listing.ownerId,
         senderId = listing.ownerId,

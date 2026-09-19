@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.homesajja.app.ui.util.ImageWidth
+import com.homesajja.app.ui.util.optimizedImage
 
 /** Swipeable photos with page dots. [images] can be URLs or local Uris. */
 @Composable
@@ -35,7 +37,7 @@ fun ImageCarousel(images: List<Any>, modifier: Modifier = Modifier) {
         if (images.isEmpty()) {
             Icon(
                 imageVector = Icons.Filled.Chair,
-                contentDescription = null,
+                contentDescription = "No photo",
                 tint = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.align(Alignment.Center),
             )
@@ -45,7 +47,7 @@ fun ImageCarousel(images: List<Any>, modifier: Modifier = Modifier) {
         val pagerState = rememberPagerState { images.size }
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth()) { page ->
             AsyncImage(
-                model = images[page],
+                model = optimizedImage(images[page], ImageWidth.FULL),
                 contentDescription = "Photo ${page + 1} of ${images.size}",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f),

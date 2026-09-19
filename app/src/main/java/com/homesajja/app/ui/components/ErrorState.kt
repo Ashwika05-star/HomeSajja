@@ -13,6 +13,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -40,7 +42,7 @@ fun ErrorState(
             )
             Spacer(modifier = Modifier.height(16.dp))
         }
-        Text("Something went wrong", style = MaterialTheme.typography.titleMedium)
+        Text("We hit a snag", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             message,
@@ -49,6 +51,6 @@ fun ErrorState(
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(20.dp))
-        OutlinedButton(text = "Retry", onClick = onRetry)
+        OutlinedButton(text = "Try again", onClick = onRetry)
     }
 }

@@ -12,8 +12,11 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.messaging.FirebaseMessaging
 import com.homesajja.app.notification.SessionServices
+import com.homesajja.app.ui.components.OsmSetup
+import kotlinx.coroutines.launch
 import com.homesajja.app.data.model.FlowPrefill
 import com.homesajja.app.repository.AiRepository
+import com.homesajja.app.repository.AccountRepository
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.BlockRepository
 import com.homesajja.app.repository.GeminiAiRepository
@@ -80,6 +83,19 @@ class AppContainer(private val appContext: Context) {
     val notificationRepository: NotificationRepository by lazy { NotificationRepository(firestore) }
     val deviceTokenRepository: DeviceTokenRepository by lazy { DeviceTokenRepository(firestore, FirebaseMessaging.getInstance()) }
 
+    /**
+     * Start-up work that reads the disk (Firebase's saved sign-in and cache, the map's tile cache) runs here, off the main
+     * thread, so the first screen doesn't wait for it. Anything that needs these before it finishes simply waits for it.
+     */
+    fun warmUp() {
+        appScope.launch(Dispatchers.IO) {
+            firebaseAuth
+            firestore
+            OsmSetup.configure(appContext)
+            sessionServices.start()
+        }
+    }
+
     /** Lives as long as the app process, so notifications still get written after the screen that caused them closes. */
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val notificationSender: NotificationSender by lazy { NotificationSender(notificationRepository, appScope) }
@@ -87,6 +103,9 @@ class AppContainer(private val appContext: Context) {
         SessionServices(appContext, appScope, authRepository, notificationRepository, deviceTokenRepository)
     }
 
+    val accountRepository: AccountRepository by lazy {
+        AccountRepository(firebaseAuth, firestore, deviceTokenRepository, sessionRepository)
+    }
     val reportRepository: ReportRepository by lazy { ReportRepository(firestore) }
     val blockRepository: BlockRepository by lazy { BlockRepository(firestore) }
     val aiRepository: AiRepository by lazy {

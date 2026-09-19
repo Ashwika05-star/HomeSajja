@@ -32,6 +32,7 @@ import com.homesajja.app.viewmodel.RepairRequestViewModel
 import com.homesajja.app.viewmodel.ReviewParamsKey
 import com.homesajja.app.viewmodel.ReviewViewModel
 import com.homesajja.app.viewmodel.BlockedUsersViewModel
+import com.homesajja.app.viewmodel.DeleteAccountViewModel
 import com.homesajja.app.viewmodel.SavedListingsViewModel
 import com.homesajja.app.viewmodel.SajjaChatViewModel
 import com.homesajja.app.viewmodel.SellViewModel
@@ -266,6 +267,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.chatRepository,
                 container.notificationRepository,
             )
+            DeleteAccountViewModel::class.java -> DeleteAccountViewModel(container.accountRepository)
             SavedListingsViewModel::class.java -> SavedListingsViewModel(
                 container.authRepository,
                 container.favouriteRepository,

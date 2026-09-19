@@ -219,6 +219,6 @@ private fun ProviderStep(viewModel: RepairRequestViewModel, onOpenVendor: (Strin
 private fun InlineRetry(message: String, onRetry: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-        com.homesajja.app.ui.components.OutlinedButton(text = "Retry", onClick = onRetry)
+        com.homesajja.app.ui.components.OutlinedButton(text = "Try again", onClick = onRetry)
     }
 }

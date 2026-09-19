@@ -20,7 +20,7 @@ val OnPoignantPinkSecondaryContainer = Color(0xFF5C1E29)
 // Tertiary — a deeper rose between Cabernet and Poignant Pink; the palette only
 // specifies two accent colors, so this fills the M3 tertiary role without
 // introducing an unrelated hue.
-val RoseTertiary = Color(0xFFB5677A)
+val RoseTertiary = Color(0xFF9C4F63)
 val OnRoseTertiary = Color(0xFFFFFFFF)
 val RoseTertiaryContainer = Color(0xFFF8E3E7)
 val OnRoseTertiaryContainer = Color(0xFF5C1E29)
@@ -46,7 +46,7 @@ val ErrorContainer = Color(0xFFF9DEDC)
 val OnErrorContainer = Color(0xFF410E0B)
 
 // Outline
-val OutlineNeutral = Color(0xFF8A7A72)
+val OutlineNeutral = Color(0xFF7E6E66)
 val OutlineVariantNeutral = Color(0xFFD9C7BB)
 
 // Surface container family — used by menus, sheets and dialogs. Left unset,

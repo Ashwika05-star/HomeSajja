@@ -58,7 +58,7 @@ fun ReviewPrompt(params: ReviewParams, modifier: Modifier = Modifier) {
                 ReviewUiState.Loading -> CircularProgressIndicator(modifier = Modifier.padding(4.dp))
                 is ReviewUiState.Error -> {
                     Text(state.message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-                    TextButton(onClick = viewModel::load) { Text("Retry") }
+                    TextButton(onClick = viewModel::load) { Text("Try again") }
                 }
                 is ReviewUiState.Ready -> {
                     val review = state.review

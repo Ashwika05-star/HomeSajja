@@ -118,7 +118,7 @@ private fun RecyclerStep(viewModel: RecycleRequestViewModel, onOpenVendor: (Stri
         }
         is LoadState.Error -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(recyclers.message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-            OutlinedButton(text = "Retry", onClick = viewModel::retryRecyclers)
+            OutlinedButton(text = "Try again", onClick = viewModel::retryRecyclers)
         }
         is LoadState.Loaded -> {
             if (recyclers.items.isEmpty()) {

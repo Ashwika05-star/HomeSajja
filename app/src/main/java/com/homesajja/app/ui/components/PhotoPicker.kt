@@ -28,8 +28,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.homesajja.app.ui.util.ImageWidth
+import com.homesajja.app.ui.util.optimizedImage
 import com.homesajja.app.viewmodel.MAX_PHOTOS
 import com.homesajja.app.viewmodel.SellPhoto
 
@@ -62,7 +65,7 @@ fun PhotoPicker(
             Box(modifier = Modifier.size(104.dp)) {
                 AsyncImage(
                     model = when (photo) {
-                        is SellPhoto.Remote -> photo.url
+                        is SellPhoto.Remote -> optimizedImage(photo.url, ImageWidth.THUMBNAIL)
                         is SellPhoto.Local -> photo.uri
                     },
                     contentDescription = "Photo ${index + 1}",
@@ -72,15 +75,14 @@ fun PhotoPicker(
                         .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
                         .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), RoundedCornerShape(12.dp)),
                 )
-                IconButton(
-                    onClick = { onRemove(index) },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .size(28.dp)
-                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.85f), CircleShape),
-                ) {
-                    Icon(Icons.Filled.Close, contentDescription = "Remove photo ${index + 1}", modifier = Modifier.size(16.dp))
+                // Standard 48dp touch target, with a smaller round backdrop drawn inside it.
+                IconButton(onClick = { onRemove(index) }, modifier = Modifier.align(Alignment.TopEnd)) {
+                    Box(
+                        modifier = Modifier.size(28.dp).background(MaterialTheme.colorScheme.background.copy(alpha = 0.85f), CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = "Remove photo ${index + 1}", modifier = Modifier.size(16.dp))
+                    }
                 }
             }
         }
@@ -89,7 +91,7 @@ fun PhotoPicker(
                 modifier = Modifier
                     .size(104.dp)
                     .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outline), RoundedCornerShape(12.dp))
-                    .clickable {
+                    .clickable(role = Role.Button, onClickLabel = "Add photos") {
                         picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     },
                 contentAlignment = Alignment.Center,

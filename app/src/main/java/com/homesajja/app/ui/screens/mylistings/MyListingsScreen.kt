@@ -42,6 +42,8 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.homesajja.app.ui.util.ImageWidth
+import com.homesajja.app.ui.util.optimizedImage
 import com.homesajja.app.data.model.FurnitureListing
 import com.homesajja.app.data.model.ListingStatus
 import com.homesajja.app.di.LocalAppContainer
@@ -186,7 +188,7 @@ private fun MyListingCard(
                         .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
                 ) {
                     AsyncImage(
-                        model = listing.images.firstOrNull(),
+                        model = optimizedImage(listing.images.firstOrNull(), ImageWidth.THUMBNAIL),
                         contentDescription = listing.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.size(88.dp).clip(RoundedCornerShape(12.dp)),

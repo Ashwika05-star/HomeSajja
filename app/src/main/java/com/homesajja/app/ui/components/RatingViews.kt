@@ -2,6 +2,7 @@ package com.homesajja.app.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,9 +14,11 @@ import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -29,12 +32,20 @@ import com.homesajja.app.ui.util.formatTimeAgo
 fun StarRow(rating: Int, modifier: Modifier = Modifier, starSize: Dp = 18.dp, onRate: ((Int) -> Unit)? = null) {
     Row(modifier = modifier.semantics { contentDescription = "$rating out of 5 stars" }) {
         (1..5).forEach { star ->
-            Icon(
-                imageVector = if (star <= rating) Icons.Filled.Star else Icons.Filled.StarBorder,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(starSize).then(if (onRate != null) Modifier.clickable { onRate(star) } else Modifier),
-            )
+            val icon = if (star <= rating) Icons.Filled.Star else Icons.Filled.StarBorder
+            if (onRate == null) {
+                Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(starSize))
+            } else {
+                // A tappable star gets the standard 48dp touch target and its own label.
+                Box(
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .clickable(role = Role.Button, onClickLabel = "Rate $star out of 5") { onRate(star) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(starSize))
+                }
+            }
         }
     }
 }

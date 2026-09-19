@@ -42,6 +42,9 @@ const deny = (n, p) => check(n, p, false);
     await setDoc(doc(db, 'recyclingRequests/c1'), { userId: 'alice', vendorId: 'vic', method: 'DROP_OFF', status: 'REQUESTED' });
     await setDoc(doc(db, 'chats/ch1'), { participantIds: ['alice', 'bob'], lastMessage: '', lastMessageAt: 0, lastMessageSenderId: '' });
     await setDoc(doc(db, 'notifications/n1'), { recipientId: 'alice', senderId: 'bob', title: 't', seen: false });
+    await setDoc(doc(db, 'purchaseRequests/ppay'), { buyerId: 'alice', sellerId: 'bob', listingId: 'sell1', status: 'ACCEPTED', offeredPrice: 90 });
+    await setDoc(doc(db, 'purchaseRequests/ppay2'), { buyerId: 'alice', sellerId: 'bob', listingId: 'sell1', status: 'ACCEPTED', offeredPrice: 90 });
+    await setDoc(doc(db, 'purchaseRequests/pnew'), { buyerId: 'alice', sellerId: 'bob', listingId: 'sell1', status: 'REQUESTED', offeredPrice: 90 });
     await setDoc(doc(db, 'repairRequests/rdone'), { userId: 'bob', vendorId: 'vic', status: 'COMPLETED' });
     await setDoc(doc(db, 'purchaseRequests/pdone'), { buyerId: 'bob', sellerId: 'alice', listingId: 'sell1', status: 'COMPLETED' });
     await setDoc(doc(db, 'exchangeRequests/edone'), { senderId: 'alice', receiverId: 'bob', status: 'COMPLETED' });
@@ -347,6 +350,17 @@ const deny = (n, p) => check(n, p, false);
   await allow('list own favourites', getDocs(query(collection(as('alice'), 'favourites'), where('userId', '==', 'alice'))));
   await deny('list another user\'s favourites', getDocs(query(collection(as('carol'), 'favourites'), where('userId', '==', 'alice'))));
   await allow('remove favourite', deleteDoc(doc(as('alice'), 'favourites/alice_sell1')));
+
+  // payment on purchase requests
+  await deny('seller accepts with a malformed upi id', updateDoc(doc(as('bob'), 'purchaseRequests/pnew'), { status: 'ACCEPTED', upiId: 'not a upi id', updatedAt: now }));
+  await deny('buyer attaches a upi id', updateDoc(doc(as('alice'), 'purchaseRequests/pnew'), { upiId: 'alice@okhdfcbank', updatedAt: now }));
+  await allow('seller accepts with a upi id', updateDoc(doc(as('bob'), 'purchaseRequests/pnew'), { status: 'ACCEPTED', upiId: 'bob@okhdfcbank', updatedAt: now }));
+  await deny('paid before it is accepted', updateDoc(doc(as('alice'), 'purchaseRequests/p1'), { paid: true, paidAt: now, updatedAt: now }));
+  await deny('outsider marks paid', updateDoc(doc(as('carol'), 'purchaseRequests/ppay'), { paid: true, paidAt: now, updatedAt: now }));
+  await deny('marking paid while changing status', updateDoc(doc(as('alice'), 'purchaseRequests/ppay'), { paid: true, status: 'COMPLETED', paidAt: now, updatedAt: now }));
+  await deny('un-marking paid', updateDoc(doc(as('alice'), 'purchaseRequests/ppay'), { paid: false, paidAt: now, updatedAt: now }));
+  await allow('buyer marks an accepted request paid', updateDoc(doc(as('alice'), 'purchaseRequests/ppay'), { paid: true, paidAt: now, updatedAt: now }));
+  await allow('seller marks an accepted request paid (cash)', updateDoc(doc(as('bob'), 'purchaseRequests/ppay2'), { paid: true, paidAt: now, updatedAt: now }));
 
   // reports
   const rep = { reporterId: 'alice', targetType: 'LISTING', targetId: 'sell1', targetName: 'Sofa', reason: 'SPAM', details: '' };
