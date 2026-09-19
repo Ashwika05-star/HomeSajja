@@ -96,7 +96,7 @@ open class MyRecyclingViewModel(
     }
 }
 
-/** TEMPORARY (until the Phase 8 vendor dashboard): the recycling requests addressed to a vendor. */
+/** The recycling requests addressed to a vendor. */
 class VendorRecyclingViewModel(
     authRepository: AuthRepository,
     recyclingRepository: RecyclingRepository,

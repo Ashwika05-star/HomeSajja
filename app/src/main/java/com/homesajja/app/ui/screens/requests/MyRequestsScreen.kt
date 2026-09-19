@@ -53,10 +53,13 @@ fun MyRequestsScreen(
     snackbarHostState: SnackbarHostState,
     onOpenListing: (String) -> Unit,
     modifier: Modifier = Modifier,
+    receivedOnly: Boolean = false,
 ) {
     val viewModel: MyRequestsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var chosenTab by rememberSaveable { mutableIntStateOf(0) }
+    // Vendors only ever receive purchase requests, so they get the Received list without the tabs.
+    val selectedTab = if (receivedOnly) 1 else chosenTab
 
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
@@ -70,17 +73,19 @@ fun MyRequestsScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
         val content = state as? MyRequestsUiState.Content
-        TabRow(selectedTabIndex = selectedTab, containerColor = MaterialTheme.colorScheme.background) {
-            Tab(
-                selected = selectedTab == 0,
-                onClick = { selectedTab = 0 },
-                text = { Text("Sent${content?.let { " (${it.sent.size})" }.orEmpty()}") },
-            )
-            Tab(
-                selected = selectedTab == 1,
-                onClick = { selectedTab = 1 },
-                text = { Text("Received${content?.let { " (${it.received.size})" }.orEmpty()}") },
-            )
+        if (!receivedOnly) {
+            TabRow(selectedTabIndex = selectedTab, containerColor = MaterialTheme.colorScheme.background) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { chosenTab = 0 },
+                    text = { Text("Sent${content?.let { " (${it.sent.size})" }.orEmpty()}") },
+                )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { chosenTab = 1 },
+                    text = { Text("Received${content?.let { " (${it.received.size})" }.orEmpty()}") },
+                )
+            }
         }
 
         when (val current = state) {

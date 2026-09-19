@@ -21,6 +21,7 @@ import com.homesajja.app.repository.RepairRepository
 import com.homesajja.app.repository.ReviewRepository
 import com.homesajja.app.repository.SessionRepository
 import com.homesajja.app.repository.UserRepository
+import com.homesajja.app.repository.VendorInboxRepository
 import com.homesajja.app.repository.VendorRepository
 
 /**
@@ -65,6 +66,9 @@ class AppContainer(private val appContext: Context) {
     val chatRepository: ChatRepository by lazy { ChatRepository(firestore) }
     val notificationRepository: NotificationRepository by lazy { NotificationRepository(firestore) }
     val reviewRepository: ReviewRepository by lazy { ReviewRepository(firestore) }
+    val vendorInboxRepository: VendorInboxRepository by lazy {
+        VendorInboxRepository(purchaseRequestRepository, exchangeRepository, repairRepository, recyclingRepository)
+    }
     val favouriteRepository: FavouriteRepository by lazy { FavouriteRepository(firestore) }
 
     fun googleSignInManager(context: Context): GoogleSignInManager {

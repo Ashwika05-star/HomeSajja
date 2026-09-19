@@ -41,6 +41,7 @@ import com.homesajja.app.viewmodel.RepairSendState
 fun RepairRequestScreen(
     onExit: () -> Unit,
     onSent: (requestId: String) -> Unit,
+    onOpenVendor: (String) -> Unit,
 ) {
     val viewModel: RepairRequestViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val ready = viewModel.screenState is RepairScreenState.Ready
@@ -66,7 +67,7 @@ fun RepairRequestScreen(
             when (val screen = viewModel.screenState) {
                 RepairScreenState.Loading -> LoadingState()
                 is RepairScreenState.Error -> ErrorState(message = screen.message, onRetry = viewModel::load)
-                RepairScreenState.Ready -> StepContainer(viewModel)
+                RepairScreenState.Ready -> StepContainer(viewModel, onOpenVendor)
             }
         }
     }
@@ -75,7 +76,7 @@ fun RepairRequestScreen(
 }
 
 @Composable
-private fun StepContainer(viewModel: RepairRequestViewModel) {
+private fun StepContainer(viewModel: RepairRequestViewModel, onOpenVendor: (String) -> Unit) {
     val step = viewModel.step
     val steps = RepairStep.entries
     val isLast = step == steps.last()
@@ -102,7 +103,7 @@ private fun StepContainer(viewModel: RepairRequestViewModel) {
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            RepairStepContent(viewModel)
+            RepairStepContent(viewModel, onOpenVendor)
             viewModel.stepError?.let { InlineErrorBanner(message = it) }
         }
 

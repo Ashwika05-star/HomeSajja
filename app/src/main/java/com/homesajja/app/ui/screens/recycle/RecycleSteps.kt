@@ -36,7 +36,7 @@ import com.homesajja.app.viewmodel.RecycleRequestViewModel
 import com.homesajja.app.viewmodel.RecycleStep
 
 @Composable
-internal fun RecycleStepContent(viewModel: RecycleRequestViewModel) {
+internal fun RecycleStepContent(viewModel: RecycleRequestViewModel, onOpenVendor: (String) -> Unit) {
     val form = viewModel.form
     when (viewModel.step) {
         RecycleStep.PHOTOS -> {
@@ -56,7 +56,7 @@ internal fun RecycleStepContent(viewModel: RecycleRequestViewModel) {
             ChoiceCard("Drop-off", "You take it to a recycler in your city", form.method == RecycleMethod.DROP_OFF) { viewModel.selectMethod(RecycleMethod.DROP_OFF) }
         }
         RecycleStep.DESTINATION ->
-            if (form.method == RecycleMethod.DROP_OFF) RecyclerStep(viewModel) else PickupLocationStep(form)
+            if (form.method == RecycleMethod.DROP_OFF) RecyclerStep(viewModel, onOpenVendor) else PickupLocationStep(form)
         RecycleStep.CONFIRM -> ConfirmStep(form)
     }
 }
@@ -109,7 +109,7 @@ private fun CityCard(city: String) {
 }
 
 @Composable
-private fun RecyclerStep(viewModel: RecycleRequestViewModel) {
+private fun RecyclerStep(viewModel: RecycleRequestViewModel, onOpenVendor: (String) -> Unit) {
     val form = viewModel.form
     StepTitle("Choose a recycler", "Recyclers in ${form.city.ifBlank { "your city" }} that accept drop-offs.")
     when (val recyclers = viewModel.recyclers) {
@@ -130,7 +130,7 @@ private fun RecyclerStep(viewModel: RecycleRequestViewModel) {
                 )
             }
             recyclers.items.forEach { recycler ->
-                RecyclerCard(recycler, selected = form.recycler?.uid == recycler.uid, onClick = { viewModel.selectRecycler(recycler) })
+                RecyclerCard(recycler, selected = form.recycler?.uid == recycler.uid, onClick = { viewModel.selectRecycler(recycler) }, onViewProfile = { onOpenVendor(recycler.uid) })
             }
         }
     }

@@ -30,3 +30,22 @@ fun FurnitureDimensions.displayText(): String? {
         .filter { it.second != null }
         .joinToString(" · ") { "${it.first} ${it.second}" } + " cm"
 }
+
+/** A short "how long ago" label for activity feeds, e.g. "just now", "5 min ago", "3 h ago", "2 d ago". */
+fun formatTimeAgo(timestamp: Long, now: Long = System.currentTimeMillis()): String {
+    val minutes = ((now - timestamp) / 60_000).coerceAtLeast(0)
+    return when {
+        minutes < 1 -> "just now"
+        minutes < 60 -> "$minutes min ago"
+        minutes < 24 * 60 -> "${minutes / 60} h ago"
+        else -> "${minutes / (24 * 60)} d ago"
+    }
+}
+
+/** "₹500 – ₹2,000", "From ₹500", "Up to ₹2,000", or null when no budget was given. */
+fun budgetLabel(min: Long?, max: Long?): String? = when {
+    min != null && max != null -> "${formatPrice(min)} – ${formatPrice(max)}"
+    min != null -> "From ${formatPrice(min)}"
+    max != null -> "Up to ${formatPrice(max)}"
+    else -> null
+}

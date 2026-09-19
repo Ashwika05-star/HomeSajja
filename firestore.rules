@@ -32,6 +32,11 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/vendors/$(uid));
     }
 
+    function isRecycler(uid) {
+      return vendorExists(uid)
+        && get(/databases/$(database)/documents/vendors/$(uid)).data.businessType == 'RECYCLER';
+    }
+
     function userExists(uid) {
       return exists(/databases/$(database)/documents/users/$(uid));
     }
@@ -45,10 +50,14 @@ service cloud.firestore {
       allow delete: if isSelf(uid);
     }
 
+    // `verified` is a placeholder badge: a vendor can never turn it on for themselves
+    // (an admin edits it in the console).
     match /vendors/{uid} {
       allow read: if isSignedIn();
-      allow create: if isSelf(uid) && incoming().uid == uid && !userExists(uid);
-      allow update: if isSelf(uid) && incoming().uid == uid;
+      allow create: if isSelf(uid) && incoming().uid == uid && !userExists(uid)
+        && incoming().get('verified', false) == false;
+      allow update: if isSelf(uid) && incoming().uid == uid
+        && incoming().get('verified', false) == existing().get('verified', false);
       allow delete: if isSelf(uid);
     }
 
@@ -167,8 +176,13 @@ service cloud.firestore {
     match /recyclingRequests/{requestId} {
       allow get: if isSignedIn()
         && (resource == null || (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.vendorId));
+      // A recycler may also list the unclaimed pickups in their own city.
       allow list: if isSignedIn()
-        && (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.vendorId);
+        && (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.vendorId
+            || (isRecycler(request.auth.uid)
+                && resource.data.vendorId == null
+                && resource.data.status == 'REQUESTED'
+                && resource.data.city == get(/databases/$(database)/documents/vendors/$(request.auth.uid)).data.city));
       allow create: if isSelf(incoming().userId)
         && userExists(incoming().userId)
         && incoming().status == 'REQUESTED'
@@ -176,11 +190,20 @@ service cloud.firestore {
             || (incoming().method == 'DROP_OFF'
                 && vendorExists(incoming().vendorId)
                 && get(/databases/$(database)/documents/vendors/$(incoming().vendorId)).data.businessType == 'RECYCLER'));
-      allow update: if changedKeys().hasOnly(['status', 'updatedAt'])
+      allow update: if (changedKeys().hasOnly(['status', 'updatedAt'])
         && ((isSelf(existing().vendorId) && recyclingVendorMove(existing().status, incoming().status))
             || (isSelf(existing().userId)
                 && existing().status in ['REQUESTED', 'ACCEPTED']
-                && incoming().status == 'CANCELLED'));
+                && incoming().status == 'CANCELLED')))
+        // A recycler in the same city claims an unassigned pickup and accepts it in the same write.
+        || (existing().vendorId == null
+            && existing().method == 'PICKUP'
+            && existing().status == 'REQUESTED'
+            && isRecycler(request.auth.uid)
+            && existing().city == get(/databases/$(database)/documents/vendors/$(request.auth.uid)).data.city
+            && changedKeys().hasOnly(['vendorId', 'vendorName', 'status', 'updatedAt'])
+            && incoming().vendorId == request.auth.uid
+            && incoming().status == 'ACCEPTED');
       allow delete: if isSelf(existing().userId) && existing().status == 'REQUESTED';
     }
 
@@ -193,6 +216,27 @@ service cloud.firestore {
         && incoming().status == 'OPEN';
       allow update: if isSelf(existing().vendorId) && incoming().vendorId == existing().vendorId;
       allow delete: if isSelf(existing().vendorId);
+
+      // Offers of furniture against a request. The doc id is the offerer's uid (one offer each).
+      // The vendor reads all of them and accepts/declines; an offerer sees and can withdraw their own.
+      match /offers/{offererId} {
+        allow get: if isSignedIn()
+          && (resource == null || request.auth.uid == offererId
+              || request.auth.uid == get(/databases/$(database)/documents/materialRequests/$(requestId)).data.vendorId);
+        allow list: if isSignedIn()
+          && request.auth.uid == get(/databases/$(database)/documents/materialRequests/$(requestId)).data.vendorId;
+        allow create: if isSelf(offererId)
+          && incoming().offererId == offererId
+          && incoming().status == 'PENDING'
+          && userExists(offererId)
+          && get(/databases/$(database)/documents/materialRequests/$(requestId)).data.status == 'OPEN'
+          && get(/databases/$(database)/documents/listings/$(incoming().listingId)).data.ownerId == offererId;
+        allow update: if changedKeys().hasOnly(['status', 'updatedAt'])
+          && existing().status == 'PENDING'
+          && incoming().status in ['ACCEPTED', 'DECLINED']
+          && isSelf(get(/databases/$(database)/documents/materialRequests/$(requestId)).data.vendorId);
+        allow delete: if isSelf(offererId) && existing().status == 'PENDING';
+      }
     }
 
     // ---------- chat ----------

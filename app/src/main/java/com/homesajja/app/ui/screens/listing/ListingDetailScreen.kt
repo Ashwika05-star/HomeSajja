@@ -2,6 +2,7 @@ package com.homesajja.app.ui.screens.listing
 
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -82,6 +83,7 @@ fun ListingDetailScreen(
     onBackClick: () -> Unit,
     onEditListing: (String) -> Unit,
     onProposeExchange: (String) -> Unit,
+    onOpenVendor: (String) -> Unit,
 ) {
     val viewModel: ListingDetailViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -105,7 +107,7 @@ fun ListingDetailScreen(
             when (val current = state) {
                 ListingDetailUiState.Loading -> LoadingState()
                 is ListingDetailUiState.Error -> ErrorState(message = current.message, onRetry = viewModel::load)
-                is ListingDetailUiState.Content -> DetailContent(current, onEditListing)
+                is ListingDetailUiState.Content -> DetailContent(current, onEditListing, onOpenVendor)
             }
         }
     }
@@ -113,7 +115,7 @@ fun ListingDetailScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DetailContent(content: ListingDetailUiState.Content, onEditListing: (String) -> Unit) {
+private fun DetailContent(content: ListingDetailUiState.Content, onEditListing: (String) -> Unit, onOpenVendor: (String) -> Unit) {
     val listing = content.listing
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         ImageCarousel(images = listing.images)
@@ -155,7 +157,9 @@ private fun DetailContent(content: ListingDetailUiState.Content, onEditListing: 
 
             Section("Details") { DetailsTable(listing) }
 
-            Section("Seller") { SellerCard(listing) }
+            Section("Seller") {
+                SellerCard(listing, onOpenVendor = if (listing.sellerType == SellerType.VENDOR) ({ onOpenVendor(listing.ownerId) }) else null)
+            }
         }
     }
 }
@@ -201,11 +205,11 @@ private fun DetailsTable(listing: FurnitureListing) {
 }
 
 @Composable
-private fun SellerCard(listing: FurnitureListing) {
+private fun SellerCard(listing: FurnitureListing, onOpenVendor: (() -> Unit)?) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().then(if (onOpenVendor != null) Modifier.clickable(onClick = onOpenVendor) else Modifier),
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(

@@ -41,6 +41,7 @@ import com.homesajja.app.viewmodel.RecycleSendState
 fun RecycleRequestScreen(
     onExit: () -> Unit,
     onSent: (requestId: String) -> Unit,
+    onOpenVendor: (String) -> Unit,
 ) {
     val viewModel: RecycleRequestViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val ready = viewModel.screenState is RecycleScreenState.Ready
@@ -66,7 +67,7 @@ fun RecycleRequestScreen(
             when (val screen = viewModel.screenState) {
                 RecycleScreenState.Loading -> LoadingState()
                 is RecycleScreenState.Error -> ErrorState(message = screen.message, onRetry = viewModel::load)
-                RecycleScreenState.Ready -> StepContainer(viewModel)
+                RecycleScreenState.Ready -> StepContainer(viewModel, onOpenVendor)
             }
         }
     }
@@ -75,7 +76,7 @@ fun RecycleRequestScreen(
 }
 
 @Composable
-private fun StepContainer(viewModel: RecycleRequestViewModel) {
+private fun StepContainer(viewModel: RecycleRequestViewModel, onOpenVendor: (String) -> Unit) {
     val step = viewModel.step
     val steps = RecycleStep.entries
     val isLast = step == steps.last()
@@ -102,7 +103,7 @@ private fun StepContainer(viewModel: RecycleRequestViewModel) {
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            RecycleStepContent(viewModel)
+            RecycleStepContent(viewModel, onOpenVendor)
             viewModel.stepError?.let { InlineErrorBanner(message = it) }
         }
 

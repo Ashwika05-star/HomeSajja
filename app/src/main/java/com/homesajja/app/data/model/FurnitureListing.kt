@@ -5,20 +5,22 @@ enum class ListingActionType(val displayName: String) {
     EXCHANGE("For exchange"),
 }
 
-/** ACTIVE -> RESERVED -> SOLD / EXCHANGED; the owner can also set REMOVED. */
+/** ACTIVE -> RESERVED -> SOLD / EXCHANGED; the owner can also set REMOVED, or UNAVAILABLE to hide
+ * an item from browsing for a while (vendors toggle this from their listing management). */
 enum class ListingStatus(val displayName: String) {
     ACTIVE("Active"),
     RESERVED("Reserved"),
     SOLD("Sold"),
     EXCHANGED("Exchanged"),
     REMOVED("Removed"),
+    UNAVAILABLE("Unavailable"),
 }
 
-/** Who is selling: a person, or a vendor account. There is no verification step
- * yet, so every vendor account counts as verified. */
+/** Who is selling: a person, or a vendor account. This is the listing's "owner type";
+ * whether a vendor is verified lives on their [VendorProfile]. */
 enum class SellerType(val displayName: String) {
     INDIVIDUAL("Individual"),
-    VENDOR("Verified Vendor"),
+    VENDOR("Vendor"),
 }
 
 /** Centimetres; any side the seller didn't fill in stays null. */

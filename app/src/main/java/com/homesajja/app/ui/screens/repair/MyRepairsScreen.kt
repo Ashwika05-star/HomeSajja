@@ -41,7 +41,7 @@ fun MyRepairsScreen(
     RepairList(viewModel, viewerIsVendor = false, onOpenRequest = onOpenRequest, onRequestRepair = onRequestRepair, modifier = modifier)
 }
 
-/** TEMPORARY (until the Phase 8 vendor dashboard): the repair requests addressed to this vendor. */
+/** The repair requests addressed to this vendor. */
 @Composable
 fun VendorRepairsList(onOpenRequest: (String) -> Unit, modifier: Modifier = Modifier) {
     val viewModel: VendorRepairsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))

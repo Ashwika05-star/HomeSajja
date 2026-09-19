@@ -35,6 +35,9 @@ class ImageRepository(
     suspend fun uploadRecyclingImage(ownerId: String, requestId: String, image: Uri): String =
         upload("recycling/$ownerId/$requestId", image)
 
+    suspend fun uploadVendorImage(vendorId: String, image: Uri): String =
+        upload("vendors/$vendorId", image)
+
     /** Downsizes the picked image, uploads it into [folder] and returns its HTTPS URL. */
     private suspend fun upload(folder: String, image: Uri): String =
         withContext(Dispatchers.IO) {

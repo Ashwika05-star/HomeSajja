@@ -36,10 +36,13 @@ fun ExchangeRequestsScreen(
     onOpenRequest: (String) -> Unit,
     onNewExchange: () -> Unit,
     modifier: Modifier = Modifier,
+    incomingOnly: Boolean = false,
 ) {
     val viewModel: ExchangeRequestsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var chosenTab by rememberSaveable { mutableIntStateOf(0) }
+    // Vendors answer exchange offers made on their items; they don't start exchanges from this screen.
+    val selectedTab = if (incomingOnly) 0 else chosenTab
 
     // Coming back from a request or the proposal flow: pick up changes quietly.
     // Coming back from another screen (detail, sell, exchange...): reload if the data is old.
@@ -50,17 +53,19 @@ fun ExchangeRequestsScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
         val content = state as? ExchangeRequestsUiState.Content
-        TabRow(selectedTabIndex = selectedTab, containerColor = MaterialTheme.colorScheme.background) {
-            Tab(
-                selected = selectedTab == 0,
-                onClick = { selectedTab = 0 },
-                text = { Text("Incoming${content?.let { " (${it.incoming.size})" }.orEmpty()}") },
-            )
-            Tab(
-                selected = selectedTab == 1,
-                onClick = { selectedTab = 1 },
-                text = { Text("Outgoing${content?.let { " (${it.outgoing.size})" }.orEmpty()}") },
-            )
+        if (!incomingOnly) {
+            TabRow(selectedTabIndex = selectedTab, containerColor = MaterialTheme.colorScheme.background) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { chosenTab = 0 },
+                    text = { Text("Incoming${content?.let { " (${it.incoming.size})" }.orEmpty()}") },
+                )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { chosenTab = 1 },
+                    text = { Text("Outgoing${content?.let { " (${it.outgoing.size})" }.orEmpty()}") },
+                )
+            }
         }
 
         when (val current = state) {

@@ -38,6 +38,29 @@ class RecyclingRepository(firestore: FirebaseFirestore) {
             .limit(limit.toLong())
             .getAllAs()
 
+    /** Pickup requests in [city] that no recycler has claimed yet. Sorted newest first here, not in the query, to avoid an index. */
+    suspend fun getOpenPickups(city: String, limit: Int = DEFAULT_PAGE_SIZE): List<RecyclingRequest> =
+        requests.whereEqualTo("city", city)
+            .whereEqualTo("vendorId", null)
+            .whereEqualTo("status", RecyclingStatus.REQUESTED.name)
+            .limit(limit.toLong())
+            .getAllAs<RecyclingRequest>()
+            .sortedByDescending { it.createdAt }
+
+    /** A recycler takes an unassigned pickup: it becomes theirs and moves straight to ACCEPTED. */
+    suspend fun claimPickup(id: String, vendorId: String, vendorName: String) {
+        requests.document(id)
+            .update(
+                mapOf(
+                    "vendorId" to vendorId,
+                    "vendorName" to vendorName,
+                    "status" to RecyclingStatus.ACCEPTED.name,
+                    "updatedAt" to System.currentTimeMillis(),
+                ),
+            )
+            .await()
+    }
+
     suspend fun updateStatus(id: String, status: RecyclingStatus) {
         requests.document(id)
             .update(mapOf("status" to status.name, "updatedAt" to System.currentTimeMillis()))

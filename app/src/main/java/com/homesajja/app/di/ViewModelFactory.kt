@@ -15,14 +15,23 @@ import com.homesajja.app.viewmodel.ListingDetailViewModel
 import com.homesajja.app.viewmodel.LoginViewModel
 import com.homesajja.app.viewmodel.MyListingsViewModel
 import com.homesajja.app.viewmodel.MyRequestsViewModel
+import com.homesajja.app.viewmodel.MaterialBoardViewModel
+import com.homesajja.app.viewmodel.MaterialRequestDetailViewModel
+import com.homesajja.app.viewmodel.MaterialRequestFormViewModel
 import com.homesajja.app.viewmodel.MyRecyclingViewModel
+import com.homesajja.app.viewmodel.OpenPickupsViewModel
 import com.homesajja.app.viewmodel.MyRepairsViewModel
 import com.homesajja.app.viewmodel.RecycleDetailViewModel
 import com.homesajja.app.viewmodel.RecycleRequestViewModel
 import com.homesajja.app.viewmodel.RepairDetailViewModel
 import com.homesajja.app.viewmodel.RepairRequestViewModel
 import com.homesajja.app.viewmodel.SellViewModel
+import com.homesajja.app.viewmodel.VendorDashboardViewModel
+import com.homesajja.app.viewmodel.VendorMaterialsViewModel
+import com.homesajja.app.viewmodel.VendorProfileEditViewModel
+import com.homesajja.app.viewmodel.VendorPublicProfileViewModel
 import com.homesajja.app.viewmodel.VendorRecyclingViewModel
+import com.homesajja.app.viewmodel.VendorRequestsViewModel
 import com.homesajja.app.viewmodel.VendorRepairsViewModel
 import com.homesajja.app.viewmodel.SignupViewModel
 import com.homesajja.app.viewmodel.SplashViewModel
@@ -77,6 +86,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 handle,
                 container.authRepository,
                 container.userRepository,
+                container.vendorRepository,
                 container.sessionRepository,
                 container.listingRepository,
                 container.imageRepository,
@@ -151,6 +161,54 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 handle,
                 container.authRepository,
                 container.recyclingRepository,
+            )
+            VendorDashboardViewModel::class.java -> VendorDashboardViewModel(
+                container.authRepository,
+                container.vendorRepository,
+                container.listingRepository,
+                container.vendorInboxRepository,
+            )
+            VendorRequestsViewModel::class.java -> VendorRequestsViewModel(
+                container.authRepository,
+                container.vendorRepository,
+            )
+            OpenPickupsViewModel::class.java -> OpenPickupsViewModel(
+                container.authRepository,
+                container.vendorRepository,
+                container.recyclingRepository,
+            )
+            VendorProfileEditViewModel::class.java -> VendorProfileEditViewModel(
+                container.authRepository,
+                container.vendorRepository,
+                container.imageRepository,
+            )
+            VendorPublicProfileViewModel::class.java -> VendorPublicProfileViewModel(
+                handle,
+                container.authRepository,
+                container.vendorRepository,
+                container.listingRepository,
+            )
+            MaterialBoardViewModel::class.java -> MaterialBoardViewModel(
+                container.authRepository,
+                container.userRepository,
+                container.materialRequestRepository,
+            )
+            VendorMaterialsViewModel::class.java -> VendorMaterialsViewModel(
+                container.authRepository,
+                container.userRepository,
+                container.materialRequestRepository,
+            )
+            MaterialRequestFormViewModel::class.java -> MaterialRequestFormViewModel(
+                handle,
+                container.authRepository,
+                container.vendorRepository,
+                container.materialRequestRepository,
+            )
+            MaterialRequestDetailViewModel::class.java -> MaterialRequestDetailViewModel(
+                handle,
+                container.authRepository,
+                container.materialRequestRepository,
+                container.listingRepository,
             )
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }

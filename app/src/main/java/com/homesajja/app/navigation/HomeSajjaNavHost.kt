@@ -1,6 +1,11 @@
 package com.homesajja.app.navigation
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import com.homesajja.app.ui.components.AppTopBar
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -14,6 +19,10 @@ import com.homesajja.app.ui.screens.LoginScreen
 import com.homesajja.app.ui.screens.exchange.ExchangeDetailScreen
 import com.homesajja.app.ui.screens.exchange.ExchangeProposalScreen
 import com.homesajja.app.ui.screens.listing.ListingDetailScreen
+import com.homesajja.app.ui.screens.material.MaterialRequestDetailScreen
+import com.homesajja.app.ui.screens.material.MaterialRequestFormScreen
+import com.homesajja.app.ui.screens.vendor.VendorProfileEditScreen
+import com.homesajja.app.ui.screens.vendor.VendorPublicProfileScreen
 import com.homesajja.app.ui.screens.recycle.RecycleDetailScreen
 import com.homesajja.app.ui.screens.recycle.RecycleRequestScreen
 import com.homesajja.app.ui.screens.repair.RepairDetailScreen
@@ -93,6 +102,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onOpenRepair = { navController.navigate(Routes.RepairDetail.createRoute(it)) },
                 onRecycle = { navController.navigate(Routes.RecycleNew.route) },
                 onOpenRecycling = { navController.navigate(Routes.RecycleDetail.createRoute(it)) },
+                onOpenMaterial = { navController.navigate(Routes.MaterialDetail.createRoute(it)) },
                 onLoggedOut = {
                     navController.navigate(Routes.Welcome.route) {
                         popUpTo(0) { inclusive = true }
@@ -108,6 +118,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onBackClick = { navController.popBackStack() },
                 onEditListing = { navController.navigate(Routes.Sell.createRoute(it)) },
                 onProposeExchange = { navController.navigate(Routes.ExchangeNew.createRoute(it)) },
+                onOpenVendor = { navController.navigate(Routes.VendorProfile.createRoute(it)) },
             )
         }
         composable(
@@ -149,6 +160,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                         popUpTo(Routes.UserHome.route)
                     }
                 },
+                onOpenVendor = { navController.navigate(Routes.VendorProfile.createRoute(it)) },
             )
         }
         composable(
@@ -166,6 +178,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                         popUpTo(Routes.UserHome.route)
                     }
                 },
+                onOpenVendor = { navController.navigate(Routes.VendorProfile.createRoute(it)) },
             )
         }
         composable(
@@ -189,20 +202,69 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onPublished = { listingId ->
                     // Replace the sell flow with the listing itself as confirmation.
                     navController.navigate(Routes.ListingDetail.createRoute(listingId)) {
-                        popUpTo(Routes.UserHome.route)
+                        popUpTo(Routes.Sell.route) { inclusive = true }
                     }
                 },
             )
         }
         composable(Routes.VendorHome.route) {
             VendorHomeScreen(
+                onOpenListing = { navController.navigate(Routes.ListingDetail.createRoute(it)) },
+                onAddListing = { navController.navigate(Routes.Sell.createRoute()) },
+                onEditListing = { navController.navigate(Routes.Sell.createRoute(it)) },
+                onOpenExchange = { navController.navigate(Routes.ExchangeDetail.createRoute(it)) },
                 onOpenRepair = { navController.navigate(Routes.RepairDetail.createRoute(it)) },
                 onOpenRecycling = { navController.navigate(Routes.RecycleDetail.createRoute(it)) },
+                onNewMaterialRequest = { navController.navigate(Routes.MaterialForm.createRoute()) },
+                onOpenMaterialRequest = { navController.navigate(Routes.MaterialDetail.createRoute(it)) },
+                onEditProfile = { navController.navigate(Routes.VendorProfileEdit.route) },
                 onLoggedOut = {
                     navController.navigate(Routes.Welcome.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
+            )
+        }
+        composable(Routes.VendorProfileEdit.route) {
+            VendorProfileEditScreen(onBackClick = { navController.popBackStack() })
+        }
+        composable(
+            route = Routes.VendorProfile.route,
+            arguments = listOf(navArgument("vendorId") { type = NavType.StringType }),
+        ) {
+            Scaffold(
+                topBar = { AppTopBar(title = "Vendor", onBackClick = { navController.popBackStack() }) },
+                containerColor = MaterialTheme.colorScheme.background,
+            ) { padding ->
+                VendorPublicProfileScreen(
+                    onOpenListing = { navController.navigate(Routes.ListingDetail.createRoute(it)) },
+                    modifier = Modifier.padding(padding),
+                )
+            }
+        }
+        composable(
+            route = Routes.MaterialForm.route,
+            arguments = listOf(
+                navArgument("requestId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) {
+            MaterialRequestFormScreen(
+                onExit = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.MaterialDetail.route,
+            arguments = listOf(navArgument("requestId") { type = NavType.StringType }),
+        ) {
+            MaterialRequestDetailScreen(
+                onBackClick = { navController.popBackStack() },
+                onEdit = { navController.navigate(Routes.MaterialForm.createRoute(it)) },
+                onOpenVendor = { navController.navigate(Routes.VendorProfile.createRoute(it)) },
             )
         }
 

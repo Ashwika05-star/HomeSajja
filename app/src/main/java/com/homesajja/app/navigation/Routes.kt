@@ -35,6 +35,22 @@ sealed class Routes(val route: String) {
         fun createRoute(requestId: String) = "recycling/$requestId"
     }
 
+    /** A vendor's public page. */
+    data object VendorProfile : Routes("vendor/{vendorId}") {
+        fun createRoute(vendorId: String) = "vendor/$vendorId"
+    }
+
+    data object VendorProfileEdit : Routes("vendor_profile_edit")
+
+    /** Post a material request; with a requestId it edits that request instead. */
+    data object MaterialForm : Routes("material_form?requestId={requestId}") {
+        fun createRoute(requestId: String? = null) = if (requestId == null) "material_form" else "material_form?requestId=$requestId"
+    }
+
+    data object MaterialDetail : Routes("material/{requestId}") {
+        fun createRoute(requestId: String) = "material/$requestId"
+    }
+
     /** Sell flow; with a listingId it edits that listing instead. */
     data object Sell : Routes("sell?listingId={listingId}") {
         fun createRoute(listingId: String? = null) = if (listingId == null) "sell" else "sell?listingId=$listingId"

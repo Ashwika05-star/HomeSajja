@@ -59,6 +59,7 @@ fun UserHomeScreen(
     onOpenRepair: (String) -> Unit,
     onRecycle: () -> Unit,
     onOpenRecycling: (String) -> Unit,
+    onOpenMaterial: (String) -> Unit,
     onLoggedOut: () -> Unit,
 ) {
     val homeViewModel: HomeViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
@@ -108,7 +109,7 @@ fun UserHomeScreen(
                     text = { Text("New exchange") },
                 )
                 HomeTab.MY_REQUESTS -> Unit
-                HomeTab.SERVICES -> {
+                HomeTab.SERVICES -> if (servicesSection != ServicesSection.MATERIALS) {
                     val isRepair = servicesSection == ServicesSection.REPAIR
                     ExtendedFloatingActionButton(
                         onClick = if (isRepair) onRequestRepair else onRecycle,
@@ -151,6 +152,7 @@ fun UserHomeScreen(
                 onRequestRepair = onRequestRepair,
                 onOpenRecycling = onOpenRecycling,
                 onRecycle = onRecycle,
+                onOpenMaterial = onOpenMaterial,
                 modifier = contentModifier,
             )
         }

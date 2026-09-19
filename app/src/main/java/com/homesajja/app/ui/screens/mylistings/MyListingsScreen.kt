@@ -62,6 +62,7 @@ fun MyListingsScreen(
     onEditListing: (String) -> Unit,
     onSell: () -> Unit,
     modifier: Modifier = Modifier,
+    allowAvailabilityToggle: Boolean = false,
 ) {
     val viewModel: MyListingsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -127,6 +128,11 @@ fun MyListingsScreen(
                                 onClick = { onOpenListing(listing.id) },
                                 onEdit = { onEditListing(listing.id) },
                                 onMarkSold = { viewModel.markAsSold(listing) },
+                                onToggleAvailability = if (allowAvailabilityToggle) {
+                                    { viewModel.toggleAvailability(listing) }
+                                } else {
+                                    null
+                                },
                                 onDelete = { pendingDelete = listing },
                             )
                         }
@@ -159,9 +165,11 @@ private fun MyListingCard(
     onClick: () -> Unit,
     onEdit: () -> Unit,
     onMarkSold: () -> Unit,
+    onToggleAvailability: (() -> Unit)?,
     onDelete: () -> Unit,
 ) {
-    val isOpen = listing.status == ListingStatus.ACTIVE || listing.status == ListingStatus.RESERVED
+    val isOpen = listing.status in setOf(ListingStatus.ACTIVE, ListingStatus.RESERVED, ListingStatus.UNAVAILABLE)
+    val canToggle = onToggleAvailability != null && listing.status in setOf(ListingStatus.ACTIVE, ListingStatus.UNAVAILABLE)
 
     Card(
         onClick = onClick,
@@ -201,7 +209,14 @@ private fun MyListingCard(
             ) {
                 if (isOpen) {
                     TextButton(onClick = onEdit, enabled = !busy) { Text("Edit") }
-                    TextButton(onClick = onMarkSold, enabled = !busy) { Text("Mark as sold") }
+                    if (canToggle) {
+                        TextButton(onClick = { onToggleAvailability?.invoke() }, enabled = !busy) {
+                            Text(if (listing.status == ListingStatus.ACTIVE) "Mark unavailable" else "Mark available")
+                        }
+                    }
+                    if (listing.status != ListingStatus.UNAVAILABLE) {
+                        TextButton(onClick = onMarkSold, enabled = !busy) { Text("Mark as sold") }
+                    }
                 }
                 TextButton(onClick = onDelete, enabled = !busy) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)

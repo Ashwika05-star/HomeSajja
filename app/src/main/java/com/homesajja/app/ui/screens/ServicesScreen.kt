@@ -8,16 +8,18 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.homesajja.app.ui.screens.material.MaterialBoardScreen
 import com.homesajja.app.ui.screens.recycle.MyRecyclingScreen
 import com.homesajja.app.ui.screens.repair.MyRepairsScreen
 
-/** The two service sections a user can switch between. Repair and Recycle stay separate systems; this only groups their lists. */
+/** The two service sections a user can switch between. Repair, Recycle and material requests stay separate systems; this only groups their screens. */
 enum class ServicesSection(val label: String) {
     REPAIR("Repair"),
     RECYCLE("Recycle"),
+    MATERIALS("Materials"),
 }
 
-/** The Services tab: the user's repair requests and recycling requests, one section at a time. */
+/** The Services tab: the user's repair and recycling requests, plus the material requests vendors in their city have posted. */
 @Composable
 fun ServicesScreen(
     section: ServicesSection,
@@ -26,6 +28,7 @@ fun ServicesScreen(
     onRequestRepair: () -> Unit,
     onOpenRecycling: (String) -> Unit,
     onRecycle: () -> Unit,
+    onOpenMaterial: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -37,6 +40,7 @@ fun ServicesScreen(
         when (section) {
             ServicesSection.REPAIR -> MyRepairsScreen(onOpenRequest = onOpenRepair, onRequestRepair = onRequestRepair)
             ServicesSection.RECYCLE -> MyRecyclingScreen(onOpenRequest = onOpenRecycling, onRecycle = onRecycle)
+            ServicesSection.MATERIALS -> MaterialBoardScreen(onOpenRequest = onOpenMaterial)
         }
     }
 }

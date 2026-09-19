@@ -42,7 +42,7 @@ import com.homesajja.app.viewmodel.RepairRequestViewModel
 import com.homesajja.app.viewmodel.RepairStep
 
 @Composable
-internal fun RepairStepContent(viewModel: RepairRequestViewModel) {
+internal fun RepairStepContent(viewModel: RepairRequestViewModel, onOpenVendor: (String) -> Unit) {
     val form = viewModel.form
     when (viewModel.step) {
         RepairStep.FURNITURE -> FurnitureStep(viewModel)
@@ -72,7 +72,7 @@ internal fun RepairStepContent(viewModel: RepairRequestViewModel) {
             )
         }
         RepairStep.LOCATION -> LocationStep(form)
-        RepairStep.PROVIDER -> ProviderStep(viewModel)
+        RepairStep.PROVIDER -> ProviderStep(viewModel, onOpenVendor)
     }
 }
 
@@ -191,7 +191,7 @@ private fun LocationStep(form: RepairForm) {
 }
 
 @Composable
-private fun ProviderStep(viewModel: RepairRequestViewModel) {
+private fun ProviderStep(viewModel: RepairRequestViewModel, onOpenVendor: (String) -> Unit) {
     val form = viewModel.form
     StepTitle("Choose a repair provider", "Your request goes to the provider you pick.")
     when (val providers = viewModel.providers) {
@@ -209,7 +209,7 @@ private fun ProviderStep(viewModel: RepairRequestViewModel) {
                 )
             }
             providers.items.forEach { provider ->
-                ProviderCard(provider, selected = form.provider?.uid == provider.uid, onClick = { viewModel.selectProvider(provider) })
+                ProviderCard(provider, selected = form.provider?.uid == provider.uid, onClick = { viewModel.selectProvider(provider) }, onViewProfile = { onOpenVendor(provider.uid) })
             }
         }
     }

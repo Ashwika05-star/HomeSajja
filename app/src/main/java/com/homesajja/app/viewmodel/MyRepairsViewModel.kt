@@ -98,7 +98,7 @@ open class MyRepairsViewModel(
     }
 }
 
-/** TEMPORARY (until the Phase 8 vendor dashboard): the repair requests addressed to a vendor. */
+/** The repair requests addressed to a vendor. */
 class VendorRepairsViewModel(
     authRepository: AuthRepository,
     repairRepository: RepairRepository,

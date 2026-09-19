@@ -20,14 +20,14 @@ sealed interface MyListingsUiState {
     data object Loading : MyListingsUiState
     data class Error(val message: String) : MyListingsUiState
 
-    /** [active] = for sale or reserved; [closed] = sold, exchanged or removed. */
+    /** [active] = for sale, reserved or temporarily unavailable; [closed] = sold, exchanged or removed. */
     data class Content(
         val active: List<FurnitureListing>,
         val closed: List<FurnitureListing>,
     ) : MyListingsUiState
 }
 
-private val ACTIVE_STATUSES = setOf(ListingStatus.ACTIVE, ListingStatus.RESERVED)
+private val ACTIVE_STATUSES = setOf(ListingStatus.ACTIVE, ListingStatus.RESERVED, ListingStatus.UNAVAILABLE)
 
 class MyListingsViewModel(
     private val authRepository: AuthRepository,
@@ -63,6 +63,15 @@ class MyListingsViewModel(
     fun markAsSold(listing: FurnitureListing) = runAction(listing, "Couldn't mark it as sold.") {
         listingRepository.updateListingStatus(listing.id, ListingStatus.SOLD)
         _messages.tryEmit("Marked \"${listing.title}\" as sold.")
+    }
+
+    /** Vendors hide an item from browsing (ACTIVE -> UNAVAILABLE) and bring it back again. */
+    fun toggleAvailability(listing: FurnitureListing) {
+        val target = if (listing.status == ListingStatus.ACTIVE) ListingStatus.UNAVAILABLE else ListingStatus.ACTIVE
+        runAction(listing, "Couldn't update the listing.") {
+            listingRepository.updateListingStatus(listing.id, target)
+            _messages.tryEmit(if (target == ListingStatus.ACTIVE) "\"${listing.title}\" is available again." else "\"${listing.title}\" is now unavailable.")
+        }
     }
 
     fun delete(listing: FurnitureListing) = runAction(listing, "Couldn't delete the listing.") {

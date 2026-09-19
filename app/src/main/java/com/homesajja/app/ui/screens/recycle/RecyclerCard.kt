@@ -14,6 +14,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +27,7 @@ fun RecyclerCard(
     recycler: VendorProfile,
     selected: Boolean,
     onClick: () -> Unit,
+    onViewProfile: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val primary = MaterialTheme.colorScheme.primary
@@ -45,6 +47,7 @@ fun RecyclerCard(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                TextButton(onClick = onViewProfile) { Text("View profile") }
             }
             if (selected) Icon(Icons.Filled.CheckCircle, contentDescription = "Selected", tint = primary)
         }

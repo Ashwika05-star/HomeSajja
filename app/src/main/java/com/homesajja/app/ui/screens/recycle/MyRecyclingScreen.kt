@@ -41,7 +41,7 @@ fun MyRecyclingScreen(
     RecycleList(viewModel, viewerIsRecycler = false, onOpenRequest = onOpenRequest, onRecycle = onRecycle, modifier = modifier)
 }
 
-/** TEMPORARY (until the Phase 8 vendor dashboard): the recycling requests addressed to this vendor. */
+/** The recycling requests addressed to this vendor. */
 @Composable
 fun VendorRecyclingList(onOpenRequest: (String) -> Unit, modifier: Modifier = Modifier) {
     val viewModel: VendorRecyclingViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))

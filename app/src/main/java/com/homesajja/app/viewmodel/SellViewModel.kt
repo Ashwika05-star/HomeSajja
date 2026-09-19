@@ -16,6 +16,7 @@ import com.homesajja.app.repository.ListingRepository
 import com.homesajja.app.repository.SessionRepository
 import com.homesajja.app.repository.ImageRepository
 import com.homesajja.app.repository.UserRepository
+import com.homesajja.app.repository.VendorRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -42,6 +43,7 @@ class SellViewModel(
     savedStateHandle: SavedStateHandle,
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
+    private val vendorRepository: VendorRepository,
     private val sessionRepository: SessionRepository,
     private val listingRepository: ListingRepository,
     private val imageRepository: ImageRepository,
@@ -63,6 +65,9 @@ class SellViewModel(
 
     private var editingListing: FurnitureListing? = null
 
+    /** Shown as the seller name on a vendor's listings; null for individuals. */
+    private var vendorShopName: String? = null
+
     init {
         load()
     }
@@ -77,8 +82,11 @@ class SellViewModel(
                     return@launch
                 }
                 if (editingListingId == null) {
-                    val city = userRepository.getUserProfile(uid)?.city.orEmpty()
-                    form = form.copy(city = city)
+                    // A person's city comes from their user profile; a vendor's from their shop profile.
+                    val user = userRepository.getUserProfile(uid)
+                    val vendor = if (user == null) vendorRepository.getVendorProfile(uid) else null
+                    vendorShopName = vendor?.businessName?.ifBlank { vendor.name }
+                    form = form.copy(city = user?.city ?: vendor?.city.orEmpty())
                 } else {
                     val listing = listingRepository.getListing(editingListingId)
                     if (listing == null || listing.ownerId != uid) {
@@ -175,7 +183,7 @@ class SellViewModel(
         role: UserRole?,
     ): FurnitureListing {
         val base = editing ?: FurnitureListing(
-            ownerName = authRepository.currentUserDisplayName ?: authRepository.currentUserEmail ?: "Seller",
+            ownerName = vendorShopName ?: authRepository.currentUserDisplayName ?: authRepository.currentUserEmail ?: "Seller",
             sellerType = if (role == UserRole.VENDOR) SellerType.VENDOR else SellerType.INDIVIDUAL,
         )
         return base.copy(
