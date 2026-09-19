@@ -9,6 +9,9 @@ enum class VendorBusinessType(val displayName: String) {
 
     companion object {
         /** Vendors who can take a repair job: repair professionals, and carpenters who also repair. */
+        /** Vendors who accept furniture for recycling. */
+        val RECYCLERS = listOf(RECYCLER)
+
         val REPAIR_PROVIDERS = listOf(REPAIR_PROFESSIONAL, CARPENTER)
 
         fun fromNameOrNull(name: String): VendorBusinessType? =

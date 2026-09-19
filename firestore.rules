@@ -155,6 +155,15 @@ service cloud.firestore {
       allow delete: if isSelf(existing().userId) && existing().status == 'REQUESTED';
     }
 
+    // A drop-off is addressed to the recycler the user chose; a pickup has no vendor yet.
+    // Pipeline: REQUESTED -> ACCEPTED/REJECTED -> SCHEDULED -> COMPLETED, all moved by the
+    // recycler; the user can only CANCEL, and only before it is scheduled.
+    function recyclingVendorMove(from, to) {
+      return (from == 'REQUESTED' && to in ['ACCEPTED', 'REJECTED'])
+        || (from == 'ACCEPTED' && to == 'SCHEDULED')
+        || (from == 'SCHEDULED' && to == 'COMPLETED');
+    }
+
     match /recyclingRequests/{requestId} {
       allow get: if isSignedIn()
         && (resource == null || (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.vendorId));
@@ -162,13 +171,16 @@ service cloud.firestore {
         && (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.vendorId);
       allow create: if isSelf(incoming().userId)
         && userExists(incoming().userId)
-        && vendorExists(incoming().vendorId)
-        && incoming().status == 'REQUESTED';
-      allow update: if (isSelf(existing().vendorId)
-            && changedKeys().hasOnly(['status', 'pickupDate', 'updatedAt']))
-        || (isSelf(existing().userId)
-            && changedKeys().hasOnly(['status', 'updatedAt'])
-            && incoming().status == 'CANCELLED');
+        && incoming().status == 'REQUESTED'
+        && ((incoming().method == 'PICKUP' && incoming().vendorId == null)
+            || (incoming().method == 'DROP_OFF'
+                && vendorExists(incoming().vendorId)
+                && get(/databases/$(database)/documents/vendors/$(incoming().vendorId)).data.businessType == 'RECYCLER'));
+      allow update: if changedKeys().hasOnly(['status', 'updatedAt'])
+        && ((isSelf(existing().vendorId) && recyclingVendorMove(existing().status, incoming().status))
+            || (isSelf(existing().userId)
+                && existing().status in ['REQUESTED', 'ACCEPTED']
+                && incoming().status == 'CANCELLED'));
       allow delete: if isSelf(existing().userId) && existing().status == 'REQUESTED';
     }
 

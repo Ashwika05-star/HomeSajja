@@ -36,7 +36,6 @@ import com.homesajja.app.ui.components.AppTopBar
 import com.homesajja.app.ui.screens.exchange.ExchangeRequestsScreen
 import com.homesajja.app.ui.screens.explore.ExploreScreen
 import com.homesajja.app.ui.screens.mylistings.MyListingsScreen
-import com.homesajja.app.ui.screens.repair.MyRepairsScreen
 import com.homesajja.app.ui.screens.requests.MyRequestsScreen
 import com.homesajja.app.viewmodel.HomeViewModel
 
@@ -45,7 +44,7 @@ private enum class HomeTab(val label: String, val icon: ImageVector) {
     EXCHANGE("Exchange", Icons.Filled.SwapHoriz),
     MY_LISTINGS("My listings", Icons.Filled.Sell),
     MY_REQUESTS("Requests", Icons.AutoMirrored.Filled.ReceiptLong),
-    REPAIR("Repair", Icons.Filled.Build),
+    SERVICES("Services", Icons.Filled.Build),
 }
 
 /** The user's space: Explore, My listings and Requests behind a bottom bar. Detail, sell and edit are separate full-screen routes. */
@@ -58,10 +57,13 @@ fun UserHomeScreen(
     onOpenExchange: (String) -> Unit,
     onRequestRepair: () -> Unit,
     onOpenRepair: (String) -> Unit,
+    onRecycle: () -> Unit,
+    onOpenRecycling: (String) -> Unit,
     onLoggedOut: () -> Unit,
 ) {
     val homeViewModel: HomeViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     var selectedTab by rememberSaveable { mutableStateOf(HomeTab.EXPLORE) }
+    var servicesSection by rememberSaveable { mutableStateOf(ServicesSection.REPAIR) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
@@ -106,14 +108,17 @@ fun UserHomeScreen(
                     text = { Text("New exchange") },
                 )
                 HomeTab.MY_REQUESTS -> Unit
-                HomeTab.REPAIR -> ExtendedFloatingActionButton(
-                    onClick = onRequestRepair,
-                    modifier = Modifier.semantics { contentDescription = "Request a repair" },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                    text = { Text("Request repair") },
-                )
+                HomeTab.SERVICES -> {
+                    val isRepair = servicesSection == ServicesSection.REPAIR
+                    ExtendedFloatingActionButton(
+                        onClick = if (isRepair) onRequestRepair else onRecycle,
+                        modifier = Modifier.semantics { contentDescription = if (isRepair) "Request a repair" else "Recycle furniture" },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                        text = { Text(if (isRepair) "Request repair" else "Recycle") },
+                    )
+                }
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -139,9 +144,13 @@ fun UserHomeScreen(
                 onOpenListing = onOpenListing,
                 modifier = contentModifier,
             )
-            HomeTab.REPAIR -> MyRepairsScreen(
-                onOpenRequest = onOpenRepair,
+            HomeTab.SERVICES -> ServicesScreen(
+                section = servicesSection,
+                onSectionChange = { servicesSection = it },
+                onOpenRepair = onOpenRepair,
                 onRequestRepair = onRequestRepair,
+                onOpenRecycling = onOpenRecycling,
+                onRecycle = onRecycle,
                 modifier = contentModifier,
             )
         }

@@ -29,6 +29,12 @@ sealed class Routes(val route: String) {
         fun createRoute(requestId: String) = "repair/$requestId"
     }
 
+    data object RecycleNew : Routes("recycle_new")
+
+    data object RecycleDetail : Routes("recycling/{requestId}") {
+        fun createRoute(requestId: String) = "recycling/$requestId"
+    }
+
     /** Sell flow; with a listingId it edits that listing instead. */
     data object Sell : Routes("sell?listingId={listingId}") {
         fun createRoute(listingId: String? = null) = if (listingId == null) "sell" else "sell?listingId=$listingId"

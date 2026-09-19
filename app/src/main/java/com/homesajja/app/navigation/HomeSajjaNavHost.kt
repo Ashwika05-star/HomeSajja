@@ -14,6 +14,8 @@ import com.homesajja.app.ui.screens.LoginScreen
 import com.homesajja.app.ui.screens.exchange.ExchangeDetailScreen
 import com.homesajja.app.ui.screens.exchange.ExchangeProposalScreen
 import com.homesajja.app.ui.screens.listing.ListingDetailScreen
+import com.homesajja.app.ui.screens.recycle.RecycleDetailScreen
+import com.homesajja.app.ui.screens.recycle.RecycleRequestScreen
 import com.homesajja.app.ui.screens.repair.RepairDetailScreen
 import com.homesajja.app.ui.screens.repair.RepairRequestScreen
 import com.homesajja.app.ui.screens.sell.SellFlowScreen
@@ -89,6 +91,8 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onOpenExchange = { navController.navigate(Routes.ExchangeDetail.createRoute(it)) },
                 onRequestRepair = { navController.navigate(Routes.RepairNew.route) },
                 onOpenRepair = { navController.navigate(Routes.RepairDetail.createRoute(it)) },
+                onRecycle = { navController.navigate(Routes.RecycleNew.route) },
+                onOpenRecycling = { navController.navigate(Routes.RecycleDetail.createRoute(it)) },
                 onLoggedOut = {
                     navController.navigate(Routes.Welcome.route) {
                         popUpTo(0) { inclusive = true }
@@ -153,6 +157,23 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
         ) {
             RepairDetailScreen(onBackClick = { navController.popBackStack() })
         }
+        composable(Routes.RecycleNew.route) {
+            RecycleRequestScreen(
+                onExit = { navController.popBackStack() },
+                onSent = { requestId ->
+                    // Replace the flow with the request itself as confirmation.
+                    navController.navigate(Routes.RecycleDetail.createRoute(requestId)) {
+                        popUpTo(Routes.UserHome.route)
+                    }
+                },
+            )
+        }
+        composable(
+            route = Routes.RecycleDetail.route,
+            arguments = listOf(navArgument("requestId") { type = NavType.StringType }),
+        ) {
+            RecycleDetailScreen(onBackClick = { navController.popBackStack() })
+        }
         composable(
             route = Routes.Sell.route,
             arguments = listOf(
@@ -176,6 +197,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
         composable(Routes.VendorHome.route) {
             VendorHomeScreen(
                 onOpenRepair = { navController.navigate(Routes.RepairDetail.createRoute(it)) },
+                onOpenRecycling = { navController.navigate(Routes.RecycleDetail.createRoute(it)) },
                 onLoggedOut = {
                     navController.navigate(Routes.Welcome.route) {
                         popUpTo(0) { inclusive = true }
