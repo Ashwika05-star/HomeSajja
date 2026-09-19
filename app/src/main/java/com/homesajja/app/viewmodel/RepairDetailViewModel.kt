@@ -5,7 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.homesajja.app.data.model.RepairRequest
 import com.homesajja.app.repository.AuthRepository
+import com.homesajja.app.repository.ChatRepository
+import com.homesajja.app.repository.NotificationSender
+import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.RepairRepository
+import com.homesajja.app.data.model.EntityType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +35,8 @@ class RepairDetailViewModel(
     savedStateHandle: SavedStateHandle,
     private val authRepository: AuthRepository,
     private val repairRepository: RepairRepository,
+    private val chatRepository: ChatRepository,
+    private val notificationSender: NotificationSender,
 ) : ViewModel() {
 
     private val requestId: String = checkNotNull(savedStateHandle["requestId"])
@@ -41,6 +47,10 @@ class RepairDetailViewModel(
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val messages: SharedFlow<String> = _messages
+
+    /** Emits a chat id once the thread with the other party exists, so the screen can open it. */
+    private val _openChat = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val openChat: SharedFlow<String> = _openChat
 
     init {
         load(showLoading = true)
@@ -56,6 +66,7 @@ class RepairDetailViewModel(
         viewModelScope.launch {
             try {
                 repairRepository.updateStatus(content.request.id, action.target)
+                myId?.let { notificationSender.send(NotificationTemplates.repairStatus(content.request, action.target, it)) }
                 _messages.tryEmit("Status updated to ${action.target.displayName}.")
             } catch (e: CancellationException) {
                 throw e
@@ -64,6 +75,28 @@ class RepairDetailViewModel(
             } finally {
                 // Show what is really stored now, whether the update worked or not.
                 load(showLoading = false)
+            }
+        }
+    }
+
+    /** Finds or creates the chat between the customer and the provider about this repair, then opens it. */
+    fun openChat() {
+        val content = _uiState.value as? RepairDetailUiState.Content ?: return
+        val request = content.request
+        viewModelScope.launch {
+            try {
+                val chat = chatRepository.getOrCreateChat(
+                    contextType = EntityType.REPAIR_REQUEST,
+                    contextId = request.id,
+                    contextTitle = "${request.furnitureTitle} · ${request.problemType.displayName}",
+                    participantNames = mapOf(request.userId to request.userName, request.vendorId to request.vendorName),
+                    contextImage = request.images.firstOrNull(),
+                )
+                _openChat.tryEmit(chat.id)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _messages.tryEmit(mapError(e, "Couldn't open the chat."))
             }
         }
     }

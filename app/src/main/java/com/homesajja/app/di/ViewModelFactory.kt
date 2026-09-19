@@ -5,7 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.createSavedStateHandle
+import com.homesajja.app.viewmodel.ChatListViewModel
+import com.homesajja.app.viewmodel.ChatThreadViewModel
 import com.homesajja.app.viewmodel.ExchangeBrowseViewModel
+import com.homesajja.app.viewmodel.InboxBadgeViewModel
+import com.homesajja.app.viewmodel.NotificationsViewModel
 import com.homesajja.app.viewmodel.ExchangeDetailViewModel
 import com.homesajja.app.viewmodel.ExchangeProposalViewModel
 import com.homesajja.app.viewmodel.ExchangeRequestsViewModel
@@ -68,6 +72,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
             HomeViewModel::class.java -> HomeViewModel(
                 container.authRepository,
                 container.sessionRepository,
+                container.deviceTokenRepository,
             )
             ExploreViewModel::class.java -> ExploreViewModel(
                 container.authRepository,
@@ -81,6 +86,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.favouriteRepository,
                 container.chatRepository,
                 container.purchaseRequestRepository,
+                container.notificationSender,
             )
             SellViewModel::class.java -> SellViewModel(
                 handle,
@@ -90,6 +96,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.sessionRepository,
                 container.listingRepository,
                 container.imageRepository,
+                container.notificationSender,
             )
             MyListingsViewModel::class.java -> MyListingsViewModel(
                 container.authRepository,
@@ -98,6 +105,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
             MyRequestsViewModel::class.java -> MyRequestsViewModel(
                 container.authRepository,
                 container.purchaseRequestRepository,
+                container.notificationSender,
             )
             ExchangeBrowseViewModel::class.java -> ExchangeBrowseViewModel(
                 container.authRepository,
@@ -109,6 +117,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.authRepository,
                 container.listingRepository,
                 container.exchangeRepository,
+                container.notificationSender,
             )
             ExchangeRequestsViewModel::class.java -> ExchangeRequestsViewModel(
                 container.authRepository,
@@ -120,6 +129,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.exchangeRepository,
                 container.listingRepository,
                 container.chatRepository,
+                container.notificationSender,
             )
             RepairRequestViewModel::class.java -> RepairRequestViewModel(
                 container.authRepository,
@@ -128,6 +138,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.vendorRepository,
                 container.repairRepository,
                 container.imageRepository,
+                container.notificationSender,
             )
             MyRepairsViewModel::class.java -> MyRepairsViewModel(
                 container.authRepository,
@@ -141,6 +152,8 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 handle,
                 container.authRepository,
                 container.repairRepository,
+                container.chatRepository,
+                container.notificationSender,
             )
             RecycleRequestViewModel::class.java -> RecycleRequestViewModel(
                 container.authRepository,
@@ -148,6 +161,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.vendorRepository,
                 container.recyclingRepository,
                 container.imageRepository,
+                container.notificationSender,
             )
             MyRecyclingViewModel::class.java -> MyRecyclingViewModel(
                 container.authRepository,
@@ -161,6 +175,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 handle,
                 container.authRepository,
                 container.recyclingRepository,
+                container.notificationSender,
             )
             VendorDashboardViewModel::class.java -> VendorDashboardViewModel(
                 container.authRepository,
@@ -176,6 +191,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.authRepository,
                 container.vendorRepository,
                 container.recyclingRepository,
+                container.notificationSender,
             )
             VendorProfileEditViewModel::class.java -> VendorProfileEditViewModel(
                 container.authRepository,
@@ -209,6 +225,26 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.authRepository,
                 container.materialRequestRepository,
                 container.listingRepository,
+                container.notificationSender,
+            )
+            ChatListViewModel::class.java -> ChatListViewModel(
+                container.authRepository,
+                container.chatRepository,
+            )
+            ChatThreadViewModel::class.java -> ChatThreadViewModel(
+                handle,
+                container.authRepository,
+                container.chatRepository,
+                container.notificationSender,
+            )
+            NotificationsViewModel::class.java -> NotificationsViewModel(
+                container.authRepository,
+                container.notificationRepository,
+            )
+            InboxBadgeViewModel::class.java -> InboxBadgeViewModel(
+                container.authRepository,
+                container.chatRepository,
+                container.notificationRepository,
             )
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }

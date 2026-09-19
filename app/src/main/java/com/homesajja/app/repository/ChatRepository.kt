@@ -25,6 +25,7 @@ class ChatRepository(private val firestore: FirebaseFirestore) {
         contextId: String,
         contextTitle: String,
         participantNames: Map<String, String>,
+        contextImage: String? = null,
     ): Chat {
         require(participantNames.size == 2) { "A chat has exactly two participants." }
         val (userA, userB) = participantNames.keys.toList()
@@ -39,6 +40,7 @@ class ChatRepository(private val firestore: FirebaseFirestore) {
             contextType = contextType,
             contextId = contextId,
             contextTitle = contextTitle,
+            contextImage = contextImage,
         )
         ref.set(chat).await()
         return chat
@@ -51,6 +53,11 @@ class ChatRepository(private val firestore: FirebaseFirestore) {
         chats.whereArrayContains("participantIds", userId)
             .orderBy("lastMessageAt", Query.Direction.DESCENDING)
             .observeAs()
+
+    /** Records that [userId] has seen everything in the chat up to now (clears its unread mark). */
+    suspend fun markRead(chatId: String, userId: String) {
+        chats.document(chatId).update("readAt.$userId", System.currentTimeMillis()).await()
+    }
 
     /** The most recent messages in a chat, oldest first. Emits on every new message. */
     fun observeMessages(chatId: String): Flow<List<Message>> =

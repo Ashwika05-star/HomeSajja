@@ -9,6 +9,8 @@ import com.homesajja.app.data.model.RecyclingRequest
 import com.homesajja.app.data.model.VendorBusinessType
 import com.homesajja.app.data.model.VendorProfile
 import com.homesajja.app.repository.AuthRepository
+import com.homesajja.app.repository.NotificationSender
+import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.RecyclingRepository
 import com.homesajja.app.repository.VendorRepository
 import kotlinx.coroutines.CancellationException
@@ -89,6 +91,7 @@ class OpenPickupsViewModel(
     private val authRepository: AuthRepository,
     private val vendorRepository: VendorRepository,
     private val recyclingRepository: RecyclingRepository,
+    private val notificationSender: NotificationSender,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<OpenPickupsUiState>(OpenPickupsUiState.Loading)
@@ -114,7 +117,9 @@ class OpenPickupsViewModel(
         busyId = request.id
         viewModelScope.launch {
             try {
-                recyclingRepository.claimPickup(request.id, me.uid, me.businessName.ifBlank { me.name })
+                val vendorName = me.businessName.ifBlank { me.name }
+                recyclingRepository.claimPickup(request.id, me.uid, vendorName)
+                notificationSender.send(NotificationTemplates.pickupClaimed(request, me.uid, vendorName))
                 _messages.tryEmit("Pickup claimed. Find it under My requests.")
             } catch (e: CancellationException) {
                 throw e

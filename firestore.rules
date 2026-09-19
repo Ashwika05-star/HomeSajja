@@ -247,10 +247,13 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.auth.uid in incoming().participantIds
         && incoming().participantIds.size() == 2;
-      // Participants can only refresh the last-message preview.
+      // Participants can refresh the last-message preview, and stamp their own "last read" time
+      // (and nobody else's).
       allow update: if isSignedIn()
         && request.auth.uid in existing().participantIds
-        && changedKeys().hasOnly(['lastMessage', 'lastMessageAt', 'lastMessageSenderId']);
+        && changedKeys().hasOnly(['lastMessage', 'lastMessageAt', 'lastMessageSenderId', 'readAt'])
+        && (!('readAt' in changedKeys())
+            || incoming().readAt.diff(existing().get('readAt', {})).affectedKeys().hasOnly([request.auth.uid]));
       allow delete: if false;
 
       match /messages/{messageId} {
@@ -261,22 +264,34 @@ service cloud.firestore {
         allow read: if isSignedIn() && request.auth.uid in chatParticipants();
         allow create: if isSignedIn()
           && request.auth.uid in chatParticipants()
-          && incoming().senderId == request.auth.uid;
+          && incoming().senderId == request.auth.uid
+          && incoming().text is string && incoming().text.size() <= 2000;
         allow update: if false;
         allow delete: if isSelf(existing().senderId);
       }
     }
 
     // ---------- notifications ----------
-    // Created from the client for now (senderId must be the caller); only the
-    // recipient can read, mark as seen, or delete.
+    // Created from the app (senderId must be the caller, and a notification for someone else
+    // starts unseen); only the recipient can read, mark as seen, or delete. The one notification
+    // you may send yourself is "listing published". Real hardening (only the server may create
+    // them) needs Cloud Functions, which the free plan doesn't have.
     match /notifications/{notificationId} {
       allow get: if isSignedIn()
         && (resource == null || resource.data.recipientId == request.auth.uid);
       allow list: if isSignedIn() && resource.data.recipientId == request.auth.uid;
-      allow create: if isSelf(incoming().senderId);
+      allow create: if isSelf(incoming().senderId)
+        && incoming().seen == false
+        && (incoming().recipientId != incoming().senderId || incoming().type == 'LISTING_PUBLISHED');
       allow update: if isSelf(existing().recipientId) && changedKeys().hasOnly(['seen']);
       allow delete: if isSelf(existing().recipientId);
+    }
+
+    // ---------- device tokens ----------
+    // A phone's FCM token, filed under the person signed in on it. Only that person can see or change it.
+    match /deviceTokens/{token} {
+      allow read, delete: if isSelf(existing().userId);
+      allow create, update: if isSelf(incoming().userId) && incoming().token == token;
     }
 
     // ---------- reviews ----------

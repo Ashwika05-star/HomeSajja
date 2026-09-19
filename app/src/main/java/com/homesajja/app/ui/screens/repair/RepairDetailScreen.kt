@@ -47,7 +47,7 @@ import com.homesajja.app.viewmodel.RepairDetailViewModel
 
 /** One repair request: photos, the problem, the tracking pipeline, and the actions the viewer may take. */
 @Composable
-fun RepairDetailScreen(onBackClick: () -> Unit) {
+fun RepairDetailScreen(onBackClick: () -> Unit, onOpenChat: (String) -> Unit) {
     val viewModel: RepairDetailViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -55,6 +55,9 @@ fun RepairDetailScreen(onBackClick: () -> Unit) {
 
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
+    }
+    LaunchedEffect(viewModel) {
+        viewModel.openChat.collect { onOpenChat(it) }
     }
 
     Scaffold(
@@ -71,7 +74,7 @@ fun RepairDetailScreen(onBackClick: () -> Unit) {
             when (val current = state) {
                 RepairDetailUiState.Loading -> LoadingState()
                 is RepairDetailUiState.Error -> ErrorState(message = current.message, onRetry = viewModel::retry)
-                is RepairDetailUiState.Content -> DetailContent(current)
+                is RepairDetailUiState.Content -> DetailContent(current, onMessage = viewModel::openChat)
             }
         }
     }
@@ -102,7 +105,7 @@ private fun confirmationText(action: RepairAction): String = when (action) {
 }
 
 @Composable
-private fun DetailContent(content: RepairDetailUiState.Content) {
+private fun DetailContent(content: RepairDetailUiState.Content, onMessage: () -> Unit) {
     val request = content.request
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -139,6 +142,11 @@ private fun DetailContent(content: RepairDetailUiState.Content) {
             } else {
                 DetailRow("Repair provider", request.vendorName)
             }
+            OutlinedButton(
+                text = if (content.viewerIsVendor) "Message ${request.userName}" else "Message ${request.vendorName}",
+                onClick = onMessage,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

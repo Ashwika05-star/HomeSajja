@@ -1,12 +1,20 @@
 package com.homesajja.app.di
 
 import android.content.Context
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.homesajja.app.BuildConfig
 import com.homesajja.app.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.messaging.FirebaseMessaging
+import com.homesajja.app.notification.SessionServices
 import com.homesajja.app.repository.AuthRepository
+import com.homesajja.app.repository.DeviceTokenRepository
+import com.homesajja.app.repository.NotificationSender
 import com.homesajja.app.repository.ChatRepository
 import com.homesajja.app.repository.ExchangeRepository
 import com.homesajja.app.repository.FavouriteRepository
@@ -65,6 +73,17 @@ class AppContainer(private val appContext: Context) {
     val materialRequestRepository: MaterialRequestRepository by lazy { MaterialRequestRepository(firestore) }
     val chatRepository: ChatRepository by lazy { ChatRepository(firestore) }
     val notificationRepository: NotificationRepository by lazy { NotificationRepository(firestore) }
+    val deviceTokenRepository: DeviceTokenRepository by lazy { DeviceTokenRepository(firestore, FirebaseMessaging.getInstance()) }
+
+    /** Lives as long as the app process, so notifications still get written after the screen that caused them closes. */
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val notificationSender: NotificationSender by lazy { NotificationSender(notificationRepository, appScope) }
+    val sessionServices: SessionServices by lazy {
+        SessionServices(appContext, appScope, authRepository, notificationRepository, deviceTokenRepository)
+    }
+
+    /** A screen to open once the app is signed in and showing, set when a system notification is tapped. */
+    val pendingRoute = MutableStateFlow<String?>(null)
     val reviewRepository: ReviewRepository by lazy { ReviewRepository(firestore) }
     val vendorInboxRepository: VendorInboxRepository by lazy {
         VendorInboxRepository(purchaseRequestRepository, exchangeRepository, repairRepository, recyclingRepository)

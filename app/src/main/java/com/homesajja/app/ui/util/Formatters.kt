@@ -49,3 +49,13 @@ fun budgetLabel(min: Long?, max: Long?): String? = when {
     max != null -> "Up to ${formatPrice(max)}"
     else -> null
 }
+
+private val clockFormat = java.text.SimpleDateFormat("h:mm a", Locale.getDefault())
+private val dayFormat = java.text.SimpleDateFormat("d MMM, h:mm a", Locale.getDefault())
+
+/** "3:45 PM" for today's messages, "12 Sep, 3:45 PM" for older ones. */
+fun formatMessageTime(timestamp: Long, now: Long = System.currentTimeMillis()): String {
+    val sameDay = (timestamp / 86_400_000L) == (now / 86_400_000L)
+    val date = java.util.Date(timestamp)
+    return if (sameDay) clockFormat.format(date) else dayFormat.format(date)
+}

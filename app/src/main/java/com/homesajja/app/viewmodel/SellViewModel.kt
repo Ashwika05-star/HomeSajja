@@ -15,6 +15,8 @@ import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ListingRepository
 import com.homesajja.app.repository.SessionRepository
 import com.homesajja.app.repository.ImageRepository
+import com.homesajja.app.repository.NotificationSender
+import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.UserRepository
 import com.homesajja.app.repository.VendorRepository
 import kotlinx.coroutines.CancellationException
@@ -47,6 +49,7 @@ class SellViewModel(
     private val sessionRepository: SessionRepository,
     private val listingRepository: ListingRepository,
     private val imageRepository: ImageRepository,
+    private val notificationSender: NotificationSender,
 ) : ViewModel() {
 
     private val editingListingId: String? = savedStateHandle["listingId"]
@@ -164,7 +167,12 @@ class SellViewModel(
                 publishState = PublishState.Publishing("Saving your listing…")
                 val role = sessionRepository.roleFlow.first()
                 val listing = buildListing(listingId, uid, imageUrls, editing, role)
-                if (editing == null) listingRepository.createListing(listing) else listingRepository.updateListing(listing)
+                if (editing == null) {
+                    listingRepository.createListing(listing)
+                    notificationSender.send(NotificationTemplates.listingPublished(listing))
+                } else {
+                    listingRepository.updateListing(listing)
+                }
 
                 publishState = PublishState.Published(listingId)
             } catch (e: CancellationException) {

@@ -278,6 +278,11 @@ const deny = (n, p) => check(n, p, false);
   await deny('non-participant reads messages', getDocs(collection(as('carol'), 'chats/ch1/messages')));
   await allow('update last-message preview', updateDoc(doc(as('alice'), 'chats/ch1'), { lastMessage: 'hi', lastMessageAt: now, lastMessageSenderId: 'alice' }));
   await deny('change chat participants', updateDoc(doc(as('alice'), 'chats/ch1'), { participantIds: ['alice', 'carol'] }));
+  await allow('participant stamps their own read time', updateDoc(doc(as('alice'), 'chats/ch1'), { 'readAt.alice': now }));
+  await allow('other participant stamps theirs', updateDoc(doc(as('bob'), 'chats/ch1'), { 'readAt.bob': now }));
+  await deny('participant stamps someone else\'s read time', updateDoc(doc(as('alice'), 'chats/ch1'), { 'readAt.bob': now + 5000 }));
+  await deny('non-participant stamps read time', updateDoc(doc(as('carol'), 'chats/ch1'), { 'readAt.carol': now }));
+  await deny('message over 2000 characters', setDoc(doc(as('alice'), 'chats/ch1/messages/m8'), { senderId: 'alice', text: 'x'.repeat(2001) }));
   const bobDb = as('bob');
   const batch = writeBatch(bobDb);
   batch.set(doc(bobDb, 'chats/ch1/messages/m9'), { senderId: 'bob', text: 'yo' });
@@ -294,6 +299,18 @@ const deny = (n, p) => check(n, p, false);
   await allow('recipient marks seen', updateDoc(doc(as('alice'), 'notifications/n1'), { seen: true }));
   await deny('recipient edits notification text', updateDoc(doc(as('alice'), 'notifications/n1'), { title: 'x' }));
   await allow('recipient deletes notification', deleteDoc(doc(as('alice'), 'notifications/n1')));
+  const note = { recipientId: 'bob', senderId: 'alice', type: 'NEW_MESSAGE', title: 't', seen: false };
+  await deny('notification created already seen', setDoc(doc(as('alice'), 'notifications/n4'), { ...note, seen: true }));
+  await deny('notification to yourself', setDoc(doc(as('alice'), 'notifications/n5'), { ...note, recipientId: 'alice' }));
+  await allow('listing-published notification to yourself', setDoc(doc(as('alice'), 'notifications/n6'), { ...note, recipientId: 'alice', type: 'LISTING_PUBLISHED' }));
+
+  // device tokens
+  await allow('register own device token', setDoc(doc(as('alice'), 'deviceTokens/tok1'), { token: 'tok1', userId: 'alice' }));
+  await deny('register a token for someone else', setDoc(doc(as('alice'), 'deviceTokens/tok2'), { token: 'tok2', userId: 'bob' }));
+  await deny('token document id must match the token', setDoc(doc(as('alice'), 'deviceTokens/tok3'), { token: 'other', userId: 'alice' }));
+  await allow('owner reads their token', getDoc(doc(as('alice'), 'deviceTokens/tok1')));
+  await deny('someone else reads the token', getDoc(doc(as('bob'), 'deviceTokens/tok1')));
+  await allow('owner removes their token', deleteDoc(doc(as('alice'), 'deviceTokens/tok1')));
 
   // reviews
   const rv = { reviewerId: 'bob', targetUserId: 'vic', contextType: 'REPAIR_REQUEST', contextId: 'r9', rating: 5, comment: 'great' };

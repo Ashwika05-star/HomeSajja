@@ -13,6 +13,8 @@ import com.homesajja.app.data.model.ListingActionType
 import com.homesajja.app.data.model.ListingStatus
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ExchangeRepository
+import com.homesajja.app.repository.NotificationSender
+import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.ListingRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -58,6 +60,7 @@ class ExchangeProposalViewModel(
     private val authRepository: AuthRepository,
     private val listingRepository: ListingRepository,
     private val exchangeRepository: ExchangeRepository,
+    private val notificationSender: NotificationSender,
 ) : ViewModel() {
 
     private val preselectedId: String? = savedStateHandle["requestedListingId"]
@@ -202,6 +205,7 @@ class ExchangeProposalViewModel(
                         message = message.trim(),
                     ),
                 )
+                notificationSender.send(NotificationTemplates.exchangeRequested(saved))
                 sendState = SendState.Sent(saved.id)
             } catch (e: CancellationException) {
                 throw e

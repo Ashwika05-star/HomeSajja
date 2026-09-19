@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import com.homesajja.app.ui.components.AppTopBar
 import androidx.navigation.NavHostController
@@ -16,6 +19,10 @@ import com.homesajja.app.BuildConfig
 import com.homesajja.app.data.model.UserRole
 import com.homesajja.app.ui.screens.ComponentPreviewScreen
 import com.homesajja.app.ui.screens.LoginScreen
+import com.homesajja.app.di.LocalAppContainer
+import com.homesajja.app.ui.screens.chat.ChatListScreen
+import com.homesajja.app.ui.screens.chat.ChatThreadScreen
+import com.homesajja.app.ui.screens.chat.NotificationsScreen
 import com.homesajja.app.ui.screens.exchange.ExchangeDetailScreen
 import com.homesajja.app.ui.screens.exchange.ExchangeProposalScreen
 import com.homesajja.app.ui.screens.listing.ListingDetailScreen
@@ -41,6 +48,22 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
         val target = if (role == UserRole.USER) Routes.UserHome.route else Routes.VendorHome.route
         navController.navigate(target) {
             popUpTo(Routes.Splash.route) { inclusive = true }
+        }
+    }
+
+    // A tapped system notification asks for a screen; open it once the person is signed in and past the entry screens.
+    val container = LocalAppContainer.current
+    val pendingRoute by container.pendingRoute.collectAsState()
+    val currentEntry by navController.currentBackStackEntryFlow.collectAsState(initial = null)
+    LaunchedEffect(pendingRoute, currentEntry) {
+        val route = pendingRoute ?: return@LaunchedEffect
+        val current = currentEntry?.destination?.route
+        val inside = current == Routes.UserHome.route || current == Routes.VendorHome.route
+        if (inside && container.authRepository.isSignedIn()) {
+            container.pendingRoute.value = null
+            navController.navigate(route)
+        } else if (current == Routes.Welcome.route || current == Routes.Login.route) {
+            container.pendingRoute.value = null   // signed out: nothing to open
         }
     }
 
@@ -103,6 +126,8 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onRecycle = { navController.navigate(Routes.RecycleNew.route) },
                 onOpenRecycling = { navController.navigate(Routes.RecycleDetail.createRoute(it)) },
                 onOpenMaterial = { navController.navigate(Routes.MaterialDetail.createRoute(it)) },
+                onOpenChats = { navController.navigate(Routes.ChatList.route) },
+                onOpenNotifications = { navController.navigate(Routes.Notifications.route) },
                 onLoggedOut = {
                     navController.navigate(Routes.Welcome.route) {
                         popUpTo(0) { inclusive = true }
@@ -119,6 +144,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onEditListing = { navController.navigate(Routes.Sell.createRoute(it)) },
                 onProposeExchange = { navController.navigate(Routes.ExchangeNew.createRoute(it)) },
                 onOpenVendor = { navController.navigate(Routes.VendorProfile.createRoute(it)) },
+                onOpenChat = { navController.navigate(Routes.ChatThread.createRoute(it)) },
             )
         }
         composable(
@@ -149,6 +175,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
             ExchangeDetailScreen(
                 onBackClick = { navController.popBackStack() },
                 onOpenListing = { navController.navigate(Routes.ListingDetail.createRoute(it)) },
+                onOpenChat = { navController.navigate(Routes.ChatThread.createRoute(it)) },
             )
         }
         composable(Routes.RepairNew.route) {
@@ -167,7 +194,10 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
             route = Routes.RepairDetail.route,
             arguments = listOf(navArgument("requestId") { type = NavType.StringType }),
         ) {
-            RepairDetailScreen(onBackClick = { navController.popBackStack() })
+            RepairDetailScreen(
+                onBackClick = { navController.popBackStack() },
+                onOpenChat = { navController.navigate(Routes.ChatThread.createRoute(it)) },
+            )
         }
         composable(Routes.RecycleNew.route) {
             RecycleRequestScreen(
@@ -218,11 +248,34 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onNewMaterialRequest = { navController.navigate(Routes.MaterialForm.createRoute()) },
                 onOpenMaterialRequest = { navController.navigate(Routes.MaterialDetail.createRoute(it)) },
                 onEditProfile = { navController.navigate(Routes.VendorProfileEdit.route) },
+                onOpenChats = { navController.navigate(Routes.ChatList.route) },
+                onOpenNotifications = { navController.navigate(Routes.Notifications.route) },
                 onLoggedOut = {
                     navController.navigate(Routes.Welcome.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
+            )
+        }
+        composable(Routes.ChatList.route) {
+            ChatListScreen(
+                onBackClick = { navController.popBackStack() },
+                onOpenChat = { navController.navigate(Routes.ChatThread.createRoute(it)) },
+            )
+        }
+        composable(
+            route = Routes.ChatThread.route,
+            arguments = listOf(navArgument("chatId") { type = NavType.StringType }),
+        ) {
+            ChatThreadScreen(
+                onBackClick = { navController.popBackStack() },
+                onOpenRoute = { navController.navigate(it) },
+            )
+        }
+        composable(Routes.Notifications.route) {
+            NotificationsScreen(
+                onBackClick = { navController.popBackStack() },
+                onOpenRoute = { navController.navigate(it) },
             )
         }
         composable(Routes.VendorProfileEdit.route) {

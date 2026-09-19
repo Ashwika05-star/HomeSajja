@@ -12,6 +12,8 @@ import com.homesajja.app.data.model.FurnitureListing
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ListingRepository
 import com.homesajja.app.repository.MaterialRequestRepository
+import com.homesajja.app.repository.NotificationSender
+import com.homesajja.app.repository.NotificationTemplates
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,6 +56,7 @@ class MaterialRequestDetailViewModel(
     private val authRepository: AuthRepository,
     private val materialRepository: MaterialRequestRepository,
     private val listingRepository: ListingRepository,
+    private val notificationSender: NotificationSender,
 ) : ViewModel() {
 
     private val requestId: String = checkNotNull(savedStateHandle["requestId"])
@@ -82,6 +85,9 @@ class MaterialRequestDetailViewModel(
 
     fun decideOffer(offer: MaterialOffer, status: OfferStatus) = act("Couldn't update the offer.") {
         materialRepository.updateOfferStatus(requestId, offer.offererId, status)
+        (_uiState.value as? MaterialDetailUiState.Content)?.request?.let {
+            notificationSender.send(NotificationTemplates.offerDecision(it, offer, accepted = status == OfferStatus.ACCEPTED))
+        }
         _messages.tryEmit("Offer ${status.displayName.lowercase()}.")
     }
 
@@ -119,7 +125,7 @@ class MaterialRequestDetailViewModel(
         val uid = myId ?: return
         _chooser.value = OfferChooserState.Closed
         act("Couldn't send your offer.") {
-            materialRepository.createOffer(
+            val saved = materialRepository.createOffer(
                 MaterialOffer(
                     requestId = requestId,
                     offererId = uid,
@@ -129,6 +135,9 @@ class MaterialRequestDetailViewModel(
                     listingImage = listing.images.firstOrNull(),
                 ),
             )
+            (_uiState.value as? MaterialDetailUiState.Content)?.request?.let {
+                notificationSender.send(NotificationTemplates.materialOffer(it, saved))
+            }
             _messages.tryEmit("Offer sent.")
         }
     }

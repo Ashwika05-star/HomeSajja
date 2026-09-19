@@ -14,6 +14,8 @@ import com.homesajja.app.data.model.VendorBusinessType
 import com.homesajja.app.data.model.VendorProfile
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ImageRepository
+import com.homesajja.app.repository.NotificationSender
+import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.RecyclingRepository
 import com.homesajja.app.repository.UserRepository
 import com.homesajja.app.repository.VendorRepository
@@ -41,6 +43,7 @@ class RecycleRequestViewModel(
     private val vendorRepository: VendorRepository,
     private val recyclingRepository: RecyclingRepository,
     private val imageRepository: ImageRepository,
+    private val notificationSender: NotificationSender,
 ) : ViewModel() {
 
     var screenState by mutableStateOf<RecycleScreenState>(RecycleScreenState.Loading)
@@ -166,7 +169,7 @@ class RecycleRequestViewModel(
                 }
 
                 sendState = RecycleSendState.Sending("Sending your request…")
-                recyclingRepository.createRequest(
+                val saved = recyclingRepository.createRequest(
                     RecyclingRequest(
                         id = requestId,
                         userId = uid,
@@ -180,6 +183,7 @@ class RecycleRequestViewModel(
                         city = form.city,
                     ),
                 )
+                notificationSender.send(NotificationTemplates.recyclingRequested(saved))
                 sendState = RecycleSendState.Sent(requestId)
             } catch (e: CancellationException) {
                 throw e

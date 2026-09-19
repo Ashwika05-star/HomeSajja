@@ -9,9 +9,9 @@ import kotlinx.coroutines.tasks.await
 private const val COLLECTION = "notifications"
 
 /** In-app notifications at `notifications/{id}`, visible only to the recipient.
- * They are written from the client for now; a later Cloud Functions phase can
- * move creation server-side. Recipients can only flip `seen`. */
-class NotificationRepository(firestore: FirebaseFirestore) {
+ * They are written from the app (the free Firebase plan has no Cloud Functions); the optional
+ * function in `functions/` turns each new document into an FCM push. Recipients can only flip `seen`. */
+class NotificationRepository(private val firestore: FirebaseFirestore) {
 
     private val notifications = firestore.collection(COLLECTION)
 
@@ -33,6 +33,14 @@ class NotificationRepository(firestore: FirebaseFirestore) {
 
     suspend fun markAsRead(id: String) {
         notifications.document(id).update("seen", true).await()
+    }
+
+    /** Marks each of [ids] as seen in one batch. */
+    suspend fun markAllAsRead(ids: List<String>) {
+        if (ids.isEmpty()) return
+        val batch = firestore.batch()
+        ids.forEach { batch.update(notifications.document(it), "seen", true) }
+        batch.commit().await()
     }
 
     suspend fun deleteNotification(id: String) {

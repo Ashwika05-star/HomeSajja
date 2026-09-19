@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.homesajja.app.data.model.RecyclingRequest
 import com.homesajja.app.repository.AuthRepository
+import com.homesajja.app.repository.NotificationSender
+import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.RecyclingRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -31,6 +33,7 @@ class RecycleDetailViewModel(
     savedStateHandle: SavedStateHandle,
     authRepository: AuthRepository,
     private val recyclingRepository: RecyclingRepository,
+    private val notificationSender: NotificationSender,
 ) : ViewModel() {
 
     private val requestId: String = checkNotNull(savedStateHandle["requestId"])
@@ -56,6 +59,7 @@ class RecycleDetailViewModel(
         viewModelScope.launch {
             try {
                 recyclingRepository.updateStatus(content.request.id, action.target)
+                myId?.let { notificationSender.send(NotificationTemplates.recyclingStatus(content.request, action.target, it)) }
                 _messages.tryEmit("Status updated to ${action.target.displayName}.")
             } catch (e: CancellationException) {
                 throw e

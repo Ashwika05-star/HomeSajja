@@ -35,6 +35,14 @@ sealed class Routes(val route: String) {
         fun createRoute(requestId: String) = "recycling/$requestId"
     }
 
+    data object ChatList : Routes("chats")
+
+    data object ChatThread : Routes("chat/{chatId}") {
+        fun createRoute(chatId: String) = "chat/$chatId"
+    }
+
+    data object Notifications : Routes("notifications")
+
     /** A vendor's public page. */
     data object VendorProfile : Routes("vendor/{vendorId}") {
         fun createRoute(vendorId: String) = "vendor/$vendorId"

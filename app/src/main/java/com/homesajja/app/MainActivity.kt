@@ -1,5 +1,6 @@
 package com.homesajja.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,6 +12,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.navigation.HomeSajjaNavHost
+import com.homesajja.app.notification.NotificationRouting
 import com.homesajja.app.ui.theme.HomeSajjaTheme
 
 class MainActivity : ComponentActivity() {
@@ -18,6 +20,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val container = (application as HomeSajjaApp).container
+        // Opened from a tapped system notification: remember where it wanted to go.
+        NotificationRouting.routeFrom(intent)?.let { container.pendingRoute.value = it }
         setContent {
             CompositionLocalProvider(LocalAppContainer provides container) {
                 HomeSajjaTheme {
@@ -30,5 +34,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        NotificationRouting.routeFrom(intent)?.let { (application as HomeSajjaApp).container.pendingRoute.value = it }
     }
 }

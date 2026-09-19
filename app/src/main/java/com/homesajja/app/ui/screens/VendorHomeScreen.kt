@@ -33,6 +33,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
 import com.homesajja.app.ui.components.AppTopBar
+import com.homesajja.app.ui.components.InboxActions
+import com.homesajja.app.ui.components.RequestNotificationPermission
 import com.homesajja.app.ui.screens.material.VendorMaterialsScreen
 import com.homesajja.app.ui.screens.mylistings.MyListingsScreen
 import com.homesajja.app.ui.screens.vendor.VendorDashboardScreen
@@ -61,17 +63,21 @@ fun VendorHomeScreen(
     onNewMaterialRequest: () -> Unit,
     onOpenMaterialRequest: (String) -> Unit,
     onEditProfile: () -> Unit,
+    onOpenChats: () -> Unit,
+    onOpenNotifications: () -> Unit,
     onLoggedOut: () -> Unit,
 ) {
     val homeViewModel: HomeViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     var selectedTab by rememberSaveable { mutableStateOf(VendorTab.DASHBOARD) }
     val snackbarHostState = remember { SnackbarHostState() }
+    RequestNotificationPermission()
 
     Scaffold(
         topBar = {
             AppTopBar(
                 title = selectedTab.label,
                 actions = {
+                    InboxActions(onOpenChats, onOpenNotifications)
                     IconButton(onClick = { homeViewModel.logout(onLoggedOut) }) {
                         Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Log out")
                     }

@@ -84,6 +84,7 @@ fun ListingDetailScreen(
     onEditListing: (String) -> Unit,
     onProposeExchange: (String) -> Unit,
     onOpenVendor: (String) -> Unit,
+    onOpenChat: (String) -> Unit,
 ) {
     val viewModel: ListingDetailViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -91,6 +92,9 @@ fun ListingDetailScreen(
 
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
+    }
+    LaunchedEffect(viewModel) {
+        viewModel.openChat.collect { onOpenChat(it) }
     }
 
     Scaffold(

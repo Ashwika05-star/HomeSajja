@@ -11,6 +11,8 @@ import com.homesajja.app.data.model.PurchaseRequest
 import com.homesajja.app.data.model.PurchaseStatus
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ChatRepository
+import com.homesajja.app.repository.NotificationSender
+import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.FavouriteRepository
 import com.homesajja.app.repository.ListingRepository
 import com.homesajja.app.repository.PurchaseRequestRepository
@@ -60,6 +62,7 @@ class ListingDetailViewModel(
     private val favouriteRepository: FavouriteRepository,
     private val chatRepository: ChatRepository,
     private val purchaseRequestRepository: PurchaseRequestRepository,
+    private val notificationSender: NotificationSender,
 ) : ViewModel() {
 
     private val listingId: String = checkNotNull(savedStateHandle["listingId"])
@@ -73,6 +76,10 @@ class ListingDetailViewModel(
     /** One-off messages for a snackbar (confirmations and action failures). */
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val messages: SharedFlow<String> = _messages
+
+    /** Emits a chat id once the thread with the seller exists, so the screen can open it. */
+    private val _openChat = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val openChat: SharedFlow<String> = _openChat
 
     init {
         load()
@@ -115,18 +122,19 @@ class ListingDetailViewModel(
         sendRequest(content, amount, "Offer of ₹$amount sent to ${content.listing.ownerName}.")
     }
 
-    /** Writes the chat document (or finds the existing one); the chat screen itself comes in a later phase. */
+    /** Finds or creates the chat with the seller about this listing, then opens it. */
     fun chatWithSeller() {
         val content = content() ?: return
         val uid = myId ?: return
         runBusy(content, failure = "Couldn't start the chat.") {
-            chatRepository.getOrCreateChat(
+            val chat = chatRepository.getOrCreateChat(
                 contextType = EntityType.LISTING,
                 contextId = content.listing.id,
                 contextTitle = content.listing.title,
                 participantNames = mapOf(uid to myName, content.listing.ownerId to content.listing.ownerName),
+                contextImage = content.listing.images.firstOrNull(),
             )
-            _messages.tryEmit("Chat started with ${content.listing.ownerName}.")
+            _openChat.tryEmit(chat.id)
         }
     }
 
@@ -163,6 +171,7 @@ class ListingDetailViewModel(
                 ),
             )
             update { it.copy(myRequest = request) }
+            notificationSender.send(NotificationTemplates.purchaseRequested(request))
             _messages.tryEmit(confirmation)
         }
     }

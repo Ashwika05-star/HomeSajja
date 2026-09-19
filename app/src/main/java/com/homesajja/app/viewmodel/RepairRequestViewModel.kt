@@ -14,6 +14,8 @@ import com.homesajja.app.data.model.VendorProfile
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ImageRepository
 import com.homesajja.app.repository.ListingRepository
+import com.homesajja.app.repository.NotificationSender
+import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.RepairRepository
 import com.homesajja.app.repository.UserRepository
 import com.homesajja.app.repository.VendorRepository
@@ -49,6 +51,7 @@ class RepairRequestViewModel(
     private val vendorRepository: VendorRepository,
     private val repairRepository: RepairRepository,
     private val imageRepository: ImageRepository,
+    private val notificationSender: NotificationSender,
 ) : ViewModel() {
 
     var screenState by mutableStateOf<RepairScreenState>(RepairScreenState.Loading)
@@ -204,7 +207,7 @@ class RepairRequestViewModel(
                 }
 
                 sendState = RepairSendState.Sending("Sending your request…")
-                repairRepository.createRequest(
+                val saved = repairRepository.createRequest(
                     RepairRequest(
                         id = requestId,
                         userId = uid,
@@ -220,6 +223,7 @@ class RepairRequestViewModel(
                         city = form.city,
                     ),
                 )
+                notificationSender.send(NotificationTemplates.repairRequested(saved))
                 sendState = RepairSendState.Sent(requestId)
             } catch (e: CancellationException) {
                 throw e

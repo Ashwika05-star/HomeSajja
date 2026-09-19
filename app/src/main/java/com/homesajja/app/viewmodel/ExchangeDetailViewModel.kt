@@ -9,6 +9,8 @@ import com.homesajja.app.data.model.ExchangeStatus
 import com.homesajja.app.data.model.FurnitureListing
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ChatRepository
+import com.homesajja.app.repository.NotificationSender
+import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.ExchangeRepository
 import com.homesajja.app.repository.ListingRepository
 import kotlinx.coroutines.CancellationException
@@ -23,14 +25,14 @@ sealed interface ExchangeDetailUiState {
     data class Error(val message: String) : ExchangeDetailUiState
 
     /** [offered] / [requested] are null if that listing has since been deleted; the request's
-     * own snapshot fields still describe it. [chatReady] is true once the request's chat thread exists. */
+     * own snapshot fields still describe it. [chatId] is set once the request's chat thread exists. */
     data class Content(
         val request: ExchangeRequest,
         val offered: FurnitureListing?,
         val requested: FurnitureListing?,
         val actions: List<ExchangeAction>,
         val isSender: Boolean,
-        val chatReady: Boolean,
+        val chatId: String?,
         val isBusy: Boolean = false,
     ) : ExchangeDetailUiState
 }
@@ -45,6 +47,7 @@ class ExchangeDetailViewModel(
     private val exchangeRepository: ExchangeRepository,
     private val listingRepository: ListingRepository,
     private val chatRepository: ChatRepository,
+    private val notificationSender: NotificationSender,
 ) : ViewModel() {
 
     private val requestId: String = checkNotNull(savedStateHandle["requestId"])
@@ -73,14 +76,16 @@ class ExchangeDetailViewModel(
                 when (action) {
                     ExchangeAction.ACCEPT -> {
                         exchangeRepository.acceptRequest(request)
-                        val chatCreated = ensureChat(request)
+                        val chatId = ensureChat(request)
+                        notificationSender.send(NotificationTemplates.exchangeDecision(request, accepted = true))
                         _messages.tryEmit(
-                            if (chatCreated) "Accepted. A chat with ${request.senderName} is ready."
+                            if (chatId != null) "Accepted. A chat with ${request.senderName} is ready."
                             else "Accepted, but the chat couldn't be created yet.",
                         )
                     }
                     ExchangeAction.DECLINE -> {
                         exchangeRepository.declineRequest(request.id)
+                        notificationSender.send(NotificationTemplates.exchangeDecision(request, accepted = false))
                         _messages.tryEmit("Request declined.")
                     }
                     ExchangeAction.CANCEL -> {
@@ -112,14 +117,14 @@ class ExchangeDetailViewModel(
                     _uiState.value = ExchangeDetailUiState.Error("This exchange request no longer exists.")
                     return@launch
                 }
-                val chatReady = request.status in CHAT_STATUSES && ensureChat(request)
+                val chatId = if (request.status in CHAT_STATUSES) ensureChat(request) else null
                 _uiState.value = ExchangeDetailUiState.Content(
                     request = request,
                     offered = listingRepository.getListing(request.offeredListingId),
                     requested = listingRepository.getListing(request.requestedListingId),
                     actions = exchangeActionsFor(request, myId),
                     isSender = myId == request.senderId,
-                    chatReady = chatReady,
+                    chatId = chatId,
                 )
             } catch (e: CancellationException) {
                 throw e
@@ -131,19 +136,19 @@ class ExchangeDetailViewModel(
         }
     }
 
-    /** Creates the chat thread tied to this request, or finds it if it exists. Safe to repeat. */
-    private suspend fun ensureChat(request: ExchangeRequest): Boolean = try {
+    /** Creates the chat thread tied to this request, or finds it if it exists, and returns its id (null if that failed). Safe to repeat. */
+    private suspend fun ensureChat(request: ExchangeRequest): String? = try {
         chatRepository.getOrCreateChat(
             contextType = EntityType.EXCHANGE_REQUEST,
             contextId = request.id,
             contextTitle = "${request.offeredTitle} ⇄ ${request.requestedTitle}",
             participantNames = mapOf(request.senderId to request.senderName, request.receiverId to request.receiverName),
-        )
-        true
+            contextImage = request.requestedImageUrl,
+        ).id
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        false
+        null
     }
 
     private companion object {

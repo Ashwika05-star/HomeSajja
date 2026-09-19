@@ -79,6 +79,7 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.functions)
     implementation(libs.firebase.messaging)
+    implementation(libs.androidx.lifecycle.process)
 
     testImplementation(libs.junit)
 

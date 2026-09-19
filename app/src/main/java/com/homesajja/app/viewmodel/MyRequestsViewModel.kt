@@ -9,6 +9,8 @@ import com.homesajja.app.data.model.ListingStatus
 import com.homesajja.app.data.model.PurchaseRequest
 import com.homesajja.app.data.model.PurchaseStatus
 import com.homesajja.app.repository.AuthRepository
+import com.homesajja.app.repository.NotificationSender
+import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.PurchaseRequestRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -58,6 +60,7 @@ sealed interface MyRequestsUiState {
 class MyRequestsViewModel(
     private val authRepository: AuthRepository,
     private val purchaseRequestRepository: PurchaseRequestRepository,
+    private val notificationSender: NotificationSender,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<MyRequestsUiState>(MyRequestsUiState.Loading)
@@ -87,6 +90,7 @@ class MyRequestsViewModel(
     /** Buyers can withdraw a request only until the seller accepts it. */
     fun cancelRequest(request: PurchaseRequest) = runAction(request, "Couldn't cancel the request.") {
         purchaseRequestRepository.updateStatus(request.id, PurchaseStatus.CANCELLED)
+        authRepository.currentUserId?.let { notificationSender.send(NotificationTemplates.purchaseStatus(request, PurchaseStatus.CANCELLED, it)) }
         _messages.tryEmit("Request cancelled.")
     }
 
@@ -99,6 +103,9 @@ class MyRequestsViewModel(
                 purchaseRequestRepository.updateStatusAndListing(
                     request.id, action.resultingStatus, request.listingId, listingStatus,
                 )
+            }
+            authRepository.currentUserId?.let {
+                notificationSender.send(NotificationTemplates.purchaseStatus(request, action.resultingStatus, it))
             }
             _messages.tryEmit("Request marked as ${action.resultingStatus.displayName.lowercase()}.")
         }

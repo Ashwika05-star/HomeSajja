@@ -53,7 +53,7 @@ import com.homesajja.app.viewmodel.ExchangeDetailViewModel
 
 /** One exchange request: both items compared, its status, and the actions the viewer may take. */
 @Composable
-fun ExchangeDetailScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Unit) {
+fun ExchangeDetailScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Unit, onOpenChat: (String) -> Unit) {
     val viewModel: ExchangeDetailViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -77,7 +77,7 @@ fun ExchangeDetailScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Uni
             when (val current = state) {
                 ExchangeDetailUiState.Loading -> LoadingState()
                 is ExchangeDetailUiState.Error -> ErrorState(message = current.message, onRetry = viewModel::retry)
-                is ExchangeDetailUiState.Content -> DetailContent(current, onOpenListing)
+                is ExchangeDetailUiState.Content -> DetailContent(current, onOpenListing, onOpenChat)
             }
         }
     }
@@ -99,7 +99,7 @@ fun ExchangeDetailScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Uni
 }
 
 @Composable
-private fun DetailContent(content: ExchangeDetailUiState.Content, onOpenListing: (String) -> Unit) {
+private fun DetailContent(content: ExchangeDetailUiState.Content, onOpenListing: (String) -> Unit, onOpenChat: (String) -> Unit) {
     val request = content.request
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
@@ -134,16 +134,8 @@ private fun DetailContent(content: ExchangeDetailUiState.Content, onOpenListing:
             }
         }
 
-        if (content.chatReady) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "A chat thread for this exchange is ready. The chat screen is coming soon.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+        content.chatId?.let { chatId ->
+            OutlinedButton(text = "Open chat with ${if (content.isSender) request.receiverName else request.senderName}", onClick = { onOpenChat(chatId) }, modifier = Modifier.fillMaxWidth())
         }
     }
 }
