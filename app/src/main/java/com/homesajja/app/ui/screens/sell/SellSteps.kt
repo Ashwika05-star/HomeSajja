@@ -53,6 +53,8 @@ import com.homesajja.app.ui.components.AppDropdownField
 import com.homesajja.app.ui.components.AppTextField
 import com.homesajja.app.ui.components.CategoryChip
 import com.homesajja.app.ui.components.ImageCarousel
+import com.homesajja.app.ui.components.PhotoPicker
+import com.homesajja.app.ui.components.StepTitle
 import com.homesajja.app.ui.util.displayText
 import com.homesajja.app.ui.util.formatAge
 import com.homesajja.app.ui.util.formatPrice
@@ -79,16 +81,6 @@ internal fun SellStepContent(viewModel: SellViewModel) {
 
 private typealias FormUpdate = ((SellForm) -> SellForm) -> Unit
 
-@Composable
-private fun StepTitle(title: String, hint: String? = null) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(title, style = MaterialTheme.typography.titleLarge)
-        if (hint != null) {
-            Text(hint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CategoryStep(form: SellForm, update: FormUpdate) {
@@ -104,58 +96,10 @@ private fun CategoryStep(form: SellForm, update: FormUpdate) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PhotosStep(form: SellForm, onAdd: (List<Uri>) -> Unit, onRemove: (Int) -> Unit) {
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(MAX_PHOTOS)) { uris ->
-        if (uris.isNotEmpty()) onAdd(uris)
-    }
-
     StepTitle("Add photos", "1 to $MAX_PHOTOS photos. The first one is the cover.")
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        form.photos.forEachIndexed { index, photo ->
-            Box(modifier = Modifier.size(104.dp)) {
-                AsyncImage(
-                    model = when (photo) {
-                        is SellPhoto.Remote -> photo.url
-                        is SellPhoto.Local -> photo.uri
-                    },
-                    contentDescription = "Photo ${index + 1}",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(104.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
-                        .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), RoundedCornerShape(12.dp)),
-                )
-                IconButton(
-                    onClick = { onRemove(index) },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .size(28.dp)
-                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.85f), CircleShape),
-                ) {
-                    Icon(Icons.Filled.Close, contentDescription = "Remove photo ${index + 1}", modifier = Modifier.size(16.dp))
-                }
-            }
-        }
-        if (form.photos.size < MAX_PHOTOS) {
-            Box(
-                modifier = Modifier
-                    .size(104.dp)
-                    .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outline), RoundedCornerShape(12.dp))
-                    .clickable {
-                        picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Filled.AddPhotoAlternate, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text("Add", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
-    }
+    PhotoPicker(photos = form.photos, onAdd = onAdd, onRemove = onRemove)
 }
 
 @Composable

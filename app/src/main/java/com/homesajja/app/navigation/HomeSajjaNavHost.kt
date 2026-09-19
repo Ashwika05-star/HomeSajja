@@ -14,6 +14,8 @@ import com.homesajja.app.ui.screens.LoginScreen
 import com.homesajja.app.ui.screens.exchange.ExchangeDetailScreen
 import com.homesajja.app.ui.screens.exchange.ExchangeProposalScreen
 import com.homesajja.app.ui.screens.listing.ListingDetailScreen
+import com.homesajja.app.ui.screens.repair.RepairDetailScreen
+import com.homesajja.app.ui.screens.repair.RepairRequestScreen
 import com.homesajja.app.ui.screens.sell.SellFlowScreen
 import com.homesajja.app.ui.screens.SignupScreen
 import com.homesajja.app.ui.screens.SplashScreen
@@ -85,6 +87,8 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onEditListing = { navController.navigate(Routes.Sell.createRoute(it)) },
                 onNewExchange = { navController.navigate(Routes.ExchangeNew.createRoute()) },
                 onOpenExchange = { navController.navigate(Routes.ExchangeDetail.createRoute(it)) },
+                onRequestRepair = { navController.navigate(Routes.RepairNew.route) },
+                onOpenRepair = { navController.navigate(Routes.RepairDetail.createRoute(it)) },
                 onLoggedOut = {
                     navController.navigate(Routes.Welcome.route) {
                         popUpTo(0) { inclusive = true }
@@ -132,6 +136,23 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onOpenListing = { navController.navigate(Routes.ListingDetail.createRoute(it)) },
             )
         }
+        composable(Routes.RepairNew.route) {
+            RepairRequestScreen(
+                onExit = { navController.popBackStack() },
+                onSent = { requestId ->
+                    // Replace the flow with the request itself as confirmation.
+                    navController.navigate(Routes.RepairDetail.createRoute(requestId)) {
+                        popUpTo(Routes.UserHome.route)
+                    }
+                },
+            )
+        }
+        composable(
+            route = Routes.RepairDetail.route,
+            arguments = listOf(navArgument("requestId") { type = NavType.StringType }),
+        ) {
+            RepairDetailScreen(onBackClick = { navController.popBackStack() })
+        }
         composable(
             route = Routes.Sell.route,
             arguments = listOf(
@@ -154,6 +175,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
         }
         composable(Routes.VendorHome.route) {
             VendorHomeScreen(
+                onOpenRepair = { navController.navigate(Routes.RepairDetail.createRoute(it)) },
                 onLoggedOut = {
                     navController.navigate(Routes.Welcome.route) {
                         popUpTo(0) { inclusive = true }

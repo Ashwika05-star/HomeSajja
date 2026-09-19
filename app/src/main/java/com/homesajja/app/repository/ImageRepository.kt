@@ -26,8 +26,14 @@ class ImageRepository(
     private val uploadPreset: String,
 ) {
 
-    /** Downsizes the picked image, uploads it and returns its HTTPS URL. */
     suspend fun uploadListingImage(ownerId: String, listingId: String, image: Uri): String =
+        upload("listings/$ownerId/$listingId", image)
+
+    suspend fun uploadRepairImage(ownerId: String, requestId: String, image: Uri): String =
+        upload("repairs/$ownerId/$requestId", image)
+
+    /** Downsizes the picked image, uploads it into [folder] and returns its HTTPS URL. */
+    private suspend fun upload(folder: String, image: Uri): String =
         withContext(Dispatchers.IO) {
             val jpeg = compress(image)
             val boundary = "hs-${UUID.randomUUID()}"
@@ -43,7 +49,7 @@ class ImageRepository(
                         "--$boundary\r\nContent-Disposition: form-data; name=\"$name\"\r\n\r\n$value\r\n".toByteArray(),
                     )
                     field("upload_preset", uploadPreset)
-                    field("folder", "listings/$ownerId/$listingId")
+                    field("folder", folder)
                     out.write(
                         ("--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"photo.jpg\"\r\n" +
                             "Content-Type: image/jpeg\r\n\r\n").toByteArray(),

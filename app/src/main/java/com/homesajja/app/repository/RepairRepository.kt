@@ -13,8 +13,12 @@ class RepairRepository(firestore: FirebaseFirestore) {
 
     private val requests = firestore.collection(COLLECTION)
 
+    /** Reserves an id up front so photos can be uploaded into the request's own folder first. */
+    fun newRequestId(): String = requests.document().id
+
+    /** Saves [request] under its own id, or under a fresh one if it has none. */
     suspend fun createRequest(request: RepairRequest): RepairRequest {
-        val ref = requests.document()
+        val ref = if (request.id.isEmpty()) requests.document() else requests.document(request.id)
         val saved = request.copy(id = ref.id)
         ref.set(saved).await()
         return saved
@@ -37,19 +41,6 @@ class RepairRepository(firestore: FirebaseFirestore) {
     suspend fun updateStatus(id: String, status: RepairStatus) {
         requests.document(id)
             .update(mapOf("status" to status.name, "updatedAt" to System.currentTimeMillis()))
-            .await()
-    }
-
-    /** Vendor's quote; moves the request to QUOTED in the same write. */
-    suspend fun submitQuote(id: String, quotedPrice: Long) {
-        requests.document(id)
-            .update(
-                mapOf(
-                    "quotedPrice" to quotedPrice,
-                    "status" to RepairStatus.QUOTED.name,
-                    "updatedAt" to System.currentTimeMillis(),
-                ),
-            )
             .await()
     }
 

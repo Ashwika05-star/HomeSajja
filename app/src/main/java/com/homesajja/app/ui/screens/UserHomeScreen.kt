@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -35,6 +36,7 @@ import com.homesajja.app.ui.components.AppTopBar
 import com.homesajja.app.ui.screens.exchange.ExchangeRequestsScreen
 import com.homesajja.app.ui.screens.explore.ExploreScreen
 import com.homesajja.app.ui.screens.mylistings.MyListingsScreen
+import com.homesajja.app.ui.screens.repair.MyRepairsScreen
 import com.homesajja.app.ui.screens.requests.MyRequestsScreen
 import com.homesajja.app.viewmodel.HomeViewModel
 
@@ -43,6 +45,7 @@ private enum class HomeTab(val label: String, val icon: ImageVector) {
     EXCHANGE("Exchange", Icons.Filled.SwapHoriz),
     MY_LISTINGS("My listings", Icons.Filled.Sell),
     MY_REQUESTS("Requests", Icons.AutoMirrored.Filled.ReceiptLong),
+    REPAIR("Repair", Icons.Filled.Build),
 }
 
 /** The user's space: Explore, My listings and Requests behind a bottom bar. Detail, sell and edit are separate full-screen routes. */
@@ -53,6 +56,8 @@ fun UserHomeScreen(
     onEditListing: (String) -> Unit,
     onNewExchange: () -> Unit,
     onOpenExchange: (String) -> Unit,
+    onRequestRepair: () -> Unit,
+    onOpenRepair: (String) -> Unit,
     onLoggedOut: () -> Unit,
 ) {
     val homeViewModel: HomeViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
@@ -101,6 +106,14 @@ fun UserHomeScreen(
                     text = { Text("New exchange") },
                 )
                 HomeTab.MY_REQUESTS -> Unit
+                HomeTab.REPAIR -> ExtendedFloatingActionButton(
+                    onClick = onRequestRepair,
+                    modifier = Modifier.semantics { contentDescription = "Request a repair" },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    text = { Text("Request repair") },
+                )
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -124,6 +137,11 @@ fun UserHomeScreen(
             HomeTab.MY_REQUESTS -> MyRequestsScreen(
                 snackbarHostState = snackbarHostState,
                 onOpenListing = onOpenListing,
+                modifier = contentModifier,
+            )
+            HomeTab.REPAIR -> MyRepairsScreen(
+                onOpenRequest = onOpenRepair,
+                onRequestRepair = onRequestRepair,
                 modifier = contentModifier,
             )
         }

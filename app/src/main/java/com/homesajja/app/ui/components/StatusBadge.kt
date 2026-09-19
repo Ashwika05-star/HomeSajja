@@ -40,7 +40,7 @@ private fun statusColors(status: String): Pair<Color, Color> {
     val scheme = MaterialTheme.colorScheme
     return when (status.trim().lowercase()) {
         "pending", "in progress", "in-progress" -> PoignantPinkSecondaryContainer to OnPoignantPinkSecondaryContainer
-        "accepted", "approved", "completed", "done" -> SuccessContainer to OnSuccessContainer
+        "accepted", "approved", "ready", "completed", "done" -> SuccessContainer to OnSuccessContainer
         "rejected", "cancelled", "canceled", "failed" -> scheme.errorContainer to scheme.onErrorContainer
         else -> scheme.surfaceVariant to scheme.onSurfaceVariant
     }

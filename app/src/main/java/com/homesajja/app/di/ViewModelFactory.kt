@@ -15,7 +15,11 @@ import com.homesajja.app.viewmodel.ListingDetailViewModel
 import com.homesajja.app.viewmodel.LoginViewModel
 import com.homesajja.app.viewmodel.MyListingsViewModel
 import com.homesajja.app.viewmodel.MyRequestsViewModel
+import com.homesajja.app.viewmodel.MyRepairsViewModel
+import com.homesajja.app.viewmodel.RepairDetailViewModel
+import com.homesajja.app.viewmodel.RepairRequestViewModel
 import com.homesajja.app.viewmodel.SellViewModel
+import com.homesajja.app.viewmodel.VendorRepairsViewModel
 import com.homesajja.app.viewmodel.SignupViewModel
 import com.homesajja.app.viewmodel.SplashViewModel
 
@@ -102,6 +106,27 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.exchangeRepository,
                 container.listingRepository,
                 container.chatRepository,
+            )
+            RepairRequestViewModel::class.java -> RepairRequestViewModel(
+                container.authRepository,
+                container.userRepository,
+                container.listingRepository,
+                container.vendorRepository,
+                container.repairRepository,
+                container.imageRepository,
+            )
+            MyRepairsViewModel::class.java -> MyRepairsViewModel(
+                container.authRepository,
+                container.repairRepository,
+            )
+            VendorRepairsViewModel::class.java -> VendorRepairsViewModel(
+                container.authRepository,
+                container.repairRepository,
+            )
+            RepairDetailViewModel::class.java -> RepairDetailViewModel(
+                handle,
+                container.authRepository,
+                container.repairRepository,
             )
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }

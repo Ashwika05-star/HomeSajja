@@ -14,5 +14,9 @@ data class VendorProfile(
     val shopAddress: String = "",
     val shopLatitude: Double? = null,
     val shopLongitude: Double? = null,
+    /** Optional repair details shown on provider cards: [RepairProblemType] names and a cost range in rupees. */
+    val repairServices: List<String> = emptyList(),
+    val repairCostMin: Long? = null,
+    val repairCostMax: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
 )

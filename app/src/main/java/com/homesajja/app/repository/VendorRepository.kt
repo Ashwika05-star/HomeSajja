@@ -30,6 +30,17 @@ class VendorRepository(firestore: FirebaseFirestore) {
         return query.limit(limit.toLong()).getAllAs()
     }
 
+    /** City-scoped vendors of any of [types]. */
+    suspend fun getVendorsByTypes(
+        city: String,
+        types: List<VendorBusinessType>,
+        limit: Int = DEFAULT_PAGE_SIZE,
+    ): List<VendorProfile> =
+        vendors.whereEqualTo("city", city)
+            .whereIn("businessType", types.map { it.name })
+            .limit(limit.toLong())
+            .getAllAs()
+
     suspend fun updateVendorProfile(profile: VendorProfile) {
         vendors.document(profile.uid).set(profile).await()
     }
