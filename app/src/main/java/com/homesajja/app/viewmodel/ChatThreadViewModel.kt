@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.homesajja.app.data.model.Chat
 import com.homesajja.app.data.model.Message
 import com.homesajja.app.repository.AuthRepository
@@ -76,7 +77,9 @@ class ChatThreadViewModel(
                 throw e
             } catch (e: Exception) {
                 draft = text
-                _messages.tryEmit(mapError(e, "Couldn't send your message."))
+                // The rules refuse messages between people where either has blocked the other.
+                val refused = e is FirebaseFirestoreException && e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED
+                _messages.tryEmit(if (refused) "This message couldn't be sent. You can't message this person." else mapError(e, "Couldn't send your message."))
             }
         }
     }

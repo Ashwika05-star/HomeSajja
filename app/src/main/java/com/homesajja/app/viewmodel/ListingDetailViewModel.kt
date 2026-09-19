@@ -11,7 +11,12 @@ import com.homesajja.app.data.model.PurchaseRequest
 import com.homesajja.app.data.model.PurchaseStatus
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ChatRepository
+import com.homesajja.app.repository.BlockRepository
 import com.homesajja.app.repository.NotificationSender
+import com.homesajja.app.repository.ReviewRepository
+import com.homesajja.app.repository.VendorRepository
+import com.homesajja.app.data.model.RatingSummary
+import com.homesajja.app.data.model.SellerType
 import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.FavouriteRepository
 import com.homesajja.app.repository.ListingRepository
@@ -33,12 +38,17 @@ sealed interface ListingDetailUiState {
         val isOwner: Boolean,
         val isFavourite: Boolean,
         val myRequest: PurchaseRequest?,
+        /** The seller's average rating, and whether they are a verified vendor (both only known once loaded). */
+        val sellerRating: RatingSummary? = null,
+        val sellerVerified: Boolean = false,
+        /** The signed-in person has blocked this seller: contacting them is switched off until they unblock. */
+        val sellerBlocked: Boolean = false,
         val isBusy: Boolean = false,
     ) : ListingDetailUiState {
         /** A buyer can send a request while a for-sale listing is open and they have no live request.
          * Exchange listings are never bought — they get exchange proposals instead. */
         val canRequestPurchase: Boolean
-            get() = !isOwner && listing.actionType == ListingActionType.SELL && listing.status == ListingStatus.ACTIVE &&
+            get() = !isOwner && !sellerBlocked && listing.actionType == ListingActionType.SELL && listing.status == ListingStatus.ACTIVE &&
                 (myRequest == null || myRequest.status in ENDED_STATUSES)
     }
 }
@@ -63,6 +73,9 @@ class ListingDetailViewModel(
     private val chatRepository: ChatRepository,
     private val purchaseRequestRepository: PurchaseRequestRepository,
     private val notificationSender: NotificationSender,
+    private val vendorRepository: VendorRepository,
+    private val reviewRepository: ReviewRepository,
+    private val blockRepository: BlockRepository,
 ) : ViewModel() {
 
     private val listingId: String = checkNotNull(savedStateHandle["listingId"])
@@ -101,6 +114,10 @@ class ListingDetailViewModel(
                     isOwner = isOwner,
                     isFavourite = !isOwner && favouriteRepository.isFavourite(uid, listingId),
                     myRequest = if (isOwner) null else latestRequestFor(uid),
+                    sellerRating = runCatching { reviewRepository.getRatingSummaries(listOf(listing.ownerId))[listing.ownerId] }.getOrNull(),
+                    sellerVerified = listing.sellerType == SellerType.VENDOR &&
+                        runCatching { vendorRepository.getVendorProfile(listing.ownerId)?.verified }.getOrNull() == true,
+                    sellerBlocked = !isOwner && runCatching { blockRepository.isBlocked(uid, listing.ownerId) }.getOrDefault(false),
                 )
             } catch (e: CancellationException) {
                 throw e
@@ -125,6 +142,10 @@ class ListingDetailViewModel(
     /** Finds or creates the chat with the seller about this listing, then opens it. */
     fun chatWithSeller() {
         val content = content() ?: return
+        if (content.sellerBlocked) {
+            _messages.tryEmit("You've blocked ${content.listing.ownerName}. Unblock them to chat.")
+            return
+        }
         val uid = myId ?: return
         runBusy(content, failure = "Couldn't start the chat.") {
             val chat = chatRepository.getOrCreateChat(
@@ -135,6 +156,17 @@ class ListingDetailViewModel(
                 contextImage = content.listing.images.firstOrNull(),
             )
             _openChat.tryEmit(chat.id)
+        }
+    }
+
+    /** Blocking (or unblocking) the seller happens on other screens, so re-check when coming back to this one. */
+    fun refreshSellerBlocked() {
+        val content = _uiState.value as? ListingDetailUiState.Content ?: return
+        val uid = myId ?: return
+        if (content.isOwner) return
+        viewModelScope.launch {
+            val blocked = runCatching { blockRepository.isBlocked(uid, content.listing.ownerId) }.getOrNull() ?: return@launch
+            update { it.copy(sellerBlocked = blocked) }
         }
     }
 

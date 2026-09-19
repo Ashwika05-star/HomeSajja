@@ -35,6 +35,22 @@ sealed class Routes(val route: String) {
         fun createRoute(requestId: String) = "recycling/$requestId"
     }
 
+    /** The signed-in person's own profile (saved furniture, blocked people, reviews about them). */
+    data object Profile : Routes("profile")
+
+    /** Someone else's profile: their name (their account is private) and the reviews about them. */
+    data object UserProfile : Routes("user/{userId}?name={name}") {
+        fun createRoute(userId: String, name: String) = "user/$userId?name=${android.net.Uri.encode(name)}"
+    }
+
+    data object SmartDecision : Routes("smart_decision")
+
+    data object SajjaChat : Routes("sajja_chat")
+
+    data object Saved : Routes("saved")
+
+    data object Blocked : Routes("blocked")
+
     data object ChatList : Routes("chats")
 
     data object ChatThread : Routes("chat/{chatId}") {

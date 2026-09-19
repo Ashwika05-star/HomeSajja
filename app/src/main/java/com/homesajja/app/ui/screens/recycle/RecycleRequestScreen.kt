@@ -26,6 +26,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
 import com.homesajja.app.ui.components.AppTopBar
+import com.homesajja.app.ui.components.AskHomeSajjaBanner
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.InlineErrorBanner
 import com.homesajja.app.ui.components.LoadingState
@@ -42,6 +43,7 @@ fun RecycleRequestScreen(
     onExit: () -> Unit,
     onSent: (requestId: String) -> Unit,
     onOpenVendor: (String) -> Unit,
+    onAskAi: () -> Unit,
 ) {
     val viewModel: RecycleRequestViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val ready = viewModel.screenState is RecycleScreenState.Ready
@@ -67,7 +69,7 @@ fun RecycleRequestScreen(
             when (val screen = viewModel.screenState) {
                 RecycleScreenState.Loading -> LoadingState()
                 is RecycleScreenState.Error -> ErrorState(message = screen.message, onRetry = viewModel::load)
-                RecycleScreenState.Ready -> StepContainer(viewModel, onOpenVendor)
+                RecycleScreenState.Ready -> StepContainer(viewModel, onOpenVendor, onAskAi)
             }
         }
     }
@@ -76,7 +78,7 @@ fun RecycleRequestScreen(
 }
 
 @Composable
-private fun StepContainer(viewModel: RecycleRequestViewModel, onOpenVendor: (String) -> Unit) {
+private fun StepContainer(viewModel: RecycleRequestViewModel, onOpenVendor: (String) -> Unit, onAskAi: () -> Unit) {
     val step = viewModel.step
     val steps = RecycleStep.entries
     val isLast = step == steps.last()
@@ -103,6 +105,7 @@ private fun StepContainer(viewModel: RecycleRequestViewModel, onOpenVendor: (Str
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            if (step == RecycleStep.PHOTOS) AskHomeSajjaBanner(onClick = onAskAi)
             RecycleStepContent(viewModel, onOpenVendor)
             viewModel.stepError?.let { InlineErrorBanner(message = it) }
         }

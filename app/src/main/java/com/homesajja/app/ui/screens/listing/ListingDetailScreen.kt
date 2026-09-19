@@ -50,6 +50,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.homesajja.app.data.model.FurnitureListing
@@ -69,7 +70,11 @@ import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.PrimaryButton
 import com.homesajja.app.ui.components.PurchaseStatusTracker
 import com.homesajja.app.ui.components.SecondaryButton
+import com.homesajja.app.ui.components.RatingLine
 import com.homesajja.app.ui.components.StatusBadge
+import com.homesajja.app.ui.components.TrustMenu
+import com.homesajja.app.ui.components.VerifiedBadge
+import com.homesajja.app.data.model.RatingSummary
 import com.homesajja.app.ui.util.displayText
 import com.homesajja.app.ui.util.formatAge
 import com.homesajja.app.ui.util.formatPrice
@@ -85,6 +90,7 @@ fun ListingDetailScreen(
     onProposeExchange: (String) -> Unit,
     onOpenVendor: (String) -> Unit,
     onOpenChat: (String) -> Unit,
+    onOpenUser: (userId: String, name: String) -> Unit,
 ) {
     val viewModel: ListingDetailViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -96,9 +102,22 @@ fun ListingDetailScreen(
     LaunchedEffect(viewModel) {
         viewModel.openChat.collect { onOpenChat(it) }
     }
+    LifecycleResumeEffect(viewModel) {
+        viewModel.refreshSellerBlocked()
+        onPauseOrDispose {}
+    }
 
     Scaffold(
-        topBar = { AppTopBar(title = "Listing", onBackClick = onBackClick) },
+        topBar = {
+            val listing = (state as? ListingDetailUiState.Content)?.listing
+            AppTopBar(
+                title = "Listing",
+                onBackClick = onBackClick,
+                actions = {
+                    if (listing != null) TrustMenu(userId = listing.ownerId, userName = listing.ownerName, listingId = listing.id, listingTitle = listing.title)
+                },
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -111,7 +130,7 @@ fun ListingDetailScreen(
             when (val current = state) {
                 ListingDetailUiState.Loading -> LoadingState()
                 is ListingDetailUiState.Error -> ErrorState(message = current.message, onRetry = viewModel::load)
-                is ListingDetailUiState.Content -> DetailContent(current, onEditListing, onOpenVendor)
+                is ListingDetailUiState.Content -> DetailContent(current, onEditListing, onOpenVendor, onOpenUser)
             }
         }
     }
@@ -119,7 +138,12 @@ fun ListingDetailScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DetailContent(content: ListingDetailUiState.Content, onEditListing: (String) -> Unit, onOpenVendor: (String) -> Unit) {
+private fun DetailContent(
+    content: ListingDetailUiState.Content,
+    onEditListing: (String) -> Unit,
+    onOpenVendor: (String) -> Unit,
+    onOpenUser: (String, String) -> Unit,
+) {
     val listing = content.listing
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         ImageCarousel(images = listing.images)
@@ -162,7 +186,17 @@ private fun DetailContent(content: ListingDetailUiState.Content, onEditListing: 
             Section("Details") { DetailsTable(listing) }
 
             Section("Seller") {
-                SellerCard(listing, onOpenVendor = if (listing.sellerType == SellerType.VENDOR) ({ onOpenVendor(listing.ownerId) }) else null)
+                SellerCard(
+                    listing = listing,
+                    rating = content.sellerRating,
+                    verified = content.sellerVerified,
+                    blocked = content.sellerBlocked,
+                    onOpenSeller = if (content.isOwner) null else if (listing.sellerType == SellerType.VENDOR) {
+                        { onOpenVendor(listing.ownerId) }
+                    } else {
+                        { onOpenUser(listing.ownerId, listing.ownerName) }
+                    },
+                )
             }
         }
     }
@@ -209,11 +243,17 @@ private fun DetailsTable(listing: FurnitureListing) {
 }
 
 @Composable
-private fun SellerCard(listing: FurnitureListing, onOpenVendor: (() -> Unit)?) {
+private fun SellerCard(
+    listing: FurnitureListing,
+    rating: RatingSummary?,
+    verified: Boolean,
+    blocked: Boolean,
+    onOpenSeller: (() -> Unit)?,
+) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth().then(if (onOpenVendor != null) Modifier.clickable(onClick = onOpenVendor) else Modifier),
+        modifier = Modifier.fillMaxWidth().then(if (onOpenSeller != null) Modifier.clickable(onClick = onOpenSeller) else Modifier),
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -229,12 +269,11 @@ private fun SellerCard(listing: FurnitureListing, onOpenVendor: (() -> Unit)?) {
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(listing.ownerName, style = MaterialTheme.typography.titleSmall)
-                // Ratings arrive with the reviews phase.
-                Text(
-                    "☆ No ratings yet",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                RatingLine(rating)
+                if (verified) VerifiedBadge()
+                if (blocked) {
+                    Text("You've blocked this seller.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
             }
             StatusBadge(status = listing.sellerType.displayName)
         }
@@ -298,7 +337,7 @@ private fun ActionBar(
                 PrimaryButton(
                     text = "Propose exchange",
                     onClick = { onProposeExchange(listing.id) },
-                    enabled = enabled && listing.status == ListingStatus.ACTIVE,
+                    enabled = enabled && !content.sellerBlocked && listing.status == ListingStatus.ACTIVE,
                     modifier = Modifier.fillMaxWidth(),
                 )
             } else {

@@ -6,6 +6,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.IconButton
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chair
@@ -36,11 +41,13 @@ fun FurnitureCard(
     imageUrl: String? = null,
     subtitle: String? = null,
     onClick: (() -> Unit)? = null,
+    isSaved: Boolean = false,
+    onToggleSaved: (() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(16.dp)
     val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     val elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    val content: @Composable () -> Unit = { FurnitureCardContent(title, price, imageUrl, subtitle) }
+    val content: @Composable () -> Unit = { FurnitureCardContent(title, price, imageUrl, subtitle, isSaved, onToggleSaved) }
 
     if (onClick != null) {
         Card(onClick = onClick, modifier = modifier, shape = shape, colors = colors, elevation = elevation) {
@@ -54,7 +61,14 @@ fun FurnitureCard(
 }
 
 @Composable
-private fun FurnitureCardContent(title: String, price: String, imageUrl: String?, subtitle: String?) {
+private fun FurnitureCardContent(
+    title: String,
+    price: String,
+    imageUrl: String?,
+    subtitle: String?,
+    isSaved: Boolean,
+    onToggleSaved: (() -> Unit)?,
+) {
     Column {
         Box(
             modifier = Modifier
@@ -76,6 +90,24 @@ private fun FurnitureCardContent(title: String, price: String, imageUrl: String?
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f),
                 )
+            }
+            // The heart: filled when the listing is saved. Shown only where the caller can save.
+            if (onToggleSaved != null) {
+                IconButton(
+                    onClick = onToggleSaved,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .size(34.dp)
+                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.85f), CircleShape),
+                ) {
+                    Icon(
+                        imageVector = if (isSaved) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        contentDescription = if (isSaved) "Remove from saved" else "Save",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
         }
         Column(modifier = Modifier.padding(12.dp)) {

@@ -11,6 +11,7 @@ import com.homesajja.app.data.model.ListingActionType
 import com.homesajja.app.data.model.ListingFilters
 import com.homesajja.app.data.model.matchesSearch
 import com.homesajja.app.repository.AuthRepository
+import com.homesajja.app.repository.FavouriteRepository
 import com.homesajja.app.repository.ListingRepository
 import com.homesajja.app.repository.UserRepository
 import kotlinx.coroutines.CancellationException
@@ -53,8 +54,16 @@ abstract class ListingBrowseViewModel(
     authRepository: AuthRepository,
     private val userRepository: UserRepository,
     private val listingRepository: ListingRepository,
+    favouriteRepository: FavouriteRepository,
     private val actionType: ListingActionType,
 ) : ViewModel() {
+
+    private val saved = SavedIds(authRepository, favouriteRepository, viewModelScope)
+
+    /** The listings the person has saved, for the hearts on the cards. */
+    val savedIds: Set<String> get() = saved.ids
+
+    fun toggleSaved(listingId: String) = saved.toggle(listingId)
 
     var query by mutableStateOf("")
         private set
@@ -80,6 +89,7 @@ abstract class ListingBrowseViewModel(
     private var job: Job? = null
 
     init {
+        saved.load()
         reload(showFullScreenLoading = true)
     }
 

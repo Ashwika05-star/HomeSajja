@@ -29,7 +29,15 @@ import com.homesajja.app.viewmodel.RecycleDetailViewModel
 import com.homesajja.app.viewmodel.RecycleRequestViewModel
 import com.homesajja.app.viewmodel.RepairDetailViewModel
 import com.homesajja.app.viewmodel.RepairRequestViewModel
+import com.homesajja.app.viewmodel.ReviewParamsKey
+import com.homesajja.app.viewmodel.ReviewViewModel
+import com.homesajja.app.viewmodel.BlockedUsersViewModel
+import com.homesajja.app.viewmodel.SavedListingsViewModel
+import com.homesajja.app.viewmodel.SajjaChatViewModel
 import com.homesajja.app.viewmodel.SellViewModel
+import com.homesajja.app.viewmodel.SmartDecisionViewModel
+import com.homesajja.app.viewmodel.TrustActionsViewModel
+import com.homesajja.app.viewmodel.UserProfileViewModel
 import com.homesajja.app.viewmodel.VendorDashboardViewModel
 import com.homesajja.app.viewmodel.VendorMaterialsViewModel
 import com.homesajja.app.viewmodel.VendorProfileEditViewModel
@@ -48,10 +56,10 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
     // us the SavedStateHandle, which holds navigation arguments like the listing id.
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
-        return build(modelClass, extras.createSavedStateHandle()) as T
+        return build(modelClass, extras.createSavedStateHandle(), extras) as T
     }
 
-    private fun build(modelClass: Class<*>, handle: SavedStateHandle): ViewModel {
+    private fun build(modelClass: Class<*>, handle: SavedStateHandle, extras: CreationExtras): ViewModel {
         return when (modelClass) {
             SplashViewModel::class.java -> SplashViewModel(
                 container.authRepository,
@@ -78,6 +86,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.authRepository,
                 container.userRepository,
                 container.listingRepository,
+                container.favouriteRepository,
             )
             ListingDetailViewModel::class.java -> ListingDetailViewModel(
                 handle,
@@ -87,6 +96,9 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.chatRepository,
                 container.purchaseRequestRepository,
                 container.notificationSender,
+                container.vendorRepository,
+                container.reviewRepository,
+                container.blockRepository,
             )
             SellViewModel::class.java -> SellViewModel(
                 handle,
@@ -97,6 +109,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.listingRepository,
                 container.imageRepository,
                 container.notificationSender,
+                container.flowPrefill,
             )
             MyListingsViewModel::class.java -> MyListingsViewModel(
                 container.authRepository,
@@ -111,6 +124,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.authRepository,
                 container.userRepository,
                 container.listingRepository,
+                container.favouriteRepository,
             )
             ExchangeProposalViewModel::class.java -> ExchangeProposalViewModel(
                 handle,
@@ -139,6 +153,8 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.repairRepository,
                 container.imageRepository,
                 container.notificationSender,
+                container.reviewRepository,
+                container.flowPrefill,
             )
             MyRepairsViewModel::class.java -> MyRepairsViewModel(
                 container.authRepository,
@@ -162,6 +178,8 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.recyclingRepository,
                 container.imageRepository,
                 container.notificationSender,
+                container.reviewRepository,
+                container.flowPrefill,
             )
             MyRecyclingViewModel::class.java -> MyRecyclingViewModel(
                 container.authRepository,
@@ -203,6 +221,8 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.authRepository,
                 container.vendorRepository,
                 container.listingRepository,
+                container.reviewRepository,
+                container.favouriteRepository,
             )
             MaterialBoardViewModel::class.java -> MaterialBoardViewModel(
                 container.authRepository,
@@ -245,6 +265,44 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.authRepository,
                 container.chatRepository,
                 container.notificationRepository,
+            )
+            SavedListingsViewModel::class.java -> SavedListingsViewModel(
+                container.authRepository,
+                container.favouriteRepository,
+                container.listingRepository,
+            )
+            TrustActionsViewModel::class.java -> TrustActionsViewModel(
+                container.authRepository,
+                container.reportRepository,
+                container.blockRepository,
+            )
+            BlockedUsersViewModel::class.java -> BlockedUsersViewModel(
+                container.authRepository,
+                container.blockRepository,
+            )
+            UserProfileViewModel::class.java -> UserProfileViewModel(
+                handle,
+                container.authRepository,
+                container.userRepository,
+                container.reviewRepository,
+            )
+            SmartDecisionViewModel::class.java -> SmartDecisionViewModel(
+                container.authRepository,
+                container.userRepository,
+                container.vendorRepository,
+                container.aiRepository,
+                container.flowPrefill,
+            )
+            SajjaChatViewModel::class.java -> SajjaChatViewModel(
+                container.authRepository,
+                container.userRepository,
+                container.listingRepository,
+                container.aiRepository,
+            )
+            ReviewViewModel::class.java -> ReviewViewModel(
+                checkNotNull(extras[ReviewParamsKey]) { "ReviewViewModel needs ReviewParams" },
+                container.authRepository,
+                container.reviewRepository,
             )
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }

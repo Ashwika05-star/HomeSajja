@@ -78,12 +78,7 @@ class ImageRepository(
         }
 
     private fun compress(image: Uri): ByteArray {
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        contentResolver.openInputStream(image)?.use { BitmapFactory.decodeStream(it, null, bounds) }
-        val options = BitmapFactory.Options().apply {
-            inSampleSize = sampleSizeFor(bounds.outWidth, bounds.outHeight, MAX_EDGE_PX)
-        }
-        val bitmap = contentResolver.openInputStream(image)?.use { BitmapFactory.decodeStream(it, null, options) }
+        val bitmap = decodeScaledBitmap(contentResolver, image, MAX_EDGE_PX)
             ?: throw ImageUploadException("Couldn't read the selected photo")
         return ByteArrayOutputStream().also {
             bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it)
@@ -96,6 +91,14 @@ class ImageRepository(
         const val JPEG_QUALITY = 85
         const val TIMEOUT_MS = 30_000
     }
+}
+
+/** Decodes a picked photo, downscaled so its longer edge stays near [maxEdge]. Null if it can't be read. */
+fun decodeScaledBitmap(contentResolver: ContentResolver, image: Uri, maxEdge: Int): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    contentResolver.openInputStream(image)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+    val options = BitmapFactory.Options().apply { inSampleSize = sampleSizeFor(bounds.outWidth, bounds.outHeight, maxEdge) }
+    return contentResolver.openInputStream(image)?.use { BitmapFactory.decodeStream(it, null, options) }
 }
 
 /** Largest power-of-two divisor that keeps the longer edge at or above [maxEdge]. */

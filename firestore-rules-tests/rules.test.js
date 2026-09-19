@@ -42,6 +42,10 @@ const deny = (n, p) => check(n, p, false);
     await setDoc(doc(db, 'recyclingRequests/c1'), { userId: 'alice', vendorId: 'vic', method: 'DROP_OFF', status: 'REQUESTED' });
     await setDoc(doc(db, 'chats/ch1'), { participantIds: ['alice', 'bob'], lastMessage: '', lastMessageAt: 0, lastMessageSenderId: '' });
     await setDoc(doc(db, 'notifications/n1'), { recipientId: 'alice', senderId: 'bob', title: 't', seen: false });
+    await setDoc(doc(db, 'repairRequests/rdone'), { userId: 'bob', vendorId: 'vic', status: 'COMPLETED' });
+    await setDoc(doc(db, 'purchaseRequests/pdone'), { buyerId: 'bob', sellerId: 'alice', listingId: 'sell1', status: 'COMPLETED' });
+    await setDoc(doc(db, 'exchangeRequests/edone'), { senderId: 'alice', receiverId: 'bob', status: 'COMPLETED' });
+    await setDoc(doc(db, 'recyclingRequests/cdone'), { userId: 'bob', vendorId: 'vic', status: 'COMPLETED' });
     await setDoc(doc(db, 'reviews/alice_REPAIR_REQUEST_r1'), { reviewerId: 'alice', targetUserId: 'vic', contextType: 'REPAIR_REQUEST', contextId: 'r1', rating: 4, comment: 'ok' });
     await setDoc(doc(db, 'materialRequests/m1'), { vendorId: 'vic', status: 'OPEN', city: 'Mumbai' });
   });
@@ -313,12 +317,23 @@ const deny = (n, p) => check(n, p, false);
   await allow('owner removes their token', deleteDoc(doc(as('alice'), 'deviceTokens/tok1')));
 
   // reviews
-  const rv = { reviewerId: 'bob', targetUserId: 'vic', contextType: 'REPAIR_REQUEST', contextId: 'r9', rating: 5, comment: 'great' };
-  await allow('review with matching id', setDoc(doc(as('bob'), 'reviews/bob_REPAIR_REQUEST_r9'), rv));
+  const rv = { reviewerId: 'bob', targetUserId: 'vic', contextType: 'REPAIR_REQUEST', contextId: 'rdone', rating: 5, comment: 'great' };
+  await allow('review a completed repair', setDoc(doc(as('bob'), 'reviews/bob_REPAIR_REQUEST_rdone'), rv));
   await deny('review with arbitrary id', setDoc(doc(as('bob'), 'reviews/random'), rv));
-  await deny('rating out of range', setDoc(doc(as('bob'), 'reviews/bob_REPAIR_REQUEST_r10'), { ...rv, contextId: 'r10', rating: 6 }));
-  await deny('review yourself', setDoc(doc(as('bob'), 'reviews/bob_REPAIR_REQUEST_r11'), { ...rv, contextId: 'r11', targetUserId: 'bob' }));
-  await deny('review as someone else', setDoc(doc(as('carol'), 'reviews/bob_REPAIR_REQUEST_r12'), { ...rv, contextId: 'r12' }));
+  await deny('rating out of range', setDoc(doc(as('bob'), 'reviews/bob_REPAIR_REQUEST_rdone'), { ...rv, rating: 6 }));
+  await deny('review yourself', setDoc(doc(as('bob'), 'reviews/bob_REPAIR_REQUEST_rdone'), { ...rv, targetUserId: 'bob' }));
+  await deny('review as someone else', setDoc(doc(as('carol'), 'reviews/bob_REPAIR_REQUEST_rdone'), rv));
+  await deny('review of a transaction that is not completed', setDoc(doc(as('alice'), 'reviews/alice_REPAIR_REQUEST_r2'), { ...rv, reviewerId: 'alice', contextId: 'r2' }));
+  await deny('review that never happened', setDoc(doc(as('bob'), 'reviews/bob_REPAIR_REQUEST_ghost'), { ...rv, contextId: 'ghost' }));
+  await deny('review about the wrong person', setDoc(doc(as('bob'), 'reviews/bob_REPAIR_REQUEST_rdone'), { ...rv, targetUserId: 'alice' }));
+  await deny('vendor reviews the customer of a repair', setDoc(doc(as('vic'), 'reviews/vic_REPAIR_REQUEST_rdone'), { ...rv, reviewerId: 'vic', targetUserId: 'bob' }));
+  await deny('comment over 500 characters', setDoc(doc(as('bob'), 'reviews/bob_REPAIR_REQUEST_rdone'), { ...rv, comment: 'x'.repeat(501) }));
+  await allow('buyer reviews the seller of a purchase', setDoc(doc(as('bob'), 'reviews/bob_PURCHASE_REQUEST_pdone'), { reviewerId: 'bob', targetUserId: 'alice', contextType: 'PURCHASE_REQUEST', contextId: 'pdone', rating: 4, comment: '' }));
+  await deny('seller reviews the buyer of a purchase', setDoc(doc(as('alice'), 'reviews/alice_PURCHASE_REQUEST_pdone'), { reviewerId: 'alice', targetUserId: 'bob', contextType: 'PURCHASE_REQUEST', contextId: 'pdone', rating: 4, comment: '' }));
+  await allow('exchange sender reviews receiver', setDoc(doc(as('alice'), 'reviews/alice_EXCHANGE_REQUEST_edone'), { reviewerId: 'alice', targetUserId: 'bob', contextType: 'EXCHANGE_REQUEST', contextId: 'edone', rating: 5, comment: 'ok' }));
+  await allow('exchange receiver reviews sender', setDoc(doc(as('bob'), 'reviews/bob_EXCHANGE_REQUEST_edone'), { reviewerId: 'bob', targetUserId: 'alice', contextType: 'EXCHANGE_REQUEST', contextId: 'edone', rating: 3, comment: '' }));
+  await deny('outsider reviews an exchange', setDoc(doc(as('carol'), 'reviews/carol_EXCHANGE_REQUEST_edone'), { reviewerId: 'carol', targetUserId: 'alice', contextType: 'EXCHANGE_REQUEST', contextId: 'edone', rating: 1, comment: '' }));
+  await allow('customer reviews the recycler', setDoc(doc(as('bob'), 'reviews/bob_RECYCLING_REQUEST_cdone'), { reviewerId: 'bob', targetUserId: 'vic', contextType: 'RECYCLING_REQUEST', contextId: 'cdone', rating: 5, comment: '' }));
   await allow('read reviews', getDocs(query(collection(as('carol'), 'reviews'), where('targetUserId', '==', 'vic'))));
   await allow('reviewer edits comment', updateDoc(doc(as('alice'), 'reviews/alice_REPAIR_REQUEST_r1'), { comment: 'better', rating: 5, updatedAt: now }));
   await deny('reviewer retargets review', updateDoc(doc(as('alice'), 'reviews/alice_REPAIR_REQUEST_r1'), { targetUserId: 'bob' }));
@@ -332,6 +347,36 @@ const deny = (n, p) => check(n, p, false);
   await allow('list own favourites', getDocs(query(collection(as('alice'), 'favourites'), where('userId', '==', 'alice'))));
   await deny('list another user\'s favourites', getDocs(query(collection(as('carol'), 'favourites'), where('userId', '==', 'alice'))));
   await allow('remove favourite', deleteDoc(doc(as('alice'), 'favourites/alice_sell1')));
+
+  // reports
+  const rep = { reporterId: 'alice', targetType: 'LISTING', targetId: 'sell1', targetName: 'Sofa', reason: 'SPAM', details: '' };
+  await allow('report a listing', setDoc(doc(as('alice'), 'reports/alice_LISTING_sell1'), rep));
+  await deny('report with a wrong id', setDoc(doc(as('alice'), 'reports/whatever'), rep));
+  await deny('report as someone else', setDoc(doc(as('carol'), 'reports/alice_LISTING_sell1'), rep));
+  await deny('report yourself', setDoc(doc(as('alice'), 'reports/alice_USER_alice'), { ...rep, targetType: 'USER', targetId: 'alice' }));
+  await allow('report a user', setDoc(doc(as('alice'), 'reports/alice_USER_bob'), { ...rep, targetType: 'USER', targetId: 'bob' }));
+  await deny('report with very long details', setDoc(doc(as('alice'), 'reports/alice_LISTING_swap1'), { ...rep, targetId: 'swap1', details: 'x'.repeat(501) }));
+  await deny('read a report back', getDoc(doc(as('alice'), 'reports/alice_LISTING_sell1')));
+  await allow('update your own report', setDoc(doc(as('alice'), 'reports/alice_LISTING_sell1'), { ...rep, details: 'more info' }));
+
+  // blocks
+  await allow('block someone', setDoc(doc(as('alice'), 'blocks/alice_carol'), { blockerId: 'alice', blockedId: 'carol', blockedName: 'Carol' }));
+  await deny('block with a wrong id', setDoc(doc(as('alice'), 'blocks/x'), { blockerId: 'alice', blockedId: 'dave' }));
+  await deny('block as someone else', setDoc(doc(as('dave'), 'blocks/alice_dave'), { blockerId: 'alice', blockedId: 'dave' }));
+  await deny('block yourself', setDoc(doc(as('alice'), 'blocks/alice_alice'), { blockerId: 'alice', blockedId: 'alice' }));
+  await allow('blocker reads own block', getDoc(doc(as('alice'), 'blocks/alice_carol')));
+  await deny('blocked person reads the block', getDoc(doc(as('carol'), 'blocks/alice_carol')));
+  await allow('blocker lists blocks', getDocs(query(collection(as('alice'), 'blocks'), where('blockerId', '==', 'alice'))));
+  await deny('list someone else\'s blocks', getDocs(query(collection(as('carol'), 'blocks'), where('blockerId', '==', 'alice'))));
+  await deny('blocked person starts a chat', setDoc(doc(as('carol'), 'chats/blk1'), { participantIds: ['alice', 'carol'] }));
+  await deny('blocker starts a chat', setDoc(doc(as('alice'), 'chats/blk2'), { participantIds: ['alice', 'carol'] }));
+  await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), 'chats/blkchat'), { participantIds: ['alice', 'carol'], lastMessage: '', lastMessageAt: 0, lastMessageSenderId: '' }); });
+  await deny('blocked person messages the blocker', setDoc(doc(as('carol'), 'chats/blkchat/messages/m1'), { senderId: 'carol', text: 'hi' }));
+  await deny('blocker messages the blocked person', setDoc(doc(as('alice'), 'chats/blkchat/messages/m2'), { senderId: 'alice', text: 'hi' }));
+  await deny('blocked person sends a purchase request', setDoc(doc(as('carol'), 'purchaseRequests/pblk'), { buyerId: 'carol', sellerId: 'alice', listingId: 'sell1', status: 'REQUESTED', offeredPrice: 1 }));
+  await allow('someone else still messages an unblocked chat', setDoc(doc(as('alice'), 'chats/ch1/messages/m77'), { senderId: 'alice', text: 'still fine' }));
+  await allow('unblock', deleteDoc(doc(as('alice'), 'blocks/alice_carol')));
+  await allow('chat works again after unblock', setDoc(doc(as('carol'), 'chats/blkchat/messages/m3'), { senderId: 'carol', text: 'hi again' }));
 
   console.log(`\n${passed} passed, ${failed} failed`);
   await env.cleanup();

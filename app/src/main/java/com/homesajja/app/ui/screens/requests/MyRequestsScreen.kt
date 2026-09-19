@@ -40,6 +40,9 @@ import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.OutlinedButton
 import com.homesajja.app.ui.components.PrimaryButton
+import com.homesajja.app.ui.components.ReviewPrompt
+import com.homesajja.app.viewmodel.ReviewParams
+import com.homesajja.app.data.model.EntityType
 import com.homesajja.app.ui.components.PurchaseStatusTracker
 import com.homesajja.app.ui.util.formatPrice
 import com.homesajja.app.viewmodel.MyRequestsUiState
@@ -165,6 +168,10 @@ private fun RequestCard(
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                }
+                // Once the sale is done, the buyer can review the seller.
+                if (request.status == PurchaseStatus.COMPLETED) {
+                    ReviewPrompt(ReviewParams(EntityType.PURCHASE_REQUEST, request.id, request.sellerId, "the seller"))
                 }
             } else {
                 val actions = sellerActionsFor(request.status)

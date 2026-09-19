@@ -2,10 +2,12 @@ package com.homesajja.app.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.homesajja.app.data.model.RatingSummary
 import com.homesajja.app.data.model.Review
 import kotlinx.coroutines.tasks.await
 
 private const val COLLECTION = "reviews"
+private const val WHERE_IN_LIMIT = 30
 
 /** Reviews at `reviews/{reviewerId_contextType_contextId}` — the deterministic
  * id means creating a second review for the same transaction just fails. */
@@ -28,6 +30,15 @@ class ReviewRepository(firestore: FirebaseFirestore) {
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .limit(limit.toLong())
             .getAllAs()
+
+    /**
+     * Rating summaries for several people at once (e.g. every provider on a list), in as few queries as Firestore
+     * allows. Anyone with no reviews is simply missing from the map.
+     */
+    suspend fun getRatingSummaries(targetUserIds: List<String>): Map<String, RatingSummary> =
+        targetUserIds.distinct().chunked(WHERE_IN_LIMIT).flatMap { chunk ->
+            reviews.whereIn("targetUserId", chunk).getAllAs<Review>()
+        }.groupBy { it.targetUserId }.mapValues { RatingSummary.of(it.value) }
 
     suspend fun getReviewsByReviewer(reviewerId: String, limit: Int = DEFAULT_PAGE_SIZE): List<Review> =
         reviews.whereEqualTo("reviewerId", reviewerId)

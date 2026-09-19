@@ -48,6 +48,8 @@ import com.homesajja.app.ui.components.AppTopBar
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.ItemThumbnail
 import com.homesajja.app.ui.components.LoadingState
+import com.homesajja.app.ui.components.TrustMenu
+import com.homesajja.app.viewmodel.TrustActionsViewModel
 import com.homesajja.app.ui.util.formatMessageTime
 import com.homesajja.app.viewmodel.ChatThreadUiState
 import com.homesajja.app.viewmodel.ChatThreadViewModel
@@ -56,6 +58,8 @@ import com.homesajja.app.viewmodel.ChatThreadViewModel
 @Composable
 fun ChatThreadScreen(onBackClick: () -> Unit, onOpenRoute: (String) -> Unit) {
     val viewModel: ChatThreadViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
+    // The same instance the menu in the top bar uses, so blocking there updates this screen straight away.
+    val trust: TrustActionsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -63,9 +67,17 @@ fun ChatThreadScreen(onBackClick: () -> Unit, onOpenRoute: (String) -> Unit) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
     }
 
-    val title = (state as? ChatThreadUiState.Content)?.let { it.chat.otherParticipantName(it.myId) } ?: "Chat"
+    val loaded = state as? ChatThreadUiState.Content
+    val title = loaded?.let { it.chat.otherParticipantName(it.myId) } ?: "Chat"
+    val otherId = loaded?.let { it.chat.otherParticipantId(it.myId) }
     Scaffold(
-        topBar = { AppTopBar(title = title, onBackClick = onBackClick) },
+        topBar = {
+            AppTopBar(
+                title = title,
+                onBackClick = onBackClick,
+                actions = { if (otherId != null) TrustMenu(userId = otherId, userName = title) },
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
         modifier = Modifier.imePadding(),
@@ -76,6 +88,7 @@ fun ChatThreadScreen(onBackClick: () -> Unit, onOpenRoute: (String) -> Unit) {
                 is ChatThreadUiState.Error -> ErrorState(message = current.message, onRetry = viewModel::retry)
                 is ChatThreadUiState.Content -> Thread(
                     content = current,
+                    iBlockedThem = otherId != null && otherId in trust.blockedIds,
                     draft = viewModel.draft,
                     onDraftChange = viewModel::onDraftChange,
                     onSend = viewModel::send,
@@ -91,6 +104,7 @@ fun ChatThreadScreen(onBackClick: () -> Unit, onOpenRoute: (String) -> Unit) {
 @Composable
 private fun Thread(
     content: ChatThreadUiState.Content,
+    iBlockedThem: Boolean,
     draft: String,
     onDraftChange: (String) -> Unit,
     onSend: () -> Unit,
@@ -128,7 +142,14 @@ private fun Thread(
         }
 
         Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp) {
-            Row(
+            if (iBlockedThem) {
+                Text(
+                    "You've blocked ${content.chat.otherParticipantName(content.myId)}. Unblock them from the menu to send messages.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
+                )
+            } else Row(
                 modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

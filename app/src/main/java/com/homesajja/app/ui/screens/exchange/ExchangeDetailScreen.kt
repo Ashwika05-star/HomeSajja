@@ -47,6 +47,10 @@ import com.homesajja.app.ui.components.ItemComparison
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.OutlinedButton
 import com.homesajja.app.ui.components.PrimaryButton
+import com.homesajja.app.ui.components.ReviewPrompt
+import com.homesajja.app.viewmodel.ReviewParams
+import com.homesajja.app.data.model.EntityType
+import com.homesajja.app.data.model.ExchangeStatus
 import com.homesajja.app.viewmodel.ExchangeAction
 import com.homesajja.app.viewmodel.ExchangeDetailUiState
 import com.homesajja.app.viewmodel.ExchangeDetailViewModel
@@ -136,6 +140,18 @@ private fun DetailContent(content: ExchangeDetailUiState.Content, onOpenListing:
 
         content.chatId?.let { chatId ->
             OutlinedButton(text = "Open chat with ${if (content.isSender) request.receiverName else request.senderName}", onClick = { onOpenChat(chatId) }, modifier = Modifier.fillMaxWidth())
+        }
+
+        // Once the swap is done, each side can review the other.
+        if (request.status == ExchangeStatus.COMPLETED) {
+            ReviewPrompt(
+                ReviewParams(
+                    contextType = EntityType.EXCHANGE_REQUEST,
+                    contextId = request.id,
+                    targetUserId = if (content.isSender) request.receiverId else request.senderId,
+                    targetName = if (content.isSender) request.receiverName else request.senderName,
+                ),
+            )
         }
     }
 }

@@ -122,6 +122,8 @@ fun ListingBrowser(
                     onLoadMore = viewModel::loadMore,
                     onClearNarrowing = viewModel::clearNarrowing,
                     onListingClick = onListingClick,
+                    savedIds = viewModel.savedIds,
+                    onToggleSaved = viewModel::toggleSaved,
                     emptyTitle = emptyTitle,
                     emptySubtitle = emptySubtitle,
                     emptyActionLabel = emptyActionLabel,
@@ -207,6 +209,8 @@ private fun ExploreContent(
     onLoadMore: () -> Unit,
     onClearNarrowing: () -> Unit,
     onListingClick: (FurnitureListing) -> Unit,
+    savedIds: Set<String>,
+    onToggleSaved: (String) -> Unit,
     emptyTitle: (String) -> String,
     emptySubtitle: String,
     emptyActionLabel: String?,
@@ -277,6 +281,8 @@ private fun ExploreContent(
                     imageUrl = listing.images.firstOrNull(),
                     subtitle = cardSubtitle(listing),
                     onClick = { onListingClick(listing) },
+                    isSaved = listing.id in savedIds,
+                    onToggleSaved = { onToggleSaved(listing.id) },
                 )
             }
             item(span = { GridItemSpan(maxLineSpan) }) {

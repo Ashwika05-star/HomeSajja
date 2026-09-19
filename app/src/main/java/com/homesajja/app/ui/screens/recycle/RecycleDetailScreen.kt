@@ -40,6 +40,10 @@ import com.homesajja.app.ui.components.ImageCarousel
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.OutlinedButton
 import com.homesajja.app.ui.components.PrimaryButton
+import com.homesajja.app.ui.components.ReviewPrompt
+import com.homesajja.app.viewmodel.ReviewParams
+import com.homesajja.app.data.model.EntityType
+import com.homesajja.app.data.model.RecyclingStatus
 import com.homesajja.app.ui.components.RecycleStatusTracker
 import com.homesajja.app.viewmodel.RecycleAction
 import com.homesajja.app.viewmodel.RecycleDetailUiState
@@ -140,6 +144,11 @@ private fun DetailContent(content: RecycleDetailUiState.Content) {
                 DetailRow("Recycler", request.vendorName)
             } else {
                 DetailRow("Recycler", "Not assigned yet. A recycler in ${request.city} will pick this up.")
+            }
+            // Once it is done, the customer can review the recycler.
+            val recyclerId = request.vendorId
+            if (request.status == RecyclingStatus.COMPLETED && !content.viewerIsRecycler && recyclerId != null) {
+                ReviewPrompt(ReviewParams(EntityType.RECYCLING_REQUEST, request.id, recyclerId, request.vendorName ?: "the recycler"))
             }
         }
     }

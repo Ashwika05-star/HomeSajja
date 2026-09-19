@@ -12,7 +12,12 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.messaging.FirebaseMessaging
 import com.homesajja.app.notification.SessionServices
+import com.homesajja.app.data.model.FlowPrefill
+import com.homesajja.app.repository.AiRepository
 import com.homesajja.app.repository.AuthRepository
+import com.homesajja.app.repository.BlockRepository
+import com.homesajja.app.repository.GeminiAiRepository
+import com.homesajja.app.repository.ReportRepository
 import com.homesajja.app.repository.DeviceTokenRepository
 import com.homesajja.app.repository.NotificationSender
 import com.homesajja.app.repository.ChatRepository
@@ -81,6 +86,15 @@ class AppContainer(private val appContext: Context) {
     val sessionServices: SessionServices by lazy {
         SessionServices(appContext, appScope, authRepository, notificationRepository, deviceTokenRepository)
     }
+
+    val reportRepository: ReportRepository by lazy { ReportRepository(firestore) }
+    val blockRepository: BlockRepository by lazy { BlockRepository(firestore) }
+    val aiRepository: AiRepository by lazy {
+        GeminiAiRepository(appContext.contentResolver, appContext.getString(R.string.gemini_model))
+    }
+
+    /** What the Smart Decision screen hands to the Sell, Repair or Recycle flow; the flow takes it once and clears it. */
+    val flowPrefill = MutableStateFlow<FlowPrefill?>(null)
 
     /** A screen to open once the app is signed in and showing, set when a system notification is tapped. */
     val pendingRoute = MutableStateFlow<String?>(null)

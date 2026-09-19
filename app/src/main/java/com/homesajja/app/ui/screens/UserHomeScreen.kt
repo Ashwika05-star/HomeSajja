@@ -5,7 +5,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -64,6 +66,8 @@ fun UserHomeScreen(
     onOpenMaterial: (String) -> Unit,
     onOpenChats: () -> Unit,
     onOpenNotifications: () -> Unit,
+    onOpenSajja: () -> Unit,
+    onOpenProfile: () -> Unit,
     onLoggedOut: () -> Unit,
 ) {
     val homeViewModel: HomeViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
@@ -77,10 +81,9 @@ fun UserHomeScreen(
             AppTopBar(
                 title = selectedTab.label,
                 actions = {
+                    IconButton(onClick = onOpenSajja) { Icon(Icons.Filled.AutoAwesome, contentDescription = "Ask Sajja AI") }
                     InboxActions(onOpenChats, onOpenNotifications)
-                    IconButton(onClick = { homeViewModel.logout(onLoggedOut) }) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Log out")
-                    }
+                    IconButton(onClick = onOpenProfile) { Icon(Icons.Filled.Person, contentDescription = "Profile") }
                 },
             )
         },

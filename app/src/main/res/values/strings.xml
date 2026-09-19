@@ -8,4 +8,6 @@
          uploads use an unsigned preset, so no API secret is in the app. -->
     <string name="cloudinary_cloud_name" translatable="false">oi19l6zq</string>
     <string name="cloudinary_upload_preset" translatable="false">homesajja_listings</string>
+    <!-- The Gemini model used through Firebase AI Logic. Change it here if Google retires or renames it. -->
+    <string name="gemini_model" translatable="false">gemini-3.8-flash</string>
 </resources>

@@ -79,9 +79,12 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.functions)
     implementation(libs.firebase.messaging)
+    implementation(libs.firebase.ai)
     implementation(libs.androidx.lifecycle.process)
 
     testImplementation(libs.junit)
+    // The real org.json, because the Android one is only a stub in unit tests (used to test parsing of AI answers).
+    testImplementation("org.json:json:20240303")
 
     debugImplementation(libs.androidx.ui.tooling)
 }

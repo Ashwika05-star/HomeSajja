@@ -20,6 +20,16 @@ import com.homesajja.app.data.model.UserRole
 import com.homesajja.app.ui.screens.ComponentPreviewScreen
 import com.homesajja.app.ui.screens.LoginScreen
 import com.homesajja.app.di.LocalAppContainer
+import com.homesajja.app.data.model.Recommendation
+import com.homesajja.app.ui.components.TrustMenu
+import com.homesajja.app.ui.screens.ai.SajjaChatScreen
+import com.homesajja.app.ui.screens.ai.SmartDecisionScreen
+import com.homesajja.app.ui.screens.profile.BlockedUsersScreen
+import com.homesajja.app.ui.screens.profile.SavedScreen
+import com.homesajja.app.ui.screens.profile.UserProfileScreen
+import com.homesajja.app.viewmodel.HomeViewModel
+import com.homesajja.app.di.ViewModelFactory
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.homesajja.app.ui.screens.chat.ChatListScreen
 import com.homesajja.app.ui.screens.chat.ChatThreadScreen
 import com.homesajja.app.ui.screens.chat.NotificationsScreen
@@ -128,6 +138,8 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onOpenMaterial = { navController.navigate(Routes.MaterialDetail.createRoute(it)) },
                 onOpenChats = { navController.navigate(Routes.ChatList.route) },
                 onOpenNotifications = { navController.navigate(Routes.Notifications.route) },
+                onOpenSajja = { navController.navigate(Routes.SajjaChat.route) },
+                onOpenProfile = { navController.navigate(Routes.Profile.route) },
                 onLoggedOut = {
                     navController.navigate(Routes.Welcome.route) {
                         popUpTo(0) { inclusive = true }
@@ -145,6 +157,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onProposeExchange = { navController.navigate(Routes.ExchangeNew.createRoute(it)) },
                 onOpenVendor = { navController.navigate(Routes.VendorProfile.createRoute(it)) },
                 onOpenChat = { navController.navigate(Routes.ChatThread.createRoute(it)) },
+                onOpenUser = { id, name -> navController.navigate(Routes.UserProfile.createRoute(id, name)) },
             )
         }
         composable(
@@ -188,6 +201,9 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                     }
                 },
                 onOpenVendor = { navController.navigate(Routes.VendorProfile.createRoute(it)) },
+                onAskAi = {
+                    navController.navigate(Routes.SmartDecision.route) { popUpTo(Routes.RepairNew.route) { inclusive = true } }
+                },
             )
         }
         composable(
@@ -209,6 +225,9 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                     }
                 },
                 onOpenVendor = { navController.navigate(Routes.VendorProfile.createRoute(it)) },
+                onAskAi = {
+                    navController.navigate(Routes.SmartDecision.route) { popUpTo(Routes.RecycleNew.route) { inclusive = true } }
+                },
             )
         }
         composable(
@@ -235,6 +254,9 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                         popUpTo(Routes.Sell.route) { inclusive = true }
                     }
                 },
+                onAskAi = {
+                    navController.navigate(Routes.SmartDecision.route) { popUpTo(Routes.Sell.route) { inclusive = true } }
+                },
             )
         }
         composable(Routes.VendorHome.route) {
@@ -250,6 +272,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onEditProfile = { navController.navigate(Routes.VendorProfileEdit.route) },
                 onOpenChats = { navController.navigate(Routes.ChatList.route) },
                 onOpenNotifications = { navController.navigate(Routes.Notifications.route) },
+                onOpenBlocked = { navController.navigate(Routes.Blocked.route) },
                 onLoggedOut = {
                     navController.navigate(Routes.Welcome.route) {
                         popUpTo(0) { inclusive = true }
@@ -257,6 +280,74 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 },
             )
         }
+        composable(Routes.SmartDecision.route) {
+            SmartDecisionScreen(
+                onBackClick = { navController.popBackStack() },
+                onOpenFlow = { target ->
+                    val route = when (target) {
+                        Recommendation.SELL, Recommendation.EXCHANGE -> Routes.Sell.createRoute()
+                        Recommendation.REPAIR -> Routes.RepairNew.route
+                        Recommendation.RECYCLE -> Routes.RecycleNew.route
+                    }
+                    navController.navigate(route) { popUpTo(Routes.SmartDecision.route) { inclusive = true } }
+                },
+            )
+        }
+        composable(Routes.SajjaChat.route) {
+            SajjaChatScreen(
+                onBackClick = { navController.popBackStack() },
+                onOpenListing = { navController.navigate(Routes.ListingDetail.createRoute(it)) },
+            )
+        }
+        composable(Routes.Profile.route) {
+            val homeViewModel: HomeViewModel = viewModel(factory = ViewModelFactory(container))
+            Scaffold(
+                topBar = { AppTopBar(title = "Profile", onBackClick = { navController.popBackStack() }) },
+                containerColor = MaterialTheme.colorScheme.background,
+            ) { padding ->
+                UserProfileScreen(
+                    modifier = Modifier.padding(padding),
+                    onOpenSaved = { navController.navigate(Routes.Saved.route) },
+                    onOpenBlocked = { navController.navigate(Routes.Blocked.route) },
+                    onLogout = {
+                        homeViewModel.logout {
+                            navController.navigate(Routes.Welcome.route) { popUpTo(0) { inclusive = true } }
+                        }
+                    },
+                )
+            }
+        }
+        composable(
+            route = Routes.UserProfile.route,
+            arguments = listOf(
+                navArgument("userId") { type = NavType.StringType },
+                navArgument("name") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) { entry ->
+            val userId = entry.arguments?.getString("userId")
+            val name = entry.arguments?.getString("name") ?: "this person"
+            Scaffold(
+                topBar = {
+                    AppTopBar(
+                        title = name,
+                        onBackClick = { navController.popBackStack() },
+                        actions = { TrustMenu(userId = userId, userName = name) },
+                    )
+                },
+                containerColor = MaterialTheme.colorScheme.background,
+            ) { padding -> UserProfileScreen(modifier = Modifier.padding(padding)) }
+        }
+        composable(Routes.Saved.route) {
+            SavedScreen(
+                onBackClick = { navController.popBackStack() },
+                onOpenListing = { navController.navigate(Routes.ListingDetail.createRoute(it)) },
+            )
+        }
+        composable(Routes.Blocked.route) { BlockedUsersScreen(onBackClick = { navController.popBackStack() }) }
         composable(Routes.ChatList.route) {
             ChatListScreen(
                 onBackClick = { navController.popBackStack() },

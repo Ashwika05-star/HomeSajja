@@ -7,7 +7,10 @@ import com.homesajja.app.data.model.FurnitureListing
 import com.homesajja.app.data.model.ListingStatus
 import com.homesajja.app.data.model.VendorProfile
 import com.homesajja.app.repository.AuthRepository
+import com.homesajja.app.data.model.Review
+import com.homesajja.app.repository.FavouriteRepository
 import com.homesajja.app.repository.ListingRepository
+import com.homesajja.app.repository.ReviewRepository
 import com.homesajja.app.repository.VendorRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -24,6 +27,7 @@ sealed interface VendorProfileUiState {
     data class Content(
         val vendor: VendorProfile,
         val catalogue: List<FurnitureListing>,
+        val reviews: List<Review>,
         val isOwner: Boolean,
     ) : VendorProfileUiState
 }
@@ -38,7 +42,16 @@ class VendorPublicProfileViewModel(
     private val authRepository: AuthRepository,
     private val vendorRepository: VendorRepository,
     private val listingRepository: ListingRepository,
+    private val reviewRepository: ReviewRepository,
+    favouriteRepository: FavouriteRepository,
 ) : ViewModel() {
+
+    private val saved = SavedIds(authRepository, favouriteRepository, viewModelScope)
+
+    /** The listings the person has saved, for the hearts on the catalogue cards. */
+    val savedIds: Set<String> get() = saved.ids
+
+    fun toggleSaved(listingId: String) = saved.toggle(listingId)
 
     private val myId: String? = authRepository.currentUserId
     private val vendorId: String? = savedStateHandle.get<String>("vendorId") ?: myId
@@ -49,6 +62,7 @@ class VendorPublicProfileViewModel(
     private val refreshGate = RefreshGate()
 
     init {
+        saved.load()
         load(showLoading = true)
     }
 
@@ -69,10 +83,11 @@ class VendorPublicProfileViewModel(
         refreshGate.markLoaded()
         viewModelScope.launch {
             try {
-                val (vendor, listings) = coroutineScope {
+                val (vendor, listings, reviews) = coroutineScope {
                     val profile = async { vendorRepository.getVendorProfile(id) }
                     val owned = async { listingRepository.getListingsByOwner(id) }
-                    profile.await() to owned.await()
+                    val received = async { reviewRepository.getReviewsForTarget(id) }
+                    Triple(profile.await(), owned.await(), received.await())
                 }
                 if (vendor == null) {
                     _uiState.value = VendorProfileUiState.Error("This vendor profile no longer exists.")
@@ -80,6 +95,7 @@ class VendorPublicProfileViewModel(
                     _uiState.value = VendorProfileUiState.Content(
                         vendor = vendor,
                         catalogue = listings.filter { it.status == ListingStatus.ACTIVE },
+                        reviews = reviews,
                         isOwner = id == myId,
                     )
                 }

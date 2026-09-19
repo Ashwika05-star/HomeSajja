@@ -209,7 +209,7 @@ private fun ProviderStep(viewModel: RepairRequestViewModel, onOpenVendor: (Strin
                 )
             }
             providers.items.forEach { provider ->
-                ProviderCard(provider, selected = form.provider?.uid == provider.uid, onClick = { viewModel.selectProvider(provider) }, onViewProfile = { onOpenVendor(provider.uid) })
+                ProviderCard(provider, rating = viewModel.ratings[provider.uid], selected = form.provider?.uid == provider.uid, onClick = { viewModel.selectProvider(provider) }, onViewProfile = { onOpenVendor(provider.uid) })
             }
         }
     }

@@ -32,6 +32,12 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/vendors/$(uid));
     }
 
+    // Either person has blocked the other.
+    function blocked(a, b) {
+      return exists(/databases/$(database)/documents/blocks/$(a + '_' + b))
+        || exists(/databases/$(database)/documents/blocks/$(b + '_' + a));
+    }
+
     function isRecycler(uid) {
       return vendorExists(uid)
         && get(/databases/$(database)/documents/vendors/$(uid)).data.businessType == 'RECYCLER';
@@ -98,6 +104,7 @@ service cloud.firestore {
         && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId);
       allow create: if isSelf(incoming().buyerId)
         && incoming().sellerId != incoming().buyerId
+        && !blocked(incoming().buyerId, incoming().sellerId)
         && incoming().status == 'REQUESTED'
         && get(/databases/$(database)/documents/listings/$(incoming().listingId)).data.ownerId == incoming().sellerId;
       allow update: if changedKeys().hasOnly(['status', 'updatedAt'])
@@ -118,6 +125,7 @@ service cloud.firestore {
         && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
       allow create: if isSelf(incoming().senderId)
         && incoming().receiverId != incoming().senderId
+        && !blocked(incoming().senderId, incoming().receiverId)
         && incoming().status == 'PENDING'
         && get(/databases/$(database)/documents/listings/$(incoming().offeredListingId)).data.ownerId == incoming().senderId
         && get(/databases/$(database)/documents/listings/$(incoming().offeredListingId)).data.status == 'ACTIVE'
@@ -246,7 +254,8 @@ service cloud.firestore {
       allow list: if isSignedIn() && request.auth.uid in resource.data.participantIds;
       allow create: if isSignedIn()
         && request.auth.uid in incoming().participantIds
-        && incoming().participantIds.size() == 2;
+        && incoming().participantIds.size() == 2
+        && !blocked(incoming().participantIds[0], incoming().participantIds[1]);
       // Participants can refresh the last-message preview, and stamp their own "last read" time
       // (and nobody else's).
       allow update: if isSignedIn()
@@ -265,7 +274,8 @@ service cloud.firestore {
         allow create: if isSignedIn()
           && request.auth.uid in chatParticipants()
           && incoming().senderId == request.auth.uid
-          && incoming().text is string && incoming().text.size() <= 2000;
+          && incoming().text is string && incoming().text.size() <= 2000
+          && !blocked(chatParticipants()[0], chatParticipants()[1]);
         allow update: if false;
         allow delete: if isSelf(existing().senderId);
       }
@@ -295,17 +305,62 @@ service cloud.firestore {
     }
 
     // ---------- reviews ----------
-    // One review per person per transaction: the doc id encodes all three.
+    // One review per person per transaction: the doc id encodes all three. A review can only be
+    // written by a person in a transaction that is COMPLETED, about the other person in it.
+    function reviewAllowed(type, contextId, reviewer, target) {
+      return (type == 'PURCHASE_REQUEST'
+          && get(/databases/$(database)/documents/purchaseRequests/$(contextId)).data.status == 'COMPLETED'
+          && reviewer == get(/databases/$(database)/documents/purchaseRequests/$(contextId)).data.buyerId
+          && target == get(/databases/$(database)/documents/purchaseRequests/$(contextId)).data.sellerId)
+        || (type == 'EXCHANGE_REQUEST'
+          && get(/databases/$(database)/documents/exchangeRequests/$(contextId)).data.status == 'COMPLETED'
+          && [reviewer, target].hasOnly([
+               get(/databases/$(database)/documents/exchangeRequests/$(contextId)).data.senderId,
+               get(/databases/$(database)/documents/exchangeRequests/$(contextId)).data.receiverId]))
+        || (type == 'REPAIR_REQUEST'
+          && get(/databases/$(database)/documents/repairRequests/$(contextId)).data.status == 'COMPLETED'
+          && reviewer == get(/databases/$(database)/documents/repairRequests/$(contextId)).data.userId
+          && target == get(/databases/$(database)/documents/repairRequests/$(contextId)).data.vendorId)
+        || (type == 'RECYCLING_REQUEST'
+          && get(/databases/$(database)/documents/recyclingRequests/$(contextId)).data.status == 'COMPLETED'
+          && reviewer == get(/databases/$(database)/documents/recyclingRequests/$(contextId)).data.userId
+          && target == get(/databases/$(database)/documents/recyclingRequests/$(contextId)).data.vendorId);
+    }
+
     match /reviews/{reviewId} {
       allow read: if isSignedIn();
       allow create: if isSelf(incoming().reviewerId)
         && incoming().targetUserId != incoming().reviewerId
         && incoming().rating is int && incoming().rating >= 1 && incoming().rating <= 5
-        && reviewId == incoming().reviewerId + '_' + incoming().contextType + '_' + incoming().contextId;
+        && incoming().comment.size() <= 500
+        && reviewId == incoming().reviewerId + '_' + incoming().contextType + '_' + incoming().contextId
+        && reviewAllowed(incoming().contextType, incoming().contextId, incoming().reviewerId, incoming().targetUserId);
       allow update: if isSelf(existing().reviewerId)
         && changedKeys().hasOnly(['rating', 'comment', 'updatedAt'])
-        && incoming().rating is int && incoming().rating >= 1 && incoming().rating <= 5;
+        && incoming().rating is int && incoming().rating >= 1 && incoming().rating <= 5
+        && incoming().comment.size() <= 500;
       allow delete: if isSelf(existing().reviewerId);
+    }
+
+    // ---------- trust: reports and blocks ----------
+    // Reports are write-only from the app: nobody reads them back, they are read in the console.
+    match /reports/{reportId} {
+      allow create: if isSelf(incoming().reporterId)
+        && reportId == incoming().reporterId + '_' + incoming().targetType + '_' + incoming().targetId
+        && (incoming().targetType != 'USER' || incoming().targetId != incoming().reporterId)
+        && incoming().details.size() <= 500;
+      allow update: if isSelf(existing().reporterId) && incoming().reporterId == existing().reporterId
+        && incoming().details.size() <= 500;
+    }
+
+    // Only the blocker can see or remove a block; the rules above use it to refuse chat and requests both ways.
+    match /blocks/{blockId} {
+      allow get: if isSignedIn() && (resource == null || resource.data.blockerId == request.auth.uid);
+      allow list: if isSignedIn() && resource.data.blockerId == request.auth.uid;
+      allow create: if isSelf(incoming().blockerId)
+        && incoming().blockedId != incoming().blockerId
+        && blockId == incoming().blockerId + '_' + incoming().blockedId;
+      allow delete: if isSelf(existing().blockerId);
     }
 
     // ---------- favourites ----------

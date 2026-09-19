@@ -20,7 +20,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.homesajja.app.data.model.RatingSummary
 import com.homesajja.app.data.model.RepairProblemType
+import com.homesajja.app.ui.components.RatingLine
+import com.homesajja.app.ui.components.VerifiedBadge
 import com.homesajja.app.data.model.VendorBusinessType
 import com.homesajja.app.data.model.VendorProfile
 import com.homesajja.app.ui.util.formatPrice
@@ -29,6 +32,7 @@ import com.homesajja.app.ui.util.formatPrice
 @Composable
 fun ProviderCard(
     provider: VendorProfile,
+    rating: RatingSummary?,
     selected: Boolean,
     onClick: () -> Unit,
     onViewProfile: () -> Unit,
@@ -55,11 +59,8 @@ fun ProviderCard(
                 }
                 if (selected) Icon(Icons.Filled.CheckCircle, contentDescription = "Selected", tint = primary)
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(Icons.Filled.StarBorder, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
-                // Placeholder until reviews are wired up in a later phase.
-                Text("No ratings yet", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            RatingLine(rating)
+            if (provider.verified) VerifiedBadge()
             Text(
                 text = servicesLine(provider),
                 style = MaterialTheme.typography.bodyMedium,

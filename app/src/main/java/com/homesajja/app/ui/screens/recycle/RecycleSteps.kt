@@ -130,7 +130,7 @@ private fun RecyclerStep(viewModel: RecycleRequestViewModel, onOpenVendor: (Stri
                 )
             }
             recyclers.items.forEach { recycler ->
-                RecyclerCard(recycler, selected = form.recycler?.uid == recycler.uid, onClick = { viewModel.selectRecycler(recycler) }, onViewProfile = { onOpenVendor(recycler.uid) })
+                RecyclerCard(recycler, rating = viewModel.ratings[recycler.uid], selected = form.recycler?.uid == recycler.uid, onClick = { viewModel.selectRecycler(recycler) }, onViewProfile = { onOpenVendor(recycler.uid) })
             }
         }
     }

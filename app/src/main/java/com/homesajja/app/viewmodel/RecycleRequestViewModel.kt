@@ -15,6 +15,11 @@ import com.homesajja.app.data.model.VendorProfile
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ImageRepository
 import com.homesajja.app.repository.NotificationSender
+import com.homesajja.app.repository.ReviewRepository
+import com.homesajja.app.data.model.FlowPrefill
+import com.homesajja.app.data.model.Recommendation
+import kotlinx.coroutines.flow.MutableStateFlow
+import com.homesajja.app.data.model.RatingSummary
 import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.RecyclingRepository
 import com.homesajja.app.repository.UserRepository
@@ -44,6 +49,8 @@ class RecycleRequestViewModel(
     private val recyclingRepository: RecyclingRepository,
     private val imageRepository: ImageRepository,
     private val notificationSender: NotificationSender,
+    private val reviewRepository: ReviewRepository,
+    private val prefillHolder: MutableStateFlow<FlowPrefill?>,
 ) : ViewModel() {
 
     var screenState by mutableStateOf<RecycleScreenState>(RecycleScreenState.Loading)
@@ -55,6 +62,9 @@ class RecycleRequestViewModel(
     var stepError by mutableStateOf<String?>(null)
         private set
     var recyclers by mutableStateOf<LoadState<VendorProfile>>(LoadState.Loading)
+        private set
+    /** Each provider's rating, by vendor id; a provider with no reviews is missing. Loaded after the list, and optional. */
+    var ratings by mutableStateOf<Map<String, RatingSummary>>(emptyMap())
         private set
     var sendState by mutableStateOf<RecycleSendState>(RecycleSendState.Idle)
         private set
@@ -73,6 +83,12 @@ class RecycleRequestViewModel(
                     return@launch
                 }
                 form = form.copy(city = userRepository.getUserProfile(uid)?.city.orEmpty())
+                prefillHolder.value?.takeIf { it.target == Recommendation.RECYCLE }?.let { prefill ->
+                    prefillHolder.value = null
+                    form = form.withPrefill(prefill)
+                    // Land on the first step that still needs an answer.
+                    step = RecycleStep.entries.dropLast(1).firstOrNull { form.validate(it) != null } ?: RecycleStep.entries.last()
+                }
                 screenState = RecycleScreenState.Ready
             } catch (e: CancellationException) {
                 throw e
@@ -88,7 +104,9 @@ class RecycleRequestViewModel(
         recyclers = LoadState.Loading
         viewModelScope.launch {
             recyclers = try {
-                LoadState.Loaded(vendorRepository.getVendorsByTypes(form.city, VendorBusinessType.RECYCLERS))
+                LoadState.Loaded(vendorRepository.getVendorsByTypes(form.city, VendorBusinessType.RECYCLERS).also { found ->
+                    ratings = runCatching { reviewRepository.getRatingSummaries(found.map { it.uid }) }.getOrDefault(emptyMap())
+                })
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

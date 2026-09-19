@@ -15,6 +15,11 @@ import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ImageRepository
 import com.homesajja.app.repository.ListingRepository
 import com.homesajja.app.repository.NotificationSender
+import com.homesajja.app.repository.ReviewRepository
+import com.homesajja.app.data.model.FlowPrefill
+import com.homesajja.app.data.model.Recommendation
+import kotlinx.coroutines.flow.MutableStateFlow
+import com.homesajja.app.data.model.RatingSummary
 import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.RepairRepository
 import com.homesajja.app.repository.UserRepository
@@ -52,6 +57,8 @@ class RepairRequestViewModel(
     private val repairRepository: RepairRepository,
     private val imageRepository: ImageRepository,
     private val notificationSender: NotificationSender,
+    private val reviewRepository: ReviewRepository,
+    private val prefillHolder: MutableStateFlow<FlowPrefill?>,
 ) : ViewModel() {
 
     var screenState by mutableStateOf<RepairScreenState>(RepairScreenState.Loading)
@@ -65,6 +72,9 @@ class RepairRequestViewModel(
     var listings by mutableStateOf<LoadState<FurnitureListing>>(LoadState.Loading)
         private set
     var providers by mutableStateOf<LoadState<VendorProfile>>(LoadState.Loading)
+        private set
+    /** Each provider's rating, by vendor id; a provider with no reviews is missing. Loaded after the list, and optional. */
+    var ratings by mutableStateOf<Map<String, RatingSummary>>(emptyMap())
         private set
     var sendState by mutableStateOf<RepairSendState>(RepairSendState.Idle)
         private set
@@ -84,6 +94,12 @@ class RepairRequestViewModel(
                     return@launch
                 }
                 form = form.copy(city = userRepository.getUserProfile(uid)?.city.orEmpty())
+                prefillHolder.value?.takeIf { it.target == Recommendation.REPAIR }?.let { prefill ->
+                    prefillHolder.value = null
+                    form = form.withPrefill(prefill)
+                    // Land on the first step that still needs an answer.
+                    step = RepairStep.entries.dropLast(1).firstOrNull { form.validate(it) != null } ?: RepairStep.entries.last()
+                }
                 screenState = RepairScreenState.Ready
                 loadListings(uid)
             } catch (e: CancellationException) {
@@ -116,7 +132,9 @@ class RepairRequestViewModel(
         providers = LoadState.Loading
         viewModelScope.launch {
             providers = try {
-                LoadState.Loaded(vendorRepository.getVendorsByTypes(form.city, VendorBusinessType.REPAIR_PROVIDERS))
+                LoadState.Loaded(vendorRepository.getVendorsByTypes(form.city, VendorBusinessType.REPAIR_PROVIDERS).also { found ->
+                    ratings = runCatching { reviewRepository.getRatingSummaries(found.map { it.uid }) }.getOrDefault(emptyMap())
+                })
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

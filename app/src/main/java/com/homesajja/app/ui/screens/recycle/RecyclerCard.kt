@@ -19,12 +19,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.homesajja.app.data.model.RatingSummary
 import com.homesajja.app.data.model.VendorProfile
+import com.homesajja.app.ui.components.RatingLine
+import com.homesajja.app.ui.components.VerifiedBadge
 
 /** A recycler as a selectable card for drop-off: name, city and, once the vendor has set it, the shop address. */
 @Composable
 fun RecyclerCard(
     recycler: VendorProfile,
+    rating: RatingSummary?,
     selected: Boolean,
     onClick: () -> Unit,
     onViewProfile: () -> Unit,
@@ -47,6 +51,8 @@ fun RecyclerCard(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                RatingLine(rating)
+                if (recycler.verified) VerifiedBadge()
                 TextButton(onClick = onViewProfile) { Text("View profile") }
             }
             if (selected) Icon(Icons.Filled.CheckCircle, contentDescription = "Selected", tint = primary)

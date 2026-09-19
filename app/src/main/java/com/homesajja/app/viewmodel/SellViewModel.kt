@@ -16,6 +16,9 @@ import com.homesajja.app.repository.ListingRepository
 import com.homesajja.app.repository.SessionRepository
 import com.homesajja.app.repository.ImageRepository
 import com.homesajja.app.repository.NotificationSender
+import com.homesajja.app.data.model.FlowPrefill
+import com.homesajja.app.data.model.Recommendation
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.UserRepository
 import com.homesajja.app.repository.VendorRepository
@@ -50,6 +53,7 @@ class SellViewModel(
     private val listingRepository: ListingRepository,
     private val imageRepository: ImageRepository,
     private val notificationSender: NotificationSender,
+    private val prefillHolder: MutableStateFlow<FlowPrefill?>,
 ) : ViewModel() {
 
     private val editingListingId: String? = savedStateHandle["listingId"]
@@ -90,6 +94,11 @@ class SellViewModel(
                     val vendor = if (user == null) vendorRepository.getVendorProfile(uid) else null
                     vendorShopName = vendor?.businessName?.ifBlank { vendor.name }
                     form = form.copy(city = user?.city ?: vendor?.city.orEmpty())
+                    takePrefill()?.let { prefill ->
+                        form = form.withPrefill(prefill)
+                        // Land on the first step that still needs an answer.
+                        step = SellStep.entries.dropLast(1).firstOrNull { form.validate(it) != null } ?: SellStep.entries.last()
+                    }
                 } else {
                     val listing = listingRepository.getListing(editingListingId)
                     if (listing == null || listing.ownerId != uid) {
@@ -107,6 +116,11 @@ class SellViewModel(
             }
         }
     }
+
+    /** A Smart Decision hand-off meant for Sell or Exchange, taken once so it can't reappear on the next flow. */
+    private fun takePrefill(): FlowPrefill? =
+        prefillHolder.value?.takeIf { it.target == Recommendation.SELL || it.target == Recommendation.EXCHANGE }
+            ?.also { prefillHolder.value = null }
 
     fun update(transform: (SellForm) -> SellForm) {
         form = transform(form)

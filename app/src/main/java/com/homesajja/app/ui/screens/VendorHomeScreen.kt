@@ -65,6 +65,7 @@ fun VendorHomeScreen(
     onEditProfile: () -> Unit,
     onOpenChats: () -> Unit,
     onOpenNotifications: () -> Unit,
+    onOpenBlocked: () -> Unit,
     onLoggedOut: () -> Unit,
 ) {
     val homeViewModel: HomeViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
@@ -144,6 +145,7 @@ fun VendorHomeScreen(
             VendorTab.PROFILE -> VendorPublicProfileScreen(
                 onOpenListing = onOpenListing,
                 onEditProfile = onEditProfile,
+                onOpenBlocked = onOpenBlocked,
                 modifier = contentModifier,
             )
         }

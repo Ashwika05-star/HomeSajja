@@ -2,6 +2,7 @@ package com.homesajja.app.ui.screens.vendor
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -13,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
@@ -28,7 +30,9 @@ import com.homesajja.app.ui.components.FurnitureCard
 import com.homesajja.app.ui.components.ImageCarousel
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.OutlinedButton
+import com.homesajja.app.ui.components.ReviewsSection
 import com.homesajja.app.ui.components.ShopMap
+import com.homesajja.app.ui.components.TrustMenu
 import com.homesajja.app.ui.components.VerifiedBadge
 import com.homesajja.app.ui.util.priceLabel
 import com.homesajja.app.viewmodel.VendorProfileUiState
@@ -43,6 +47,7 @@ fun VendorPublicProfileScreen(
     onOpenListing: (String) -> Unit,
     modifier: Modifier = Modifier,
     onEditProfile: (() -> Unit)? = null,
+    onOpenBlocked: (() -> Unit)? = null,
 ) {
     val viewModel: VendorPublicProfileViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -55,7 +60,15 @@ fun VendorPublicProfileScreen(
     when (val current = state) {
         VendorProfileUiState.Loading -> LoadingState(modifier)
         is VendorProfileUiState.Error -> ErrorState(message = current.message, onRetry = viewModel::retry, modifier = modifier)
-        is VendorProfileUiState.Content -> ProfileContent(current, onOpenListing, onEditProfile, modifier)
+        is VendorProfileUiState.Content -> ProfileContent(
+            content = current,
+            onOpenListing = onOpenListing,
+            onEditProfile = onEditProfile,
+            onOpenBlocked = onOpenBlocked,
+            savedIds = viewModel.savedIds,
+            onToggleSaved = viewModel::toggleSaved,
+            modifier = modifier,
+        )
     }
 }
 
@@ -64,6 +77,9 @@ private fun ProfileContent(
     content: VendorProfileUiState.Content,
     onOpenListing: (String) -> Unit,
     onEditProfile: (() -> Unit)?,
+    onOpenBlocked: (() -> Unit)?,
+    savedIds: Set<String>,
+    onToggleSaved: (String) -> Unit,
     modifier: Modifier,
 ) {
     val vendor = content.vendor
@@ -74,10 +90,13 @@ private fun ProfileContent(
         if (vendor.brochureImages.isNotEmpty()) ImageCarousel(images = vendor.brochureImages)
 
         Column(modifier = Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Header(vendor)
+            Header(vendor, showTrustMenu = !content.isOwner)
 
             if (content.isOwner && onEditProfile != null) {
                 OutlinedButton(text = "Edit profile", onClick = onEditProfile, modifier = Modifier.fillMaxWidth())
+            }
+            if (content.isOwner && onOpenBlocked != null) {
+                OutlinedButton(text = "Blocked people", onClick = onOpenBlocked, modifier = Modifier.fillMaxWidth())
             }
 
             Section("About") {
@@ -102,15 +121,7 @@ private fun ProfileContent(
                 }
             }
 
-            Section("Reviews") {
-                // Real reviews arrive with the reviews phase.
-                Text("☆ No ratings yet", style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    "Customer reviews will appear here.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            ReviewsSection(content.reviews)
 
             Section("Catalogue (${content.catalogue.size})") {
                 if (content.catalogue.isEmpty()) {
@@ -133,6 +144,8 @@ private fun ProfileContent(
                     imageUrl = listing.images.firstOrNull(),
                     subtitle = listing.category.displayName,
                     onClick = { onOpenListing(listing.id) },
+                    isSaved = listing.id in savedIds,
+                    onToggleSaved = if (content.isOwner) null else ({ onToggleSaved(listing.id) }),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -141,9 +154,12 @@ private fun ProfileContent(
 }
 
 @Composable
-private fun Header(vendor: VendorProfile) {
+private fun Header(vendor: VendorProfile, showTrustMenu: Boolean) {
     Column(modifier = Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(vendor.businessName.ifBlank { vendor.name }, style = MaterialTheme.typography.headlineMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(vendor.businessName.ifBlank { vendor.name }, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+            if (showTrustMenu) TrustMenu(userId = vendor.uid, userName = vendor.businessName.ifBlank { vendor.name })
+        }
         Text(
             "${VendorBusinessType.fromNameOrNull(vendor.businessType)?.displayName ?: "Vendor"} · ${vendor.city}",
             style = MaterialTheme.typography.bodyMedium,

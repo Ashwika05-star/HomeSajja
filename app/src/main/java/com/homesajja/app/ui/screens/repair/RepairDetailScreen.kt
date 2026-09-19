@@ -40,6 +40,10 @@ import com.homesajja.app.ui.components.ImageCarousel
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.OutlinedButton
 import com.homesajja.app.ui.components.PrimaryButton
+import com.homesajja.app.ui.components.ReviewPrompt
+import com.homesajja.app.viewmodel.ReviewParams
+import com.homesajja.app.data.model.EntityType
+import com.homesajja.app.data.model.RepairStatus
 import com.homesajja.app.ui.components.RepairStatusTracker
 import com.homesajja.app.viewmodel.RepairAction
 import com.homesajja.app.viewmodel.RepairDetailUiState
@@ -147,6 +151,10 @@ private fun DetailContent(content: RepairDetailUiState.Content, onMessage: () ->
                 onClick = onMessage,
                 modifier = Modifier.fillMaxWidth(),
             )
+            // Once the repair is done, the customer can review the provider.
+            if (request.status == RepairStatus.COMPLETED && !content.viewerIsVendor) {
+                ReviewPrompt(ReviewParams(EntityType.REPAIR_REQUEST, request.id, request.vendorId, request.vendorName))
+            }
         }
     }
 }
