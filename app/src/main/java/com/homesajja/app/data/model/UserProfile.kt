@@ -10,5 +10,7 @@ data class UserProfile(
     val email: String = "",
     val phone: String = "",
     val city: String = "",
+    /** Where this person can be paid by UPI (optional); shown with a Copy button, and used when a recycler pays them. */
+    val upiId: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
 )

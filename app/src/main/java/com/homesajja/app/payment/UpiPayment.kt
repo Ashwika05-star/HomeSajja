@@ -9,7 +9,7 @@ import java.util.Locale
 
 /** What happened when we tried to hand the payment over to a UPI app. */
 enum class UpiLaunchResult {
-    /** Google Pay (or another UPI app) opened; the person finishes paying there. */
+    /** The chooser of UPI apps opened; the person picks one and finishes paying there. */
     OPENED,
 
     /** No app on this phone can take a UPI payment. */
@@ -18,12 +18,10 @@ enum class UpiLaunchResult {
 
 /**
  * UPI payments without a payment SDK: HomeSajja builds a standard `upi://pay` link and opens it, and the person
- * completes and confirms the payment inside Google Pay themselves. Nothing here can tell whether the payment
- * went through, so the buyer (or seller) marks the request as paid afterwards.
+ * completes the payment inside whichever UPI app they pick (Google Pay, PhonePe, Paytm, BHIM, a bank app...). Nothing here can
+ * tell whether the payment went through, so the payer marks it paid and the payee confirms it afterwards.
  */
 object UpiPayment {
-
-    const val GPAY_PACKAGE = "com.google.android.apps.nbu.paisa.user"
 
     private val UPI_ID = Regex("^[A-Za-z0-9._-]{2,256}@[A-Za-z]{2,64}$")
 
@@ -49,16 +47,11 @@ object UpiPayment {
     /** UPI apps expect spaces as %20, not the "+" that URLEncoder uses. */
     private fun encode(value: String): String = URLEncoder.encode(value, "UTF-8").replace("+", "%20")
 
-    /** Opens Google Pay if it is installed, otherwise any UPI app the person picks; reports if there is none. */
+    /** Opens the system chooser listing every UPI app on the phone; reports [UpiLaunchResult.NO_UPI_APP] if there is none. */
     fun launch(context: Context, link: Uri): UpiLaunchResult {
-        val gpay = Intent(Intent.ACTION_VIEW, link).setPackage(GPAY_PACKAGE)
-        if (tryStart(context, gpay)) return UpiLaunchResult.OPENED
-        val anyUpiApp = Intent.createChooser(Intent(Intent.ACTION_VIEW, link), "Pay with")
-        return if (Intent(Intent.ACTION_VIEW, link).resolveActivity(context.packageManager) != null && tryStart(context, anyUpiApp)) {
-            UpiLaunchResult.OPENED
-        } else {
-            UpiLaunchResult.NO_UPI_APP
-        }
+        val view = Intent(Intent.ACTION_VIEW, link)
+        if (context.packageManager.queryIntentActivities(view, 0).isEmpty()) return UpiLaunchResult.NO_UPI_APP
+        return if (tryStart(context, Intent.createChooser(view, "Pay with a UPI app"))) UpiLaunchResult.OPENED else UpiLaunchResult.NO_UPI_APP
     }
 
     private fun tryStart(context: Context, intent: Intent): Boolean = try {

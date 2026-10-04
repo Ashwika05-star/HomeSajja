@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.homesajja.app.data.model.Cities
 import com.homesajja.app.data.model.VendorBusinessType
 import com.homesajja.app.data.model.VendorProfile
+import com.homesajja.app.payment.UpiPayment
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ImageRepository
 import com.homesajja.app.repository.VendorRepository
@@ -37,10 +38,15 @@ data class VendorProfileForm(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val brochure: List<SellPhoto> = emptyList(),
+    val upiId: String = "",
 ) {
+    /** The UPI id is optional, but if there is one it has to look like name@bank. */
+    val upiIdInvalid: Boolean get() = upiId.isNotBlank() && !UpiPayment.isValidUpiId(upiId)
+
     fun validate(): String? = when {
         businessName.isBlank() -> "Enter your business name."
         businessType == null -> "Pick your business type."
+        upiIdInvalid -> "That doesn't look like a UPI ID, e.g. name@okhdfcbank."
         else -> null
     }
 }
@@ -93,6 +99,7 @@ class VendorProfileEditViewModel(
                     latitude = profile.shopLatitude,
                     longitude = profile.shopLongitude,
                     brochure = profile.brochureImages.map { SellPhoto.Remote(it) },
+                    upiId = profile.upiId.orEmpty(),
                 )
                 val (cityLat, cityLng) = Cities.centreOf(profile.city)
                 pinLatitude = profile.shopLatitude ?: cityLat
@@ -159,6 +166,7 @@ class VendorProfileEditViewModel(
                     businessType = form.businessType?.name.orEmpty(),
                     description = form.description.trim(),
                     shopAddress = form.shopAddress.trim(),
+                    upiId = form.upiId.trim().takeIf { it.isNotEmpty() },
                     shopLatitude = form.latitude,
                     shopLongitude = form.longitude,
                     brochureImages = urls,

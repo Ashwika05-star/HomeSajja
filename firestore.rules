@@ -47,12 +47,94 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/users/$(uid));
     }
 
+    // ---------- agreed amounts and payments ----------
+    // Purchases, repairs and recycling jobs can carry an agreed amount and a payment record (both stored in the request).
+    // The amount is fixed by one write (the seller accepting, or the customer accepting a quote) and no later write may
+    // touch it; the payment record then moves UNPAID -> MARKED_PAID (the payer) -> CONFIRMED (the payee) and nothing else changes.
+    function validUpiId(v) {
+      return v == null || (v is string && v.matches('^[A-Za-z0-9._-]{2,256}@[A-Za-z]{2,64}$'));
+    }
+
+    // The payment record that opens together with an agreement: unpaid, between the two parties, nothing recorded yet.
+    function newPaymentOk(p, payerId, payeeId) {
+      return p is map
+        && p.keys().hasOnly(['payerId', 'payeeId', 'payeeUpiId', 'method', 'status', 'upiRef', 'markedPaidAt', 'confirmedAt'])
+        && p.payerId == payerId && p.payeeId == payeeId
+        && p.status == 'UNPAID'
+        && p.get('method', null) == null && p.get('upiRef', null) == null
+        && p.get('markedPaidAt', null) == null && p.get('confirmedAt', null) == null
+        && validUpiId(p.get('payeeUpiId', null));
+    }
+
+    // A vendor's quote. Repairs need an estimate in days; recycling needs a direction (who pays whom).
+    function quoteOk(q, isRepair) {
+      return q is map
+        && q.keys().hasOnly(['amount', 'estimatedDays', 'note', 'payeeUpiId', 'direction', 'revision', 'sentAt'])
+        && q.amount is int && q.amount > 0 && q.amount <= 1000000
+        && q.revision is int && q.sentAt is int
+        && q.note is string && q.note.size() <= 500
+        && validUpiId(q.get('payeeUpiId', null))
+        && (isRepair
+            ? (q.estimatedDays is int && q.estimatedDays >= 1 && q.estimatedDays <= 365 && q.get('direction', null) == null)
+            : (q.direction in ['USER_PAYS_VENDOR', 'VENDOR_PAYS_USER']
+               && (q.get('estimatedDays', null) == null || (q.estimatedDays is int && q.estimatedDays >= 1 && q.estimatedDays <= 365))));
+    }
+
+    // The first quote is revision 1; a revised one is exactly one more than the quote it replaces.
+    function quoteRevisionOk(q) {
+      return existing().get('quote', null) == null
+        ? q.revision == 1
+        : q.revision == existing().quote.revision + 1;
+    }
+
+    // Once anyone has said money moved, the job can no longer be cancelled.
+    function paymentUntouched() {
+      return existing().get('payment', null) == null || existing().payment.status == 'UNPAID';
+    }
+
+    // The payer says they paid (by UPI or cash, with an optional transaction reference). Nothing else may change with it.
+    function payerMarksPaid(openStatuses) {
+      return existing().get('payment', null) != null
+        && existing().status in openStatuses
+        && changedKeys().hasOnly(['payment', 'updatedAt'])
+        && isSelf(existing().payment.payerId)
+        && existing().payment.status == 'UNPAID'
+        && incoming().payment.status == 'MARKED_PAID'
+        && incoming().payment.diff(existing().payment).affectedKeys().hasOnly(['status', 'method', 'upiRef', 'markedPaidAt'])
+        && incoming().payment.method in ['UPI', 'CASH']
+        && incoming().payment.markedPaidAt is int
+        && (incoming().payment.get('upiRef', null) == null
+            || (incoming().payment.method == 'UPI' && incoming().payment.upiRef is string && incoming().payment.upiRef.size() <= 64));
+    }
+
+    // The payee says the money arrived. Only this counts as money earned.
+    function payeeConfirms(openStatuses) {
+      return existing().get('payment', null) != null
+        && existing().status in openStatuses
+        && changedKeys().hasOnly(['payment', 'updatedAt'])
+        && isSelf(existing().payment.payeeId)
+        && existing().payment.status == 'MARKED_PAID'
+        && incoming().payment.status == 'CONFIRMED'
+        && incoming().payment.diff(existing().payment).affectedKeys().hasOnly(['status', 'confirmedAt'])
+        && incoming().payment.confirmedAt is int;
+    }
+
+    // A new request starts with no quote, no agreed amount and no payment.
+    function startsUnagreed() {
+      return incoming().get('quote', null) == null
+        && incoming().get('agreedAmount', null) == null
+        && incoming().get('agreedAt', null) == null
+        && incoming().get('payment', null) == null;
+    }
+
     // ---------- accounts ----------
     // The two roles are permanent: a uid may own a users doc or a vendors doc, never both.
     match /users/{uid} {
       allow read: if isSelf(uid);
-      allow create: if isSelf(uid) && incoming().uid == uid && !vendorExists(uid);
-      allow update: if isSelf(uid) && incoming().uid == uid;
+      allow create: if isSelf(uid) && incoming().uid == uid && !vendorExists(uid)
+        && validUpiId(incoming().get('upiId', null));
+      allow update: if isSelf(uid) && incoming().uid == uid
+        && validUpiId(incoming().get('upiId', null));
       allow delete: if isSelf(uid);
     }
 
@@ -61,9 +143,11 @@ service cloud.firestore {
     match /vendors/{uid} {
       allow read: if isSignedIn();
       allow create: if isSelf(uid) && incoming().uid == uid && !userExists(uid)
-        && incoming().get('verified', false) == false;
+        && incoming().get('verified', false) == false
+        && validUpiId(incoming().get('upiId', null));
       allow update: if isSelf(uid) && incoming().uid == uid
-        && incoming().get('verified', false) == existing().get('verified', false);
+        && incoming().get('verified', false) == existing().get('verified', false)
+        && validUpiId(incoming().get('upiId', null));
       allow delete: if isSelf(uid);
     }
 
@@ -96,7 +180,29 @@ service cloud.firestore {
             || (exchange.status == 'COMPLETED' && existing().status == 'RESERVED' && incoming().status == 'EXCHANGED'));
     }
 
-    // Buyer <-> seller. The seller answers; the buyer can only cancel.
+    // Buyer <-> seller. The seller answers (REQUESTED -> ACCEPTED/REJECTED, then READY_FOR_PICKUP -> COMPLETED, or CANCELLED);
+    // the buyer can only withdraw a request the seller hasn't answered yet.
+    // Accepting is the agreement: it fixes the amount (the offered price, i.e. the asking price or the accepted offer) and opens the
+    // payment record (unless the item is free). After that the amount can't change, and the buyer / seller move the payment
+    // UNPAID -> MARKED_PAID -> CONFIRMED (see payerMarksPaid / payeeConfirms). Nobody can cancel once a payment is marked.
+    function purchaseSellerMove(from, to) {
+      return (from == 'REQUESTED' && to == 'REJECTED')
+        || (from == 'ACCEPTED' && to in ['READY_FOR_PICKUP', 'CANCELLED'])
+        || (from == 'READY_FOR_PICKUP' && to in ['COMPLETED', 'CANCELLED']);
+    }
+
+    function purchaseAccepts() {
+      return changedKeys().hasOnly(['status', 'updatedAt', 'agreedAmount', 'agreedAt', 'payment'])
+        && isSelf(existing().sellerId)
+        && existing().status == 'REQUESTED' && incoming().status == 'ACCEPTED'
+        && existing().get('agreedAmount', null) == null
+        && incoming().agreedAmount == existing().offeredPrice
+        && incoming().agreedAt is int
+        && (existing().offeredPrice == 0
+            ? incoming().get('payment', null) == null
+            : newPaymentOk(incoming().payment, existing().buyerId, existing().sellerId));
+    }
+
     match /purchaseRequests/{requestId} {
       allow get: if isSignedIn()
         && (resource == null || (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId));
@@ -106,18 +212,15 @@ service cloud.firestore {
         && incoming().sellerId != incoming().buyerId
         && !blocked(incoming().buyerId, incoming().sellerId)
         && incoming().status == 'REQUESTED'
+        && startsUnagreed()
         && get(/databases/$(database)/documents/listings/$(incoming().listingId)).data.ownerId == incoming().sellerId;
-      // Status moves: the seller answers (and may attach a UPI id while doing so); the buyer can only cancel.
-      // Payment: either party can mark an accepted request paid, and nothing else changes with it.
-      allow update: if (changedKeys().hasOnly(['status', 'updatedAt', 'upiId'])
-          && (isSelf(existing().sellerId)
-              || (isSelf(existing().buyerId) && incoming().status == 'CANCELLED' && !('upiId' in changedKeys())))
-          && (!('upiId' in changedKeys())
-              || (incoming().upiId is string && incoming().upiId.matches('^[A-Za-z0-9._-]{2,256}@[A-Za-z]{2,64}$'))))
-        || (changedKeys().hasOnly(['paid', 'paidAt', 'updatedAt'])
-          && incoming().paid == true
-          && existing().status in ['ACCEPTED', 'READY_FOR_PICKUP']
-          && (isSelf(existing().sellerId) || isSelf(existing().buyerId)));
+      allow update: if (changedKeys().hasOnly(['status', 'updatedAt'])
+          && ((isSelf(existing().sellerId) && purchaseSellerMove(existing().status, incoming().status)
+                && (incoming().status != 'CANCELLED' || paymentUntouched()))
+              || (isSelf(existing().buyerId) && existing().status == 'REQUESTED' && incoming().status == 'CANCELLED')))
+        || purchaseAccepts()
+        || payerMarksPaid(['ACCEPTED', 'READY_FOR_PICKUP', 'COMPLETED'])
+        || payeeConfirms(['ACCEPTED', 'READY_FOR_PICKUP', 'COMPLETED']);
       allow delete: if isSelf(existing().buyerId) && existing().status == 'REQUESTED';
     }
 
@@ -151,14 +254,42 @@ service cloud.firestore {
     }
 
     // ---------- repair & recycling ----------
-    // User <-> the one vendor they chose. The status pipeline is enforced here:
-    // REQUESTED -> ACCEPTED/REJECTED -> IN_PROGRESS -> READY -> COMPLETED, all moved by the
-    // vendor; the user can only CANCEL, and only before work starts.
+    // User <-> the one vendor they chose. The status pipelines are enforced here.
+    //
+    // Repair: REQUESTED -> QUOTED (the vendor sends a quote) -> AGREED (the user accepts it) -> IN_PROGRESS -> READY -> COMPLETED.
+    // The user can instead DECLINE the quote (DECLINED); the vendor then sends a revised quote (QUOTED again) or closes the request
+    // (REJECTED). Only the vendor moves an agreed job forward. The user can CANCEL until work starts. Accepting the quote fixes the
+    // agreed amount (equal to the quote's amount) and opens the payment record; neither can change afterwards.
+    // ACCEPTED is the old "accepted without a price" step: requests already there can still be started, but none can reach it.
     function repairVendorMove(from, to) {
-      return (from == 'REQUESTED' && to in ['ACCEPTED', 'REJECTED'])
-        || (from == 'ACCEPTED' && to == 'IN_PROGRESS')
+      return (from in ['REQUESTED', 'DECLINED'] && to == 'REJECTED')
+        || (from in ['AGREED', 'ACCEPTED'] && to == 'IN_PROGRESS')
         || (from == 'IN_PROGRESS' && to == 'READY')
         || (from == 'READY' && to == 'COMPLETED');
+    }
+
+    function repairUserMove(from, to) {
+      return (from == 'QUOTED' && to == 'DECLINED')
+        || (from in ['REQUESTED', 'QUOTED', 'DECLINED', 'AGREED', 'ACCEPTED'] && to == 'CANCELLED');
+    }
+
+    function repairQuotes() {
+      return changedKeys().hasOnly(['status', 'updatedAt', 'quote'])
+        && isSelf(existing().vendorId)
+        && existing().status in ['REQUESTED', 'DECLINED'] && incoming().status == 'QUOTED'
+        && quoteOk(incoming().quote, true)
+        && quoteRevisionOk(incoming().quote);
+    }
+
+    function repairAccepts() {
+      return changedKeys().hasOnly(['status', 'updatedAt', 'agreedAmount', 'agreedAt', 'payment'])
+        && isSelf(existing().userId)
+        && existing().status == 'QUOTED' && incoming().status == 'AGREED'
+        && existing().get('agreedAmount', null) == null
+        && incoming().agreedAmount == existing().quote.amount
+        && incoming().agreedAt is int
+        && newPaymentOk(incoming().payment, existing().userId, existing().vendorId)
+        && incoming().payment.get('payeeUpiId', null) == existing().quote.get('payeeUpiId', null);
     }
 
     match /repairRequests/{requestId} {
@@ -170,23 +301,67 @@ service cloud.firestore {
         && userExists(incoming().userId)
         && vendorExists(incoming().vendorId)
         && incoming().status == 'REQUESTED'
+        && startsUnagreed()
         && (!('listingId' in incoming()) || incoming().listingId == null
             || get(/databases/$(database)/documents/listings/$(incoming().listingId)).data.ownerId == incoming().userId);
-      allow update: if changedKeys().hasOnly(['status', 'updatedAt'])
-        && ((isSelf(existing().vendorId) && repairVendorMove(existing().status, incoming().status))
-            || (isSelf(existing().userId)
-                && existing().status in ['REQUESTED', 'ACCEPTED']
-                && incoming().status == 'CANCELLED'));
+      allow update: if (changedKeys().hasOnly(['status', 'updatedAt'])
+          && ((isSelf(existing().vendorId) && repairVendorMove(existing().status, incoming().status))
+              || (isSelf(existing().userId) && repairUserMove(existing().status, incoming().status) && paymentUntouched())))
+        || repairQuotes()
+        || repairAccepts()
+        || payerMarksPaid(['AGREED', 'IN_PROGRESS', 'READY', 'COMPLETED'])
+        || payeeConfirms(['AGREED', 'IN_PROGRESS', 'READY', 'COMPLETED']);
       allow delete: if isSelf(existing().userId) && existing().status == 'REQUESTED';
     }
 
-    // A drop-off is addressed to the recycler the user chose; a pickup has no vendor yet.
-    // Pipeline: REQUESTED -> ACCEPTED/REJECTED -> SCHEDULED -> COMPLETED, all moved by the
-    // recycler; the user can only CANCEL, and only before it is scheduled.
+    // Recycling: a drop-off is addressed to the recycler the user chose; a pickup has no vendor yet.
+    // Free by default: REQUESTED -> ACCEPTED/REJECTED -> SCHEDULED -> COMPLETED, all moved by the recycler.
+    // Optionally the recycler sends a quote instead (QUOTED) with an amount and a direction (who pays whom); the customer accepts it
+    // (ACCEPTED, which fixes the agreed amount and opens the payment record) or declines it (DECLINED), after which the recycler sends a
+    // revised quote or closes the request. The user can CANCEL until it is scheduled.
     function recyclingVendorMove(from, to) {
       return (from == 'REQUESTED' && to in ['ACCEPTED', 'REJECTED'])
+        || (from == 'DECLINED' && to == 'REJECTED')
         || (from == 'ACCEPTED' && to == 'SCHEDULED')
         || (from == 'SCHEDULED' && to == 'COMPLETED');
+    }
+
+    function recyclingUserMove(from, to) {
+      return (from == 'QUOTED' && to == 'DECLINED')
+        || (from in ['REQUESTED', 'QUOTED', 'DECLINED', 'ACCEPTED'] && to == 'CANCELLED');
+    }
+
+    function recyclingQuotes() {
+      return changedKeys().hasOnly(['status', 'updatedAt', 'quote'])
+        && isSelf(existing().vendorId)
+        && existing().status in ['REQUESTED', 'DECLINED'] && incoming().status == 'QUOTED'
+        && quoteOk(incoming().quote, false)
+        && quoteRevisionOk(incoming().quote);
+    }
+
+    // The customer accepts the quote. If the customer pays, the recycler's quoted UPI id carries over; if the recycler pays, the
+    // customer says where to send it (or leaves it empty for cash).
+    function recyclingAccepts() {
+      return changedKeys().hasOnly(['status', 'updatedAt', 'agreedAmount', 'agreedAt', 'payment'])
+        && isSelf(existing().userId)
+        && existing().status == 'QUOTED' && incoming().status == 'ACCEPTED'
+        && existing().get('agreedAmount', null) == null
+        && incoming().agreedAmount == existing().quote.amount
+        && incoming().agreedAt is int
+        && (existing().quote.direction == 'USER_PAYS_VENDOR'
+            ? (newPaymentOk(incoming().payment, existing().userId, existing().vendorId)
+               && incoming().payment.get('payeeUpiId', null) == existing().quote.get('payeeUpiId', null))
+            : newPaymentOk(incoming().payment, existing().vendorId, existing().userId));
+    }
+
+    // A recycler in the same city can claim an unassigned pickup: it accepts it for free (ACCEPTED), or claims it with a quote (QUOTED).
+    function claimablePickup() {
+      return existing().vendorId == null
+        && existing().method == 'PICKUP'
+        && existing().status == 'REQUESTED'
+        && isRecycler(request.auth.uid)
+        && existing().city == get(/databases/$(database)/documents/vendors/$(request.auth.uid)).data.city
+        && incoming().vendorId == request.auth.uid;
     }
 
     match /recyclingRequests/{requestId} {
@@ -202,24 +377,26 @@ service cloud.firestore {
       allow create: if isSelf(incoming().userId)
         && userExists(incoming().userId)
         && incoming().status == 'REQUESTED'
+        && startsUnagreed()
         && ((incoming().method == 'PICKUP' && incoming().vendorId == null)
             || (incoming().method == 'DROP_OFF'
                 && vendorExists(incoming().vendorId)
                 && get(/databases/$(database)/documents/vendors/$(incoming().vendorId)).data.businessType == 'RECYCLER'));
       allow update: if (changedKeys().hasOnly(['status', 'updatedAt'])
-        && ((isSelf(existing().vendorId) && recyclingVendorMove(existing().status, incoming().status))
-            || (isSelf(existing().userId)
-                && existing().status in ['REQUESTED', 'ACCEPTED']
-                && incoming().status == 'CANCELLED')))
-        // A recycler in the same city claims an unassigned pickup and accepts it in the same write.
-        || (existing().vendorId == null
-            && existing().method == 'PICKUP'
-            && existing().status == 'REQUESTED'
-            && isRecycler(request.auth.uid)
-            && existing().city == get(/databases/$(database)/documents/vendors/$(request.auth.uid)).data.city
+          && ((isSelf(existing().vendorId) && recyclingVendorMove(existing().status, incoming().status))
+              || (isSelf(existing().userId) && recyclingUserMove(existing().status, incoming().status) && paymentUntouched())))
+        || recyclingQuotes()
+        || recyclingAccepts()
+        || (claimablePickup()
             && changedKeys().hasOnly(['vendorId', 'vendorName', 'status', 'updatedAt'])
-            && incoming().vendorId == request.auth.uid
-            && incoming().status == 'ACCEPTED');
+            && incoming().status == 'ACCEPTED')
+        || (claimablePickup()
+            && changedKeys().hasOnly(['vendorId', 'vendorName', 'status', 'updatedAt', 'quote'])
+            && incoming().status == 'QUOTED'
+            && quoteOk(incoming().quote, false)
+            && quoteRevisionOk(incoming().quote))
+        || payerMarksPaid(['ACCEPTED', 'SCHEDULED', 'COMPLETED'])
+        || payeeConfirms(['ACCEPTED', 'SCHEDULED', 'COMPLETED']);
       allow delete: if isSelf(existing().userId) && existing().status == 'REQUESTED';
     }
 

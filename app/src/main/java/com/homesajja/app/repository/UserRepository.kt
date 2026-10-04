@@ -21,6 +21,11 @@ class UserRepository(firestore: FirebaseFirestore) {
         users.document(profile.uid).set(profile).await()
     }
 
+    /** Saves (or clears, with null) where this person can be paid by UPI. */
+    suspend fun updateUpiId(uid: String, upiId: String?) {
+        users.document(uid).update("upiId", upiId).await()
+    }
+
     suspend fun deleteUserProfile(uid: String) {
         users.document(uid).delete().await()
     }

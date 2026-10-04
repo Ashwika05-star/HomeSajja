@@ -92,6 +92,8 @@ dependencies {
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.google.id)
     implementation(libs.osmdroid)
+    // QR codes for UPI payments: only the encoder (a bit matrix), drawn in Compose. No camera or UI code.
+    implementation(libs.zxing.core)
 
     // Firebase
     implementation(platform(libs.firebase.bom))

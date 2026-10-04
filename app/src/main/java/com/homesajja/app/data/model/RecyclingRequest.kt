@@ -1,9 +1,13 @@
 package com.homesajja.app.data.model
 
-/** REQUESTED -> ACCEPTED -> SCHEDULED -> COMPLETED.
+/** REQUESTED -> ACCEPTED -> SCHEDULED -> COMPLETED. Free by default.
+ * A recycler may instead send a quote with an amount and a direction (QUOTED): the customer accepts it (ACCEPTED, and the amount is agreed)
+ * or declines it (DECLINED), after which the recycler sends a revised quote or closes the request (REJECTED).
  * The recycler moves it forward (or REJECTs it); the user can CANCEL until it is scheduled. */
 enum class RecyclingStatus(val displayName: String) {
     REQUESTED("Requested"),
+    QUOTED("Quoted"),
+    DECLINED("Quote declined"),
     ACCEPTED("Accepted"),
     SCHEDULED("Scheduled"),
     COMPLETED("Completed"),
@@ -48,6 +52,11 @@ data class RecyclingRequest(
     val images: List<String> = emptyList(),
     val city: String = "",
     val status: RecyclingStatus = RecyclingStatus.REQUESTED,
+    /** Optional: the recycler's amount and direction. Null for a free job. Frozen once the customer accepts it. */
+    val quote: Quote? = null,
+    val agreedAmount: Long? = null,
+    val agreedAt: Long? = null,
+    val payment: Payment? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 )

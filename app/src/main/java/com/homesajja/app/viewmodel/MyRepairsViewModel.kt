@@ -34,7 +34,8 @@ enum class RepairFilter(val label: String) {
 
     private companion object {
         val ACTIVE_STATUSES = setOf(
-            RepairStatus.REQUESTED, RepairStatus.ACCEPTED, RepairStatus.IN_PROGRESS, RepairStatus.READY,
+            RepairStatus.REQUESTED, RepairStatus.QUOTED, RepairStatus.DECLINED, RepairStatus.AGREED, RepairStatus.ACCEPTED,
+            RepairStatus.IN_PROGRESS, RepairStatus.READY,
         )
     }
 }

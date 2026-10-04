@@ -48,9 +48,10 @@ import com.homesajja.app.ui.components.OutlinedButton
 import com.homesajja.app.ui.components.PrimaryButton
 import com.homesajja.app.ui.components.AppTextField
 import com.homesajja.app.ui.util.formatPrice
-import com.homesajja.app.payment.UpiLaunchResult
+import com.homesajja.app.data.model.PaymentMethod
 import com.homesajja.app.payment.UpiPayment
-import androidx.compose.ui.platform.LocalContext
+import com.homesajja.app.payment.paymentOpen
+import com.homesajja.app.ui.components.PaymentPanel
 import com.homesajja.app.ui.components.ReviewPrompt
 import com.homesajja.app.viewmodel.ReviewParams
 import com.homesajja.app.data.model.EntityType
@@ -71,7 +72,6 @@ fun MyRequestsScreen(
 ) {
     val viewModel: MyRequestsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     var chosenTab by rememberSaveable { mutableIntStateOf(0) }
     // Vendors only ever receive purchase requests, so they get the Received list without the tabs.
     val selectedTab = if (receivedOnly) 1 else chosenTab
@@ -133,8 +133,9 @@ fun MyRequestsScreen(
                                 onClick = { onOpenListing(request.listingId) },
                                 onCancel = { viewModel.cancelRequest(request) },
                                 onSellerAction = { action, upiId -> viewModel.performSellerAction(request, action, upiId) },
-                                onPay = { payWithGpay(context, request, viewModel::say) },
-                                onMarkPaid = { viewModel.markPaid(request) },
+                                myUpiId = viewModel.myUpiId,
+                                onMarkPaid = { method, ref -> viewModel.markPaid(request, method, ref) },
+                                onConfirmReceived = { viewModel.confirmPayment(request) },
                             )
                         }
                     }
@@ -152,8 +153,9 @@ private fun RequestCard(
     onClick: () -> Unit,
     onCancel: () -> Unit,
     onSellerAction: (SellerAction, String?) -> Unit,
-    onPay: () -> Unit,
-    onMarkPaid: () -> Unit,
+    myUpiId: String?,
+    onMarkPaid: (PaymentMethod, String?) -> Unit,
+    onConfirmReceived: () -> Unit,
 ) {
     var askUpiId by remember { mutableStateOf(false) }
     Card(
@@ -176,7 +178,21 @@ private fun RequestCard(
                 )
             }
             PurchaseStatusTracker(status = request.status)
-            PaymentSection(request, isSent, busy, onPay, onMarkPaid)
+            val payment = request.payment
+            if (payment != null && request.paymentOpen) {
+                PaymentPanel(
+                    amount = request.agreedAmount ?: request.offeredPrice,
+                    payment = payment,
+                    viewerId = if (isSent) request.buyerId else request.sellerId,
+                    payerName = request.buyerName,
+                    payeeName = request.sellerName.ifBlank { "the seller" },
+                    paymentNote = "HomeSajja: ${request.listingTitle}",
+                    cashLabel = "Cash on pickup",
+                    busy = busy,
+                    onMarkPaid = onMarkPaid,
+                    onConfirmReceived = onConfirmReceived,
+                )
+            }
 
             if (isSent) {
                 if (request.status == PurchaseStatus.REQUESTED) {
@@ -192,7 +208,7 @@ private fun RequestCard(
                     ReviewPrompt(ReviewParams(EntityType.PURCHASE_REQUEST, request.id, request.sellerId, "the seller"))
                 }
             } else {
-                val actions = sellerActionsFor(request.status)
+                val actions = sellerActionsFor(request.status, request.payment)
                 if (actions.isNotEmpty()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                         actions.forEachIndexed { index, action ->
@@ -223,6 +239,7 @@ private fun RequestCard(
     if (askUpiId) {
         AcceptDialog(
             price = request.offeredPrice,
+            initialUpiId = myUpiId,
             onConfirm = { upiId ->
                 askUpiId = false
                 onSellerAction(SellerAction.ACCEPT, upiId)
@@ -232,52 +249,13 @@ private fun RequestCard(
     }
 }
 
-/** Opens Google Pay with the seller's UPI id and the agreed price; says so if there is no UPI app to open. */
-private fun payWithGpay(context: android.content.Context, request: PurchaseRequest, say: (String) -> Unit) {
-    val upiId = request.upiId ?: return
-    val link = UpiPayment.buildLink(upiId, request.sellerName, request.offeredPrice, "HomeSajja: ${request.listingTitle}")
-    if (UpiPayment.launch(context, link) == UpiLaunchResult.NO_UPI_APP) {
-        say("Google Pay isn't installed on this phone. Install it, or pay the seller another way and tap \"I've paid\".")
-    }
-}
-
-/** How this purchase gets paid: the buyer's GPay/paid buttons, or the seller's view of the payment. */
+/**
+ * The seller confirms acceptance, which fixes the price the buyer will pay, and can say where to be paid by UPI
+ * (pre-filled from their profile; leave it empty to be paid in cash).
+ */
 @Composable
-private fun PaymentSection(request: PurchaseRequest, isSent: Boolean, busy: Boolean, onPay: () -> Unit, onMarkPaid: () -> Unit) {
-    if (!request.paid && !request.canMarkPaid) return
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        when {
-            request.paid -> Text(
-                if (isSent) "✓ You marked this as paid." else "✓ Marked as paid.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            isSent -> {
-                Text(
-                    if (request.upiId != null) "Pay ${formatPrice(request.offeredPrice)} to ${request.sellerName.ifBlank { "the seller" }} (${request.upiId})."
-                    else "The seller will collect payment in person.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                if (request.canPayWithUpi) {
-                    PrimaryButton(text = "Pay ${formatPrice(request.offeredPrice)} via GPay", onClick = onPay, enabled = !busy, modifier = Modifier.fillMaxWidth())
-                }
-                OutlinedButton(text = "I've paid", onClick = onMarkPaid, enabled = !busy, modifier = Modifier.fillMaxWidth())
-            }
-            else -> {
-                Text(
-                    if (request.upiId != null) "Buyer pays to ${request.upiId}." else "Payment in person.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                OutlinedButton(text = "Mark as paid", onClick = onMarkPaid, enabled = !busy, modifier = Modifier.fillMaxWidth())
-            }
-        }
-    }
-}
-
-/** The seller confirms acceptance and can add the UPI id the buyer should pay to (leave empty to be paid in person). */
-@Composable
-private fun AcceptDialog(price: Long, onConfirm: (String?) -> Unit, onDismiss: () -> Unit) {
-    var upiId by remember { mutableStateOf("") }
+private fun AcceptDialog(price: Long, initialUpiId: String?, onConfirm: (String?) -> Unit, onDismiss: () -> Unit) {
+    var upiId by remember(initialUpiId) { mutableStateOf(initialUpiId.orEmpty()) }
     val entered = upiId.trim()
     val invalid = entered.isNotEmpty() && !UpiPayment.isValidUpiId(entered)
     AlertDialog(
@@ -285,14 +263,14 @@ private fun AcceptDialog(price: Long, onConfirm: (String?) -> Unit, onDismiss: (
         title = { Text("Accept this request?") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("The buyer will pay ${formatPrice(price)}. Add your UPI id so they can pay with Google Pay, or leave it empty to be paid in person.")
+                Text("The price is fixed at ${formatPrice(price)} once you accept. Add your UPI ID so the buyer can pay by UPI, or leave it empty to be paid in cash.")
                 AppTextField(
                     value = upiId,
                     onValueChange = { upiId = it },
-                    label = "Your UPI id (optional)",
+                    label = "Your UPI ID (optional)",
                     placeholder = "name@bank",
                     isError = invalid,
-                    errorMessage = if (invalid) "That doesn't look like a UPI id, e.g. name@okhdfcbank" else null,
+                    errorMessage = if (invalid) "That doesn't look like a UPI ID, e.g. name@okhdfcbank" else null,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

@@ -6,16 +6,20 @@ import com.homesajja.app.data.model.RepairStatus
 
 private val TRACKED_STEPS = listOf(
     RepairStatus.REQUESTED,
-    RepairStatus.ACCEPTED,
+    RepairStatus.QUOTED,
+    RepairStatus.AGREED,
     RepairStatus.IN_PROGRESS,
     RepairStatus.READY,
     RepairStatus.COMPLETED,
 )
 
-/** Requested -> Accepted -> In progress -> Ready -> Completed for a repair. Rejected or cancelled requests show a badge instead. */
+/**
+ * Requested -> Quoted -> Agreed -> In progress -> Ready -> Completed for a repair. A declined quote, a rejected or a cancelled request
+ * shows a badge instead; the old "Accepted" step counts as Agreed.
+ */
 @Composable
 fun RepairStatusTracker(status: RepairStatus, modifier: Modifier = Modifier) {
-    val currentIndex = TRACKED_STEPS.indexOf(status)
+    val currentIndex = TRACKED_STEPS.indexOf(if (status == RepairStatus.ACCEPTED) RepairStatus.AGREED else status)
     if (currentIndex < 0) {
         StatusBadge(status = status.displayName, modifier = modifier)
         return

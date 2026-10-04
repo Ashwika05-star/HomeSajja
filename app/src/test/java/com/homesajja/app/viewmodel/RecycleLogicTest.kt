@@ -1,5 +1,7 @@
 package com.homesajja.app.viewmodel
 
+import com.homesajja.app.data.model.Payment
+import com.homesajja.app.data.model.PaymentStatus
 import com.homesajja.app.data.model.RecycleCondition
 import com.homesajja.app.data.model.RecycleMaterial
 import com.homesajja.app.data.model.RecycleMethod
@@ -17,8 +19,39 @@ class RecycleActionsTest {
         RecyclingRequest(id = "r", userId = "user", vendorId = vendorId, status = status)
 
     @Test
+    fun aQuoteIsOptional_theRecyclerCanStillAcceptForFree() {
+        assertTrue(RecycleAction.ACCEPT in recycleActionsFor(request(RecyclingStatus.REQUESTED), "recycler"))
+        assertEquals(RecyclingStatus.ACCEPTED, RecycleAction.ACCEPT.target)
+        assertEquals(RecyclingStatus.QUOTED, RecycleAction.SEND_QUOTE.target)
+    }
+
+    @Test
+    fun customerAcceptsOrDeclinesAQuote_acceptingMovesToAccepted() {
+        assertEquals(listOf(RecycleAction.ACCEPT_QUOTE, RecycleAction.DECLINE_QUOTE), recycleActionsFor(request(RecyclingStatus.QUOTED), "user"))
+        assertTrue(recycleActionsFor(request(RecyclingStatus.QUOTED), "recycler").isEmpty())
+        assertEquals(RecyclingStatus.ACCEPTED, RecycleAction.ACCEPT_QUOTE.target)
+        assertEquals(RecyclingStatus.DECLINED, RecycleAction.DECLINE_QUOTE.target)
+    }
+
+    @Test
+    fun afterADeclinedQuote_recyclerRevisesOrCloses_customerCanCancel() {
+        assertEquals(listOf(RecycleAction.REVISE_QUOTE, RecycleAction.CLOSE), recycleActionsFor(request(RecyclingStatus.DECLINED), "recycler"))
+        assertEquals(listOf(RecycleAction.CANCEL), recycleActionsFor(request(RecyclingStatus.DECLINED), "user"))
+    }
+
+    @Test
+    fun customerCannotCancel_onceAPaymentIsMarked() {
+        val paid = request(RecyclingStatus.ACCEPTED).copy(payment = Payment(payerId = "user", payeeId = "recycler", status = PaymentStatus.MARKED_PAID))
+        assertTrue(recycleActionsFor(paid, "user").isEmpty())
+        assertEquals(listOf(RecycleAction.SCHEDULE), recycleActionsFor(paid, "recycler"))
+    }
+
+    @Test
     fun recyclerWalksTheWholePipeline() {
-        assertEquals(listOf(RecycleAction.ACCEPT, RecycleAction.REJECT), recycleActionsFor(request(RecyclingStatus.REQUESTED), "recycler"))
+        assertEquals(
+            listOf(RecycleAction.ACCEPT, RecycleAction.SEND_QUOTE, RecycleAction.REJECT),
+            recycleActionsFor(request(RecyclingStatus.REQUESTED), "recycler"),
+        )
         assertEquals(listOf(RecycleAction.SCHEDULE), recycleActionsFor(request(RecyclingStatus.ACCEPTED), "recycler"))
         assertEquals(listOf(RecycleAction.COMPLETE), recycleActionsFor(request(RecyclingStatus.SCHEDULED), "recycler"))
     }

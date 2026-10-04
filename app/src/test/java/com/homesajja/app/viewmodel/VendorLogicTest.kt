@@ -81,7 +81,7 @@ class DashboardTest {
     @Test
     fun emptyInbox_givesZerosAndNoActivity() {
         val data = buildDashboard(vendor, emptyList(), VendorInbox())
-        assertEquals(DashboardStats(0, 0, 0), data.stats)
+        assertEquals(DashboardStats(0, 0, 0, 0L), data.stats)
         assertTrue(data.activity.isEmpty())
     }
 

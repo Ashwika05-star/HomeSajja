@@ -8,12 +8,15 @@ import com.homesajja.app.data.model.MaterialOffer
 import com.homesajja.app.data.model.MaterialRequest
 import com.homesajja.app.data.model.Notification
 import com.homesajja.app.data.model.NotificationType
+import com.homesajja.app.data.model.Payment
+import com.homesajja.app.data.model.Quote
 import com.homesajja.app.data.model.PurchaseRequest
 import com.homesajja.app.data.model.PurchaseStatus
 import com.homesajja.app.data.model.RecyclingRequest
 import com.homesajja.app.data.model.RecyclingStatus
 import com.homesajja.app.data.model.RepairRequest
 import com.homesajja.app.data.model.RepairStatus
+import com.homesajja.app.data.model.PayDirection
 import com.homesajja.app.ui.util.formatPrice
 
 private const val PREVIEW_LENGTH = 80
@@ -62,21 +65,6 @@ object NotificationTemplates {
             title = if (completed) "Sale completed: ${request.listingTitle}" else "Request ${status.displayName.lowercase()}",
             body = if (toBuyer) "Your request for ${request.listingTitle} is now ${status.displayName.lowercase()}."
             else "${request.buyerName} ${status.displayName.lowercase()} their request for ${request.listingTitle}.",
-            relatedType = EntityType.LISTING,
-            relatedId = request.listingId,
-        )
-    }
-
-    /** Someone marked the request as paid; the other party is told. */
-    fun purchasePaid(request: PurchaseRequest, actorId: String): Notification {
-        val toBuyer = actorId == request.sellerId
-        return Notification(
-            recipientId = if (toBuyer) request.buyerId else request.sellerId,
-            senderId = actorId,
-            type = NotificationType.PURCHASE_UPDATE,
-            title = "Marked as paid",
-            body = if (toBuyer) "The seller marked ${request.listingTitle} as paid."
-            else "${request.buyerName} says they paid ${formatPrice(request.offeredPrice)} for ${request.listingTitle}.",
             relatedType = EntityType.LISTING,
             relatedId = request.listingId,
         )
@@ -202,5 +190,92 @@ object NotificationTemplates {
         body = "${offer.listingTitle} for \"${request.title}\"",
         relatedType = EntityType.MATERIAL_REQUEST,
         relatedId = request.id,
+    )
+
+    // ---- quotes and agreements ----
+
+    private fun quoteSummary(quote: Quote, repair: Boolean): String = buildString {
+        append(formatPrice(quote.amount))
+        if (repair && quote.estimatedDays != null) append(" · about ${quote.estimatedDays} day${if (quote.estimatedDays == 1) "" else "s"}")
+        if (!repair) when (quote.direction) {
+            PayDirection.USER_PAYS_VENDOR -> append(" · you pay the recycler")
+            PayDirection.VENDOR_PAYS_USER -> append(" · the recycler pays you")
+            null -> Unit
+        }
+    }
+
+    /** The vendor sent a quote (or a revised one): the customer is told the price. */
+    fun repairQuoteSent(request: RepairRequest, quote: Quote) = Notification(
+        recipientId = request.userId,
+        senderId = request.vendorId,
+        type = NotificationType.REPAIR_UPDATE,
+        title = if (quote.revision > 1) "Revised repair quote" else "Repair quote received",
+        body = "${request.vendorName} quoted ${quoteSummary(quote, repair = true)} for ${request.furnitureTitle}.",
+        relatedType = EntityType.REPAIR_REQUEST,
+        relatedId = request.id,
+    )
+
+    /** The customer accepted or declined the vendor's quote: the vendor is told. */
+    fun repairQuoteDecision(request: RepairRequest, accepted: Boolean) = Notification(
+        recipientId = request.vendorId,
+        senderId = request.userId,
+        type = NotificationType.REPAIR_UPDATE,
+        title = if (accepted) "Quote accepted" else "Quote declined",
+        body = if (accepted) "${request.userName} accepted ${formatPrice(request.quote?.amount ?: 0)} for ${request.furnitureTitle}. You can start work."
+        else "${request.userName} declined your quote for ${request.furnitureTitle}. Send a revised quote or close the request.",
+        relatedType = EntityType.REPAIR_REQUEST,
+        relatedId = request.id,
+    )
+
+    /** The recycler sent a quote (or a revised one): the customer is told the amount and who pays. */
+    fun recyclingQuoteSent(request: RecyclingRequest, quote: Quote): Notification? {
+        val vendorId = request.vendorId ?: return null
+        return Notification(
+            recipientId = request.userId,
+            senderId = vendorId,
+            type = NotificationType.RECYCLING_UPDATE,
+            title = if (quote.revision > 1) "Revised recycling quote" else "Recycling quote received",
+            body = "${request.vendorName.orEmpty().ifBlank { "The recycler" }}: ${quoteSummary(quote, repair = false)}.",
+            relatedType = EntityType.RECYCLING_REQUEST,
+            relatedId = request.id,
+        )
+    }
+
+    fun recyclingQuoteDecision(request: RecyclingRequest, accepted: Boolean): Notification? {
+        val vendorId = request.vendorId ?: return null
+        return Notification(
+            recipientId = vendorId,
+            senderId = request.userId,
+            type = NotificationType.RECYCLING_UPDATE,
+            title = if (accepted) "Quote accepted" else "Quote declined",
+            body = if (accepted) "${request.userName} accepted ${formatPrice(request.quote?.amount ?: 0)} for the ${request.material.displayName.lowercase()} furniture."
+            else "${request.userName} declined your quote. Send a revised quote or close the request.",
+            relatedType = EntityType.RECYCLING_REQUEST,
+            relatedId = request.id,
+        )
+    }
+
+    // ---- payments ----
+
+    /** The payer says they paid; the payee is asked to check and confirm. [what] is e.g. "the repair of Teak sofa". */
+    fun paymentMarked(payment: Payment, amount: Long, what: String, payerName: String, relatedType: EntityType, relatedId: String) = Notification(
+        recipientId = payment.payeeId,
+        senderId = payment.payerId,
+        type = NotificationType.PAYMENT_UPDATE,
+        title = "Payment marked as paid",
+        body = "$payerName says they paid ${formatPrice(amount)} for $what. Confirm once you've received it.",
+        relatedType = relatedType,
+        relatedId = relatedId,
+    )
+
+    /** The payee confirmed the money arrived; the payer is told. */
+    fun paymentConfirmed(payment: Payment, amount: Long, what: String, payeeName: String, relatedType: EntityType, relatedId: String) = Notification(
+        recipientId = payment.payerId,
+        senderId = payment.payeeId,
+        type = NotificationType.PAYMENT_UPDATE,
+        title = "Payment received",
+        body = "$payeeName confirmed they received ${formatPrice(amount)} for $what.",
+        relatedType = relatedType,
+        relatedId = relatedId,
     )
 }

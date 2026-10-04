@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Recycling
 import androidx.compose.material.icons.filled.Storefront
@@ -68,6 +69,7 @@ private fun NotificationType.icon(): ImageVector = when (this) {
     NotificationType.MATERIAL_MATCH -> Icons.Filled.Inventory2
     NotificationType.VENDOR_RESPONSE -> Icons.Filled.Storefront
     NotificationType.SALE_COMPLETED -> Icons.Filled.CheckCircle
+    NotificationType.PAYMENT_UPDATE -> Icons.Filled.Payments
 }
 
 /** The person's notifications, newest first, with an unread dot. Tapping one marks it read and opens what it is about. */

@@ -12,6 +12,8 @@ data class VendorProfile(
     val businessType: String = "",
     val city: String = "",
     val shopAddress: String = "",
+    /** Where this vendor can be paid by UPI (optional); quotes and accepted offers carry it so customers can pay. */
+    val upiId: String? = null,
     val description: String = "",
     /** Placeholder badge: an admin flips it in the Firebase console; vendors cannot set it themselves. */
     val verified: Boolean = false,

@@ -18,6 +18,16 @@ const log = (message) => console.log(message);
 const DAY = 86_400_000;
 const now = Date.now();
 
+// A demo UPI id per person, e.g. aarav@okhdfcbank. The payment record of every finished job carries the payee's.
+const upiOf = (person) => `${String(person.key).replace(/[^a-z0-9]/gi, '').slice(0, 14).toLowerCase() || 'demo'}@okhdfcbank`;
+// A payment record as the app writes it when an amount is agreed, and the two steps that follow (see firestore.rules).
+const openPayment = (payer, payee, payeeUpiId) => ({ payerId: payer.uid, payeeId: payee.uid, payeeUpiId, method: null, status: 'UNPAID', upiRef: null, markedPaidAt: null, confirmedAt: null });
+const markedPayment = (payment, method, at) => ({ ...payment, status: 'MARKED_PAID', method, upiRef: method === 'UPI' ? `DEMO${Math.abs(at) % 1000000000}` : null, markedPaidAt: at });
+const confirmedPayment = (payment, at) => ({ ...payment, status: 'CONFIRMED', confirmedAt: at });
+const REPAIR_PRICES = [1200, 1800, 2500, 900, 3200, 1500];
+const REPAIR_DAYS = [2, 3, 5, 2, 4, 3];
+const PAYOUT_RECYCLERS = new Set(['delhigreenscrap']);
+
 log(`${args.has('--remove') ? 'Removing demo data from' : 'Seeding'} ${config.emulator ? 'the local emulators' : `project ${config.projectId}`}\n`);
 
 // ---- sign in every demo person ----
@@ -42,12 +52,12 @@ async function seed() {
   // profiles
   for (const p of Object.values(sessions)) {
     if (p.kind === 'user') {
-      await setDoc(config, p.token, `users/${p.uid}`, { uid: p.uid, name: p.name, email: p.email, phone: p.phone, city: p.city, createdAt: now - 40 * DAY });
+      await setDoc(config, p.token, `users/${p.uid}`, { uid: p.uid, name: p.name, email: p.email, phone: p.phone, city: p.city, upiId: upiOf(p), createdAt: now - 40 * DAY });
     } else if (!(await docExists(config, p.token, `vendors/${p.uid}`))) {
       // A vendor document is only written once, so a `verified` flag set in the console is never overwritten.
       await setDoc(config, p.token, `vendors/${p.uid}`, {
         uid: p.uid, name: p.name, email: p.email, phone: p.phone, businessName: p.businessName, businessType: p.businessType,
-        city: p.city, shopAddress: `${p.area}, ${p.city}`, description: p.description, verified: false,
+        city: p.city, shopAddress: `${p.area}, ${p.city}`, upiId: upiOf(p), description: p.description, verified: false,
         brochureImages: [imageFor('SOFA', 0), imageFor('WARDROBE', 1)], shopLatitude: p.lat, shopLongitude: p.lng,
         repairServices: p.repairServices ?? [], repairCostMin: p.repairCostMin ?? null, repairCostMax: p.repairCostMax ?? null,
         createdAt: now - 40 * DAY,
@@ -107,7 +117,16 @@ async function seed() {
         furnitureTitle: job.item, furnitureCategory: job.category, problemType: job.problem, issueDescription: job.text,
         images: [imageFor(job.category, i)], city: customer.city, status: 'REQUESTED', createdAt: day, updatedAt: day,
       });
-      for (const status of ['ACCEPTED', 'IN_PROGRESS', 'READY', 'COMPLETED']) await updateDoc(config, vendor.token, path, { status, updatedAt: day + DAY });
+      // Quote -> the customer accepts (the amount is agreed) -> work -> paid -> the vendor confirms the money arrived.
+      const amount = REPAIR_PRICES[i % REPAIR_PRICES.length];
+      const quote = { amount, estimatedDays: REPAIR_DAYS[i % REPAIR_DAYS.length], note: 'Parts and labour included.', payeeUpiId: upiOf(vendor), direction: null, revision: 1, sentAt: day + DAY / 4 };
+      await updateDoc(config, vendor.token, path, { status: 'QUOTED', quote, updatedAt: day + DAY / 4 });
+      const payment = openPayment(customer, vendor, upiOf(vendor));
+      await updateDoc(config, customer.token, path, { status: 'AGREED', agreedAmount: amount, agreedAt: day + DAY / 2, payment, updatedAt: day + DAY / 2 });
+      for (const status of ['IN_PROGRESS', 'READY', 'COMPLETED']) await updateDoc(config, vendor.token, path, { status, updatedAt: day + DAY });
+      const paid = markedPayment(payment, i % 2 === 0 ? 'UPI' : 'CASH', day + DAY);
+      await updateDoc(config, customer.token, path, { payment: paid, updatedAt: day + DAY });
+      await updateDoc(config, vendor.token, path, { payment: confirmedPayment(paid, day + DAY + 3600_000), updatedAt: day + DAY + 3600_000 });
       await review(customer, vendor, 'REPAIR_REQUEST', jobId, job, day + 2 * DAY);
     } else if (job.type === 'recycle') {
       const path = `recyclingRequests/${jobId}`;
@@ -117,7 +136,23 @@ async function seed() {
         condition: job.condition, material: job.material, method: 'DROP_OFF', images: [imageFor('WARDROBE', i)], city: customer.city,
         status: 'REQUESTED', createdAt: day, updatedAt: day,
       });
-      for (const status of ['ACCEPTED', 'SCHEDULED', 'COMPLETED']) await updateDoc(config, vendor.token, path, { status, updatedAt: day + DAY });
+      // Free by default. Some recyclers charge a small fee, one pays for the metal: those send a quote the customer accepts.
+      const pays = PAYOUT_RECYCLERS.has(job.with) ? 'vendor' : i % 2 === 1 ? 'user' : null;
+      if (pays === null) {
+        await updateDoc(config, vendor.token, path, { status: 'ACCEPTED', updatedAt: day + DAY / 2 });
+      } else {
+        const amount = pays === 'user' ? 250 : 400;
+        const payer = pays === 'user' ? customer : vendor;
+        const payee = pays === 'user' ? vendor : customer;
+        const quote = { amount, estimatedDays: null, note: pays === 'user' ? 'Handling fee.' : 'Paid by weight for the metal.', payeeUpiId: pays === 'user' ? upiOf(vendor) : null, direction: pays === 'user' ? 'USER_PAYS_VENDOR' : 'VENDOR_PAYS_USER', revision: 1, sentAt: day + DAY / 4 };
+        await updateDoc(config, vendor.token, path, { status: 'QUOTED', quote, updatedAt: day + DAY / 4 });
+        const payment = openPayment(payer, payee, upiOf(payee));
+        await updateDoc(config, customer.token, path, { status: 'ACCEPTED', agreedAmount: amount, agreedAt: day + DAY / 2, payment, updatedAt: day + DAY / 2 });
+        const paid = markedPayment(payment, 'UPI', day + DAY);
+        await updateDoc(config, payer.token, path, { payment: paid, updatedAt: day + DAY });
+        await updateDoc(config, payee.token, path, { payment: confirmedPayment(paid, day + DAY + 3600_000), updatedAt: day + DAY + 3600_000 });
+      }
+      for (const status of ['SCHEDULED', 'COMPLETED']) await updateDoc(config, vendor.token, path, { status, updatedAt: day + DAY });
       await review(customer, vendor, 'RECYCLING_REQUEST', jobId, job, day + 2 * DAY);
     } else {
       const path = `purchaseRequests/${jobId}`;
@@ -127,11 +162,15 @@ async function seed() {
       await setDoc(config, vendor.token, `listings/${listingId}`, listing(listingId, vendor, item, vendor.city, item.price, false, day - DAY, imageFor));
       await setDoc(config, customer.token, path, {
         id: jobId, listingId, listingTitle: item.title, buyerId: customer.uid, buyerName: customer.name, sellerId: vendor.uid, sellerName: vendor.businessName,
-        offeredPrice: item.price, message: '', status: 'REQUESTED', paid: false, createdAt: day, updatedAt: day,
+        offeredPrice: item.price, message: '', status: 'REQUESTED', createdAt: day, updatedAt: day,
       });
-      await updateDoc(config, vendor.token, path, { status: 'ACCEPTED', upiId: `${vendor.key.slice(0, 12)}@okhdfcbank`, updatedAt: day + DAY });
+      // Accepting is the agreement: the price becomes the agreed amount and the payment record opens.
+      const payment = openPayment(customer, vendor, upiOf(vendor));
+      await updateDoc(config, vendor.token, path, { status: 'ACCEPTED', agreedAmount: item.price, agreedAt: day + DAY, payment, updatedAt: day + DAY });
       await updateDoc(config, vendor.token, `listings/${listingId}`, { status: 'RESERVED', updatedAt: day + DAY });
-      await updateDoc(config, customer.token, path, { paid: true, paidAt: day + DAY, updatedAt: day + DAY });
+      const paid = markedPayment(payment, i % 2 === 0 ? 'UPI' : 'CASH', day + DAY);
+      await updateDoc(config, customer.token, path, { payment: paid, updatedAt: day + DAY });
+      await updateDoc(config, vendor.token, path, { payment: confirmedPayment(paid, day + 2 * DAY), updatedAt: day + 2 * DAY });
       await updateDoc(config, vendor.token, path, { status: 'READY_FOR_PICKUP', updatedAt: day + 2 * DAY });
       await updateDoc(config, vendor.token, path, { status: 'COMPLETED', updatedAt: day + 2 * DAY });
       await updateDoc(config, vendor.token, `listings/${listingId}`, { status: 'SOLD', updatedAt: day + 2 * DAY });

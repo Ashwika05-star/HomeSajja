@@ -61,4 +61,14 @@ Bugs found and fixed in this phase:
 - Payment fields were rejected by security rules that had not been deployed to the real project yet → deployed, and the order is in the README.
 
 Known limits: a push to a fully closed app needs the paid-plan Cloud Function; the Verified badge must be set in the console; Google sign-in
-and the AI answers need the two Firebase console steps listed in `play-store/README.md`; Google Pay can only be tried on a phone that has it.
+and the AI answers need the two Firebase console steps listed in `play-store/README.md`; the UPI app chooser can only be tried on a phone that has a UPI app
+(the "no UPI app" message, the QR code and the copy button are checked on the emulator).
+
+## 5. Upgrade 3: quotes, agreements and payments
+
+Rules (140+ new checks, 390 in all) cover who can make each quote, agreement and payment transition and that the agreed amount can't change; three deliberate
+weakenings of the rules (payee check, payer check, amount tied to the quote) each made the tests fail. On the emulators with the demo data, on a phone: a repair went
+Requested → Quoted → Agreed with the customer paying by UPI (reference entered) and the vendor confirming, and the vendor's "Earned" only rose after the confirmation; a
+recycling quote where the recycler pays the customer (the customer's UPI ID pre-filled); a purchase accepted at the offered price with the payment opening; the
+"no UPI app" message; the QR code. Found and fixed while testing: the first version of the purchase rule blocked a seller from marking a paid sale ready or
+completing it (it should only block cancelling), and the six-step repair tracker broke "Completed" over two lines.

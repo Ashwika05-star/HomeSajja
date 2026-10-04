@@ -2,8 +2,13 @@ package com.homesajja.app.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.homesajja.app.data.model.PayDirection
+import com.homesajja.app.data.model.PaymentMethod
+import com.homesajja.app.data.model.Quote
 import com.homesajja.app.data.model.RecyclingRequest
 import com.homesajja.app.data.model.RecyclingStatus
+import com.homesajja.app.payment.newPayment
+import com.homesajja.app.payment.recyclingParties
 import kotlinx.coroutines.tasks.await
 
 private const val COLLECTION = "recyclingRequests"
@@ -47,18 +52,56 @@ class RecyclingRepository(firestore: FirebaseFirestore) {
             .getAllAs<RecyclingRequest>()
             .sortedByDescending { it.createdAt }
 
-    /** A recycler takes an unassigned pickup: it becomes theirs and moves straight to ACCEPTED. */
-    suspend fun claimPickup(id: String, vendorId: String, vendorName: String) {
+    /** A recycler takes an unassigned pickup: it becomes theirs and moves straight to ACCEPTED (free), or to QUOTED when they attach a [quote]. */
+    suspend fun claimPickup(id: String, vendorId: String, vendorName: String, quote: Quote? = null) {
+        val changes = mutableMapOf<String, Any>(
+            "vendorId" to vendorId,
+            "vendorName" to vendorName,
+            "status" to (if (quote == null) RecyclingStatus.ACCEPTED else RecyclingStatus.QUOTED).name,
+            "updatedAt" to System.currentTimeMillis(),
+        )
+        quote?.let { changes["quote"] = it }
+        requests.document(id).update(changes).await()
+    }
+
+    /** The recycler's quote (REQUESTED -> QUOTED), or a revised one after the customer declined (DECLINED -> QUOTED). */
+    suspend fun sendQuote(id: String, quote: Quote) {
         requests.document(id)
+            .update(mapOf("status" to RecyclingStatus.QUOTED.name, "quote" to quote, "updatedAt" to System.currentTimeMillis()))
+            .await()
+    }
+
+    /**
+     * The customer accepts the quote (QUOTED -> ACCEPTED): the amount is agreed for good and the payment record opens.
+     * [customerUpiId] is only used when the recycler is the one paying, so the customer says where to send it.
+     */
+    suspend fun acceptQuote(request: RecyclingRequest, customerUpiId: String?) {
+        val quote = checkNotNull(request.quote) { "There is no quote to accept." }
+        val direction = checkNotNull(quote.direction) { "The quote has no payment direction." }
+        val (payerId, payeeId) = recyclingParties(request, direction)
+        val payeeUpiId = if (direction == PayDirection.USER_PAYS_VENDOR) quote.payeeUpiId else customerUpiId
+        val now = System.currentTimeMillis()
+        requests.document(request.id)
             .update(
                 mapOf(
-                    "vendorId" to vendorId,
-                    "vendorName" to vendorName,
                     "status" to RecyclingStatus.ACCEPTED.name,
-                    "updatedAt" to System.currentTimeMillis(),
+                    "agreedAmount" to quote.amount,
+                    "agreedAt" to now,
+                    "payment" to newPayment(payerId, payeeId, payeeUpiId),
+                    "updatedAt" to now,
                 ),
             )
             .await()
+    }
+
+    /** The payer (whoever the quote says pays) records that they paid. */
+    suspend fun markPaid(id: String, method: PaymentMethod, upiRef: String?) {
+        requests.document(id).update(PaymentWrites.markPaid(method, upiRef, System.currentTimeMillis())).await()
+    }
+
+    /** The payee records that the money arrived. */
+    suspend fun confirmPayment(id: String) {
+        requests.document(id).update(PaymentWrites.confirmReceived(System.currentTimeMillis())).await()
     }
 
     suspend fun updateStatus(id: String, status: RecyclingStatus) {

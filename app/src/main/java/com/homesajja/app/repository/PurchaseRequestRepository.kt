@@ -3,8 +3,10 @@ package com.homesajja.app.repository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.homesajja.app.data.model.ListingStatus
+import com.homesajja.app.data.model.PaymentMethod
 import com.homesajja.app.data.model.PurchaseRequest
 import com.homesajja.app.data.model.PurchaseStatus
+import com.homesajja.app.payment.newPayment
 import kotlinx.coroutines.tasks.await
 
 private const val COLLECTION = "purchaseRequests"
@@ -44,29 +46,50 @@ class PurchaseRequestRepository(private val firestore: FirebaseFirestore) {
             .await()
     }
 
-    /** Seller-side transition that also moves the listing (e.g. ACCEPTED reserves it,
-     * COMPLETED marks it sold). One batch, so the two never disagree. */
+    /** Seller-side transition that also moves the listing (e.g. COMPLETED marks it sold). One batch, so the two never disagree. */
     suspend fun updateStatusAndListing(
         id: String,
         status: PurchaseStatus,
         listingId: String,
         listingStatus: ListingStatus,
-        upiId: String? = null,
     ) {
         val now = System.currentTimeMillis()
-        val requestChanges = mutableMapOf<String, Any>("status" to status.name, "updatedAt" to now)
-        upiId?.let { requestChanges["upiId"] = it }
         firestore.batch()
-            .update(requests.document(id), requestChanges)
+            .update(requests.document(id), mapOf("status" to status.name, "updatedAt" to now))
             .update(firestore.collection("listings").document(listingId), mapOf("status" to listingStatus.name, "updatedAt" to now))
             .commit()
             .await()
     }
 
-    /** Either party records that the money has changed hands (outside HomeSajja). */
-    suspend fun markPaid(id: String) {
+    /**
+     * The seller accepts. The price asked for (the asking price, or the accepted offer) becomes the agreed amount for good, a payment
+     * record opens (unless the item is free), and the listing is reserved: one batch, so they never disagree.
+     * [upiId] is where the seller wants to be paid (null = cash only).
+     */
+    suspend fun acceptRequest(request: PurchaseRequest, upiId: String?) {
         val now = System.currentTimeMillis()
-        requests.document(id).update(mapOf("paid" to true, "paidAt" to now, "updatedAt" to now)).await()
+        val changes = mutableMapOf<String, Any>(
+            "status" to PurchaseStatus.ACCEPTED.name,
+            "agreedAmount" to request.offeredPrice,
+            "agreedAt" to now,
+            "updatedAt" to now,
+        )
+        if (request.offeredPrice > 0) changes["payment"] = newPayment(request.buyerId, request.sellerId, upiId)
+        firestore.batch()
+            .update(requests.document(request.id), changes)
+            .update(firestore.collection("listings").document(request.listingId), mapOf("status" to ListingStatus.RESERVED.name, "updatedAt" to now))
+            .commit()
+            .await()
+    }
+
+    /** The buyer records that they paid, by UPI or in cash. */
+    suspend fun markPaid(id: String, method: PaymentMethod, upiRef: String?) {
+        requests.document(id).update(PaymentWrites.markPaid(method, upiRef, System.currentTimeMillis())).await()
+    }
+
+    /** The seller records that the money arrived. */
+    suspend fun confirmPayment(id: String) {
+        requests.document(id).update(PaymentWrites.confirmReceived(System.currentTimeMillis())).await()
     }
 
     suspend fun deleteRequest(id: String) {

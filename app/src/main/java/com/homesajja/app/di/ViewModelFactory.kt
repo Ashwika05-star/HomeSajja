@@ -120,6 +120,8 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.authRepository,
                 container.purchaseRequestRepository,
                 container.notificationSender,
+                container.vendorRepository,
+                container.userRepository,
             )
             ExchangeBrowseViewModel::class.java -> ExchangeBrowseViewModel(
                 container.authRepository,
@@ -171,6 +173,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.repairRepository,
                 container.chatRepository,
                 container.notificationSender,
+                container.vendorRepository,
             )
             RecycleRequestViewModel::class.java -> RecycleRequestViewModel(
                 container.authRepository,
@@ -195,6 +198,8 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.authRepository,
                 container.recyclingRepository,
                 container.notificationSender,
+                container.vendorRepository,
+                container.userRepository,
             )
             VendorDashboardViewModel::class.java -> VendorDashboardViewModel(
                 container.authRepository,

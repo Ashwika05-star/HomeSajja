@@ -29,6 +29,7 @@ import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
 import com.homesajja.app.ui.components.AppDropdownField
 import com.homesajja.app.ui.components.AppTextField
+import com.homesajja.app.ui.components.CopyableValue
 import com.homesajja.app.ui.components.AppTopBar
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.InlineErrorBanner
@@ -116,6 +117,23 @@ private fun EditForm(viewModel: VendorProfileEditViewModel) {
             singleLine = false,
             modifier = Modifier.fillMaxWidth(),
         )
+
+        Text("Payments", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Your UPI ID goes with your quotes and accepted offers, so customers can pay you by UPI (with a QR code too). Leave it empty to be paid in cash.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        AppTextField(
+            value = form.upiId,
+            onValueChange = { v -> viewModel.update { it.copy(upiId = v) } },
+            label = "UPI ID (optional)",
+            placeholder = "name@bank",
+            isError = form.upiIdInvalid,
+            errorMessage = if (form.upiIdInvalid) "That doesn't look like a UPI ID, e.g. name@okhdfcbank" else null,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        form.upiId.trim().takeIf { it.isNotEmpty() && !form.upiIdInvalid }?.let { CopyableValue(label = "Customers pay to", value = it) }
 
         Text("Shop location", style = MaterialTheme.typography.titleMedium)
         Text(

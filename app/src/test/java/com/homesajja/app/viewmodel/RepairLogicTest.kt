@@ -3,6 +3,8 @@ package com.homesajja.app.viewmodel
 import android.net.Uri
 import com.homesajja.app.data.model.FurnitureCategory
 import com.homesajja.app.data.model.FurnitureListing
+import com.homesajja.app.data.model.Payment
+import com.homesajja.app.data.model.PaymentStatus
 import com.homesajja.app.data.model.RepairProblemType
 import com.homesajja.app.data.model.RepairRequest
 import com.homesajja.app.data.model.RepairStatus
@@ -17,19 +19,54 @@ class RepairActionsTest {
     private fun request(status: RepairStatus) = RepairRequest(id = "r", userId = "user", vendorId = "vendor", status = status)
 
     @Test
-    fun vendorWalksTheWholePipeline() {
-        assertEquals(listOf(RepairAction.ACCEPT, RepairAction.REJECT), repairActionsFor(request(RepairStatus.REQUESTED), "vendor"))
-        assertEquals(listOf(RepairAction.START), repairActionsFor(request(RepairStatus.ACCEPTED), "vendor"))
+    fun vendorWalksTheWholePipeline_quoteFirst() {
+        assertEquals(listOf(RepairAction.SEND_QUOTE, RepairAction.REJECT), repairActionsFor(request(RepairStatus.REQUESTED), "vendor"))
+        assertTrue(repairActionsFor(request(RepairStatus.QUOTED), "vendor").isEmpty())
+        assertEquals(listOf(RepairAction.START), repairActionsFor(request(RepairStatus.AGREED), "vendor"))
         assertEquals(listOf(RepairAction.MARK_READY), repairActionsFor(request(RepairStatus.IN_PROGRESS), "vendor"))
         assertEquals(listOf(RepairAction.COMPLETE), repairActionsFor(request(RepairStatus.READY), "vendor"))
     }
 
     @Test
-    fun userCanOnlyCancelBeforeWorkStarts() {
-        assertEquals(listOf(RepairAction.CANCEL), repairActionsFor(request(RepairStatus.REQUESTED), "user"))
+    fun vendorCannotStartWork_beforeTheUserAgrees() {
+        listOf(RepairStatus.REQUESTED, RepairStatus.QUOTED, RepairStatus.DECLINED).forEach {
+            assertTrue("$it", RepairAction.START !in repairActionsFor(request(it), "vendor"))
+        }
+    }
+
+    @Test
+    fun userAcceptsOrDeclinesAQuote_onlyWhileItIsOpen() {
+        assertEquals(listOf(RepairAction.ACCEPT_QUOTE, RepairAction.DECLINE_QUOTE), repairActionsFor(request(RepairStatus.QUOTED), "user"))
+        assertTrue(RepairAction.ACCEPT_QUOTE !in repairActionsFor(request(RepairStatus.REQUESTED), "user"))
+        assertTrue(RepairAction.ACCEPT_QUOTE !in repairActionsFor(request(RepairStatus.AGREED), "user"))
+        assertTrue(repairActionsFor(request(RepairStatus.QUOTED), "vendor").none { it == RepairAction.ACCEPT_QUOTE || it == RepairAction.DECLINE_QUOTE })
+    }
+
+    @Test
+    fun afterADeclinedQuote_vendorRevisesOrCloses_userCanCancel() {
+        assertEquals(listOf(RepairAction.REVISE_QUOTE, RepairAction.CLOSE), repairActionsFor(request(RepairStatus.DECLINED), "vendor"))
+        assertEquals(listOf(RepairAction.CANCEL), repairActionsFor(request(RepairStatus.DECLINED), "user"))
+        assertTrue(RepairAction.REVISE_QUOTE.needsQuote && RepairAction.SEND_QUOTE.needsQuote)
+        assertEquals(RepairStatus.QUOTED, RepairAction.REVISE_QUOTE.target)
+        assertEquals(RepairStatus.REJECTED, RepairAction.CLOSE.target)
+    }
+
+    @Test
+    fun legacyAcceptedRequests_carryOnAsAgreed() {
+        assertEquals(listOf(RepairAction.START), repairActionsFor(request(RepairStatus.ACCEPTED), "vendor"))
         assertEquals(listOf(RepairAction.CANCEL), repairActionsFor(request(RepairStatus.ACCEPTED), "user"))
+    }
+
+    @Test
+    fun userCanOnlyCancelBeforeWorkStarts_andNotOnceAPaymentIsMarked() {
+        assertEquals(listOf(RepairAction.CANCEL), repairActionsFor(request(RepairStatus.REQUESTED), "user"))
+        assertEquals(listOf(RepairAction.CANCEL), repairActionsFor(request(RepairStatus.AGREED), "user"))
         assertTrue(repairActionsFor(request(RepairStatus.IN_PROGRESS), "user").isEmpty())
         assertTrue(repairActionsFor(request(RepairStatus.READY), "user").isEmpty())
+        val paid = request(RepairStatus.AGREED).copy(payment = Payment(payerId = "user", payeeId = "vendor", status = PaymentStatus.MARKED_PAID))
+        assertTrue(repairActionsFor(paid, "user").isEmpty())
+        val unpaid = request(RepairStatus.AGREED).copy(payment = Payment(payerId = "user", payeeId = "vendor"))
+        assertEquals(listOf(RepairAction.CANCEL), repairActionsFor(unpaid, "user"))
     }
 
     @Test

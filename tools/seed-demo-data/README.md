@@ -8,13 +8,13 @@ Fills a HomeSajja Firebase project with realistic Indian demo data so the app fe
 | Vendors (shops, repair professionals, carpenters, refurbishers, recyclers) | 17 |
 | Listings in rupees (sale and exchange, 9 per city, plus a few sold items) | about 49 |
 | Material requests | 7 |
-| Finished repair, recycling and purchase jobs, each with a review | 17 |
+| Finished repair, recycling and purchase jobs, each with a review (repairs and purchases carry an agreed amount and a confirmed payment; repairs and some recycling jobs go through a quote) | 17 |
 
 Listing pictures are simple flat furniture illustrations drawn by the tool (no one's photos), uploaded to your Cloudinary account.
 
 ```bash
 node seed.mjs                # the project in app/google-services.json
-node seed.mjs --emulator     # the local Auth (9099) and Firestore (8080) emulators
+node seed.mjs --emulator     # the local Auth (9099) and Firestore (8080) emulators; start them with --project <the id in google-services.json>, or the rules they load are not the ones the tool is written against
 node seed.mjs --remove       # remove the demo accounts and what they own
 ```
 

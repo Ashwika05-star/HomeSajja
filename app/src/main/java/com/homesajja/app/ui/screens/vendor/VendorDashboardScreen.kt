@@ -31,6 +31,7 @@ import com.homesajja.app.ui.components.OutlinedButton
 import com.homesajja.app.ui.components.StatusBadge
 import com.homesajja.app.ui.components.VerifiedBadge
 import com.homesajja.app.ui.util.formatTimeAgo
+import com.homesajja.app.ui.util.formatPrice
 import com.homesajja.app.viewmodel.ActivityItem
 import com.homesajja.app.viewmodel.DashboardData
 import com.homesajja.app.viewmodel.VendorDashboardUiState
@@ -88,6 +89,12 @@ private fun DashboardContent(
             StatCard("Pending requests", data.stats.pendingRequests, Modifier.weight(1f))
             StatCard("Completed sales", data.stats.completedSales, Modifier.weight(1f))
         }
+        // Only payments the vendor confirmed as received count as earned.
+        StatCard(
+            "Earned (confirmed payments)",
+            formatPrice(data.stats.earned),
+            Modifier.fillMaxWidth(),
+        )
 
         if (data.profileIncomplete) {
             Card(
@@ -120,7 +127,10 @@ private fun DashboardContent(
 }
 
 @Composable
-private fun StatCard(label: String, value: Int, modifier: Modifier = Modifier) {
+private fun StatCard(label: String, value: Int, modifier: Modifier = Modifier) = StatCard(label, "$value", modifier)
+
+@Composable
+private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -128,7 +138,7 @@ private fun StatCard(label: String, value: Int, modifier: Modifier = Modifier) {
         modifier = modifier,
     ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("$value", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+            Text(value, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

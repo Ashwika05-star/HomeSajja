@@ -48,6 +48,13 @@ import com.homesajja.app.ui.components.RecycleStatusTracker
 import com.homesajja.app.viewmodel.RecycleAction
 import com.homesajja.app.viewmodel.RecycleDetailUiState
 import com.homesajja.app.viewmodel.RecycleDetailViewModel
+import com.homesajja.app.data.model.PayDirection
+import com.homesajja.app.data.model.PaymentMethod
+import com.homesajja.app.payment.paymentOpen
+import com.homesajja.app.ui.components.PaymentPanel
+import com.homesajja.app.ui.components.PayoutUpiDialog
+import com.homesajja.app.ui.components.QuoteCard
+import com.homesajja.app.ui.components.QuoteDialog
 
 /** One recycling request: photos, the problem, the tracking pipeline, and the actions the viewer may take. */
 @Composable
@@ -56,6 +63,7 @@ fun RecycleDetailScreen(onBackClick: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingAction by remember { mutableStateOf<RecycleAction?>(null) }
+    var quoteAction by remember { mutableStateOf<RecycleAction?>(null) }
 
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
@@ -67,7 +75,7 @@ fun RecycleDetailScreen(onBackClick: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             (state as? RecycleDetailUiState.Content)?.takeIf { it.actions.isNotEmpty() }?.let {
-                ActionBar(content = it, onAction = { action -> pendingAction = action })
+                ActionBar(content = it, onAction = { action -> if (action.needsQuote) quoteAction = action else pendingAction = action })
             }
         },
     ) { padding ->
@@ -75,12 +83,42 @@ fun RecycleDetailScreen(onBackClick: () -> Unit) {
             when (val current = state) {
                 RecycleDetailUiState.Loading -> LoadingState()
                 is RecycleDetailUiState.Error -> ErrorState(message = current.message, onRetry = viewModel::retry)
-                is RecycleDetailUiState.Content -> DetailContent(current)
+                is RecycleDetailUiState.Content -> DetailContent(current, onMarkPaid = viewModel::markPaid, onConfirmReceived = viewModel::confirmPayment)
             }
         }
     }
 
+    quoteAction?.let { action ->
+        val content = state as? RecycleDetailUiState.Content
+        QuoteDialog(
+            repair = false,
+            revised = action == RecycleAction.REVISE_QUOTE,
+            initial = content?.request?.quote,
+            vendorUpiId = content?.myUpiId,
+            onSend = {
+                quoteAction = null
+                viewModel.sendQuote(it)
+            },
+            onDismiss = { quoteAction = null },
+        )
+    }
+
     pendingAction?.let { action ->
+        val content = state as? RecycleDetailUiState.Content
+        val quote = content?.request?.quote
+        // Accepting a quote where the recycler pays: the customer says where to send the money first.
+        if (action == RecycleAction.ACCEPT_QUOTE && quote?.direction == PayDirection.VENDOR_PAYS_USER) {
+            PayoutUpiDialog(
+                amount = quote.amount,
+                initialUpiId = content.myUpiId,
+                onConfirm = {
+                    pendingAction = null
+                    viewModel.perform(action, it)
+                },
+                onDismiss = { pendingAction = null },
+            )
+            return@let
+        }
         AlertDialog(
             onDismissRequest = { pendingAction = null },
             title = { Text(action.label) },
@@ -97,7 +135,11 @@ fun RecycleDetailScreen(onBackClick: () -> Unit) {
 }
 
 private fun confirmationText(action: RecycleAction): String = when (action) {
-    RecycleAction.ACCEPT -> "Accept this recycling request?"
+    RecycleAction.ACCEPT -> "Accept this recycling request for free?"
+    RecycleAction.SEND_QUOTE, RecycleAction.REVISE_QUOTE -> "Send this quote?"
+    RecycleAction.ACCEPT_QUOTE -> "Accept this quote? The amount is fixed from then on."
+    RecycleAction.DECLINE_QUOTE -> "Decline this quote? The recycler can send a revised quote or close the request."
+    RecycleAction.CLOSE -> "Close this request? The customer will see it as rejected."
     RecycleAction.REJECT -> "Reject this recycling request? The customer will see it as rejected."
     RecycleAction.SCHEDULE -> "Mark the pickup or drop-off as scheduled?"
     RecycleAction.COMPLETE -> "Mark this recycling request as completed?"
@@ -105,7 +147,11 @@ private fun confirmationText(action: RecycleAction): String = when (action) {
 }
 
 @Composable
-private fun DetailContent(content: RecycleDetailUiState.Content) {
+private fun DetailContent(
+    content: RecycleDetailUiState.Content,
+    onMarkPaid: (PaymentMethod, String?) -> Unit,
+    onConfirmReceived: () -> Unit,
+) {
     val request = content.request
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -131,8 +177,31 @@ private fun DetailContent(content: RecycleDetailUiState.Content) {
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Progress", style = MaterialTheme.typography.titleSmall)
-                    RecycleStatusTracker(status = request.status)
+                    RecycleStatusTracker(status = request.status, hasQuote = request.quote != null)
+                    waitingText(request.status, content.viewerIsRecycler, request.userName, request.vendorName.orEmpty().ifBlank { "the recycler" })?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
+            }
+
+            request.quote?.let { QuoteCard(quote = it, repair = false, agreedAmount = request.agreedAmount) }
+
+            val payment = request.payment
+            val amount = request.agreedAmount
+            if (payment != null && amount != null && request.paymentOpen) {
+                val customerIsPayer = payment.payerId == request.userId
+                PaymentPanel(
+                    amount = amount,
+                    payment = payment,
+                    viewerId = if (content.viewerIsRecycler) request.vendorId else request.userId,
+                    payerName = if (customerIsPayer) request.userName else request.vendorName.orEmpty().ifBlank { "The recycler" },
+                    payeeName = if (customerIsPayer) request.vendorName.orEmpty().ifBlank { "The recycler" } else request.userName,
+                    paymentNote = "HomeSajja recycling",
+                    cashLabel = if (request.method == com.homesajja.app.data.model.RecycleMethod.PICKUP) "Cash on pickup" else "Cash at drop-off",
+                    busy = content.isBusy,
+                    onMarkPaid = onMarkPaid,
+                    onConfirmReceived = onConfirmReceived,
+                )
             }
 
             DetailRow("Condition", request.condition.displayName)
@@ -154,6 +223,13 @@ private fun DetailContent(content: RecycleDetailUiState.Content) {
     }
 }
 
+/** One line saying who the request is waiting for, or null when there is nothing to wait for. */
+private fun waitingText(status: RecyclingStatus, viewerIsRecycler: Boolean, customer: String, recycler: String): String? = when (status) {
+    RecyclingStatus.QUOTED -> if (viewerIsRecycler) "Waiting for $customer to accept or decline your quote." else "Check the quote below, then accept or decline it."
+    RecyclingStatus.DECLINED -> if (viewerIsRecycler) "$customer declined the quote. Send a revised quote or close the request." else "You declined the quote. $recycler can send a revised quote."
+    else -> null
+}
+
 @Composable
 private fun DetailRow(label: String, value: String) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -165,17 +241,22 @@ private fun DetailRow(label: String, value: String) {
 @Composable
 private fun ActionBar(content: RecycleDetailUiState.Content, onAction: (RecycleAction) -> Unit) {
     Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            content.actions.forEachIndexed { index, action ->
-                val isPrimary = index == 0 && action != RecycleAction.CANCEL && action != RecycleAction.REJECT
-                if (isPrimary) {
-                    PrimaryButton(text = action.label, onClick = { onAction(action) }, enabled = !content.isBusy, modifier = Modifier.weight(1f))
-                } else {
-                    OutlinedButton(text = action.label, onClick = { onAction(action) }, enabled = !content.isBusy, modifier = Modifier.weight(1f))
+            // Two buttons to a row, so a long label never gets squeezed.
+            content.actions.withIndex().chunked(2).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    row.forEach { (index, action) ->
+                        val isPrimary = index == 0 && action != RecycleAction.CANCEL && action != RecycleAction.REJECT &&
+                            action != RecycleAction.CLOSE && action != RecycleAction.DECLINE_QUOTE
+                        if (isPrimary) {
+                            PrimaryButton(text = action.label, onClick = { onAction(action) }, enabled = !content.isBusy, modifier = Modifier.weight(1f))
+                        } else {
+                            OutlinedButton(text = action.label, onClick = { onAction(action) }, enabled = !content.isBusy, modifier = Modifier.weight(1f))
+                        }
+                    }
                 }
             }
         }

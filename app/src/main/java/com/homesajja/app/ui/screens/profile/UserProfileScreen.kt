@@ -18,10 +18,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
+import com.homesajja.app.ui.components.AppTextField
+import com.homesajja.app.ui.components.CopyableValue
 import com.homesajja.app.ui.components.DeleteAccountSection
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.OutlinedButton
+import com.homesajja.app.ui.components.PrimaryButton
 import com.homesajja.app.ui.components.ReviewsSection
 import com.homesajja.app.viewmodel.UserProfileUiState
 import com.homesajja.app.viewmodel.UserProfileViewModel
@@ -62,6 +65,31 @@ fun UserProfileScreen(
                 }
             }
             if (current.isOwn) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Payments", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Add your UPI ID so people can pay you, for example when you sell something. Only the people you do a deal with see it.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    viewModel.savedUpiId?.let { CopyableValue(label = "Your UPI ID", value = it) }
+                    AppTextField(
+                        value = viewModel.upiDraft,
+                        onValueChange = viewModel::onUpiDraftChange,
+                        label = "UPI ID",
+                        placeholder = "name@bank",
+                        isError = viewModel.upiDraftInvalid,
+                        errorMessage = if (viewModel.upiDraftInvalid) "That doesn't look like a UPI ID, e.g. name@okhdfcbank" else null,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    viewModel.upiMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
+                    PrimaryButton(
+                        text = if (viewModel.upiSaving) "Saving…" else "Save UPI ID",
+                        onClick = viewModel::saveUpiId,
+                        enabled = !viewModel.upiSaving && !viewModel.upiDraftInvalid,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 OutlinedButton(text = "Saved furniture", onClick = onOpenSaved, modifier = Modifier.fillMaxWidth())
                 OutlinedButton(text = "Blocked people", onClick = onOpenBlocked, modifier = Modifier.fillMaxWidth())
             }

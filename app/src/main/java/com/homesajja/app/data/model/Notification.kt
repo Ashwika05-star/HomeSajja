@@ -14,6 +14,7 @@ enum class NotificationType(val label: String) {
     MATERIAL_MATCH("Material request match"),
     VENDOR_RESPONSE("Vendor response"),
     SALE_COMPLETED("Sale completed"),
+    PAYMENT_UPDATE("Payment update"),
 }
 
 /** Stored at `notifications/{id}`; visible only to [recipientId]. [seen]

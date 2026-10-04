@@ -1,10 +1,14 @@
 package com.homesajja.app.viewmodel
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.homesajja.app.data.model.Review
 import com.homesajja.app.data.model.UserProfile
+import com.homesajja.app.payment.UpiPayment
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ReviewRepository
 import com.homesajja.app.repository.UserRepository
@@ -50,6 +54,46 @@ class UserProfileViewModel(
     private val _uiState = MutableStateFlow<UserProfileUiState>(UserProfileUiState.Loading)
     val uiState: StateFlow<UserProfileUiState> = _uiState
 
+    /** The UPI id being typed on your own profile, the id last saved, and how saving went. */
+    var upiDraft by mutableStateOf("")
+        private set
+    var savedUpiId by mutableStateOf<String?>(null)
+        private set
+    var upiSaving by mutableStateOf(false)
+        private set
+    var upiMessage by mutableStateOf<String?>(null)
+        private set
+    private var upiLoaded = false
+
+    val upiDraftInvalid: Boolean get() = upiDraft.isNotBlank() && !UpiPayment.isValidUpiId(upiDraft)
+
+    fun onUpiDraftChange(value: String) {
+        upiDraft = value
+        upiMessage = null
+    }
+
+    /** Saves the typed UPI id on your own profile, or clears it when the field is empty. */
+    fun saveUpiId() {
+        val uid = myId ?: return
+        if (upiSaving || upiDraftInvalid) return
+        val value = upiDraft.trim().takeIf { it.isNotEmpty() }
+        upiSaving = true
+        viewModelScope.launch {
+            try {
+                userRepository.updateUpiId(uid, value)
+                savedUpiId = value
+                upiDraft = value.orEmpty()
+                upiMessage = if (value == null) "UPI ID removed." else "UPI ID saved."
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                upiMessage = mapError(e, "Couldn't save your UPI ID.")
+            } finally {
+                upiSaving = false
+            }
+        }
+    }
+
     private val refreshGate = RefreshGate()
 
     init {
@@ -77,6 +121,11 @@ class UserProfileViewModel(
                     val own = async { if (isOwn) userRepository.getUserProfile(id) else null }
                     val received = async { reviewRepository.getReviewsForTarget(id) }
                     own.await() to received.await()
+                }
+                if (isOwn && profile != null && !upiLoaded) {
+                    upiLoaded = true
+                    savedUpiId = profile.upiId
+                    upiDraft = profile.upiId.orEmpty()
                 }
                 _uiState.value = UserProfileUiState.Content(
                     userId = id,

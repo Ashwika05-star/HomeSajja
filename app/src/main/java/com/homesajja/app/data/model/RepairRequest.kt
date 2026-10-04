@@ -1,9 +1,14 @@
 package com.homesajja.app.data.model
 
-/** REQUESTED -> ACCEPTED -> IN_PROGRESS -> READY -> COMPLETED.
- * The vendor moves it forward (or REJECTs it); the user can CANCEL until work starts. */
+/** REQUESTED -> QUOTED -> AGREED -> IN_PROGRESS -> READY -> COMPLETED.
+ * The vendor sends a quote; the user accepts it (AGREED) or declines it (DECLINED), after which the vendor sends a revised quote
+ * (QUOTED again) or closes the request (REJECTED). Only the vendor moves an agreed job forward; the user can CANCEL until work starts.
+ * ACCEPTED is the old "accepted without a price" step: requests that were already there keep working, but no new request reaches it. */
 enum class RepairStatus(val displayName: String) {
     REQUESTED("Requested"),
+    QUOTED("Quoted"),
+    AGREED("Agreed"),
+    DECLINED("Quote declined"),
     ACCEPTED("Accepted"),
     IN_PROGRESS("In progress"),
     READY("Ready"),
@@ -41,6 +46,13 @@ data class RepairRequest(
     val images: List<String> = emptyList(),
     val city: String = "",
     val status: RepairStatus = RepairStatus.REQUESTED,
+    /** The vendor's latest quote; null until one is sent. Frozen once the request is AGREED. */
+    val quote: Quote? = null,
+    /** The price both sides agreed (the accepted quote's amount); null until AGREED, and never changed afterwards. */
+    val agreedAmount: Long? = null,
+    val agreedAt: Long? = null,
+    /** Opened when the quote is accepted. */
+    val payment: Payment? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 )

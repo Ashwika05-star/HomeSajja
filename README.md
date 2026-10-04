@@ -17,7 +17,7 @@ own space. Discovery is city-scoped (Mumbai, Pune, Bengaluru, Delhi, Hyderabad).
 ## Features
 
 **For users**
-- **Buy and sell** with photo upload, filters (category, price, condition, Individual / Vendor sellers), search, your own listings badged in the feed, favourites (Saved), offers, and payment through **Google Pay (UPI)**
+- **Buy and sell** with photo upload, filters (category, price, condition, Individual / Vendor sellers), search, your own listings badged in the feed, favourites (Saved), offers, quotes and agreed prices, and payment by **UPI (any UPI app, QR code) or cash**
 - **Exchange** items with other people, with an accept/decline flow
 - **Repair**: describe the damage, choose a repair provider in your city, follow *Requested → Accepted → In progress → Ready → Completed*
 - **Recycle**: pickup or drop-off, followed through *Requested → Accepted → Scheduled → Completed*
@@ -40,7 +40,7 @@ own space. Discovery is city-scoped (Mumbai, Pune, Bengaluru, Delhi, Hyderabad).
 - **Photos:** Cloudinary free tier (unsigned uploads, no secret in the app)
 - **AI:** Google Gemini through **Firebase AI Logic** (the key stays with Firebase, never in the app)
 - **Maps:** OpenStreetMap through osmdroid (no API key or billing)
-- **Payments:** a standard `upi://pay` link opened in Google Pay; the buyer or seller marks the request paid
+- **Payments:** a standard `upi://pay` link opened in the phone's UPI app chooser, plus a QR code made with ZXing's encoder; no payment gateway: the payer says "I've paid" and the payee confirms (see "Quotes, agreements and payments")
 
 Every system (Marketplace, Exchange, Repair, Recycle, Material Requests) has its own models, collection,
 ViewModels, screens and status pipeline; only small UI parts (photo picker, status badge, chat) are shared.
@@ -96,6 +96,33 @@ The last command creates the project's AI config (without it every request fails
 The model names are in `strings.xml`: `gemini_model` (`gemini-3.8-flash`), and `gemini_model_fallback` (`gemini-flash-latest`), which is tried when the first
 model is retired or busy ("high demand"). Google retires models; `gemini-2.5-flash` is already gone for new projects, so check a name before changing it. Logcat tag `HomeSajjaAi` has the real errors.
 
+### Quotes, agreements and payments
+
+**Repair** runs `Requested → Quoted → Agreed → In progress → Ready → Completed`. After a user sends a request, the vendor sends a *quote*
+(an amount in rupees, estimated days and an optional note). The user accepts it (**Agreed**) or declines it (**Quote declined**); after a decline
+the vendor sends a revised quote or closes the request. The vendor can start work only after **Agreed**, and the agreed amount can't change after that.
+(`ACCEPTED` is the old "accepted without a price" status: requests that were already there carry on as agreed jobs, but no new request reaches it.)
+
+**Recycling** stays free by default (`Requested → Accepted → Scheduled → Completed`). A recycler may instead send a quote with an amount and a direction
+(*customer pays the recycler* or *the recycler pays the customer*); the customer accepts it (**Accepted**, amount agreed) or declines it. A pickup can be
+claimed "free" or "with a quote". **Purchases** keep their pipeline; when the seller accepts, the price (the asking price, or the accepted offer) becomes the
+agreed amount. The notifications for a quote being sent, accepted, declined or revised, and for a payment being marked or confirmed, go to the other party.
+
+**Payment record.** Every request with an amount stores a `payment` inside it: payer, payee, the payee's UPI ID (a snapshot), method (UPI or Cash), status
+`Unpaid → Marked paid by payer → Confirmed received by payee`, an optional UPI transaction reference and the timestamps. Only the payer can mark it paid and
+only the payee can confirm it. **Only the confirmation counts as money earned** (the vendor dashboard's "Earned" card). Nobody can cancel a job once a
+payment is marked. `firestore.rules` enforces every one of these transitions and that `agreedAmount` and `quote` never change after the agreement
+(see the 140+ new checks in `firestore-rules-tests`).
+
+**UPI.** Users and vendors save a UPI ID on their profile (shown with a **Copy** button; the vendor's goes into their quotes, the user's is used when a recycler
+pays them). The Pay button opens Android's chooser of all installed UPI apps, and says so if there is none (then the QR code, the copied ID or cash are the
+alternatives). The QR code is drawn from [ZXing core](https://github.com/zxing/zxing) (`com.google.zxing:core`, Apache-2.0), only its encoder, no camera or UI code.
+HomeSajja never moves money and has no payment gateway.
+
+**Rolling it out.** The app and `firestore.rules` change together: deploy the rules (`firebase deploy --only firestore:rules`) before people use a build with this
+upgrade, and expect older builds to be refused on the new repair, recycling and accept steps. No new index is needed. Purchase requests accepted before this upgrade
+keep their old fields but have no payment record, so they can't be paid in the new way.
+
 ### Firestore indexes (Explore and Exchange browsing)
 
 Browsing runs one Firestore query per page: `listings` where `city` and `status = ACTIVE` match, plus optionally `category`, `actionType`
@@ -121,7 +148,7 @@ Individual / Vendor chips.
 ### Try it without a real Firebase project
 
 ```bash
-firebase emulators:start --only auth,firestore --project homesajja-placeholder
+firebase emulators:start --only auth,firestore --project <the project id in app/google-services.json>
 ./gradlew installDebug -PuseEmulator=true
 ```
 
@@ -135,7 +162,7 @@ material requests and finished jobs with reviews. See its README. Every demo acc
 
 ```bash
 ./gradlew testDebugUnitTest            # unit tests (logic, parsing, colour contrast, UPI links, notifications...)
-cd firestore-rules-tests && npm install && npm test    # 249 security-rules checks against the Firestore emulator
+cd firestore-rules-tests && npm install && npm test    # 390 security-rules checks against the Firestore emulator
 ```
 
 `docs/quality-audit.md` records the state-handling, accessibility and performance audit and the final QA results.

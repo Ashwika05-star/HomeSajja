@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * A row of steps joined by a line: steps up to [currentIndex] are reached, earlier ones are
@@ -45,6 +46,8 @@ fun StatusStepper(
                 isLast = index == labels.lastIndex,
                 reached = index <= currentIndex,
                 isCurrent = index == currentIndex && !allDone,
+                // Six steps leave each label about 55dp: a size down keeps words like "Completed" in one piece.
+                compact = labels.size > 5,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -58,6 +61,7 @@ private fun StepperStep(
     isLast: Boolean,
     reached: Boolean,
     isCurrent: Boolean,
+    compact: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val active = MaterialTheme.colorScheme.primary
@@ -99,7 +103,7 @@ private fun StepperStep(
         }
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
+            style = if (compact) MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, letterSpacing = 0.sp) else MaterialTheme.typography.labelSmall,
             color = if (reached) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )

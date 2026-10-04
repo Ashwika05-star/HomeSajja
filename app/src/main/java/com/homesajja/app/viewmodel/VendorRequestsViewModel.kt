@@ -5,7 +5,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.homesajja.app.data.model.PayDirection
 import com.homesajja.app.data.model.RecyclingRequest
+import com.homesajja.app.payment.QuoteForm
+import com.homesajja.app.payment.buildQuote
+import com.homesajja.app.payment.quoteError
 import com.homesajja.app.data.model.VendorBusinessType
 import com.homesajja.app.data.model.VendorProfile
 import com.homesajja.app.repository.AuthRepository
@@ -111,16 +115,36 @@ class OpenPickupsViewModel(
 
     fun retry() = load(showLoading = true)
 
-    fun claim(request: RecyclingRequest) {
+    /** The recycler's saved UPI id, which a quote carries when the customer is the one paying. */
+    val upiId: String? get() = vendor?.upiId
+
+    /** Claims the pickup for free (it goes straight to Accepted), or with a quote when [quoteForm] is given (it goes to Quoted). */
+    fun claim(request: RecyclingRequest, quoteForm: QuoteForm? = null) {
         val me = vendor ?: return
         if (busyId != null) return
+        if (quoteForm != null) {
+            val problem = quoteError(quoteForm, needsDays = false, needsDirection = true)
+            if (problem != null) {
+                _messages.tryEmit(problem)
+                return
+            }
+        }
         busyId = request.id
         viewModelScope.launch {
             try {
                 val vendorName = me.businessName.ifBlank { me.name }
-                recyclingRepository.claimPickup(request.id, me.uid, vendorName)
-                notificationSender.send(NotificationTemplates.pickupClaimed(request, me.uid, vendorName))
-                _messages.tryEmit("Pickup claimed. Find it under My requests.")
+                val quote = quoteForm?.let {
+                    buildQuote(it.copy(days = ""), me.upiId.takeIf { _ -> it.direction == PayDirection.USER_PAYS_VENDOR }, revision = 1)
+                }
+                recyclingRepository.claimPickup(request.id, me.uid, vendorName, quote)
+                val claimed = request.copy(vendorId = me.uid, vendorName = vendorName)
+                if (quote == null) {
+                    notificationSender.send(NotificationTemplates.pickupClaimed(request, me.uid, vendorName))
+                    _messages.tryEmit("Pickup claimed. Find it under My requests.")
+                } else {
+                    notificationSender.send(NotificationTemplates.recyclingQuoteSent(claimed, quote))
+                    _messages.tryEmit("Pickup claimed and quote sent. Find it under My requests.")
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

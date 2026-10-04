@@ -2,8 +2,11 @@ package com.homesajja.app.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.homesajja.app.data.model.PaymentMethod
+import com.homesajja.app.data.model.Quote
 import com.homesajja.app.data.model.RepairRequest
 import com.homesajja.app.data.model.RepairStatus
+import com.homesajja.app.payment.newPayment
 import kotlinx.coroutines.tasks.await
 
 private const val COLLECTION = "repairRequests"
@@ -42,6 +45,40 @@ class RepairRepository(firestore: FirebaseFirestore) {
         requests.document(id)
             .update(mapOf("status" to status.name, "updatedAt" to System.currentTimeMillis()))
             .await()
+    }
+
+    /** The vendor's quote (REQUESTED -> QUOTED), or a revised one after the user declined (DECLINED -> QUOTED). */
+    suspend fun sendQuote(id: String, quote: Quote) {
+        requests.document(id)
+            .update(mapOf("status" to RepairStatus.QUOTED.name, "quote" to quote, "updatedAt" to System.currentTimeMillis()))
+            .await()
+    }
+
+    /** The user accepts the quote: the amount is agreed for good, and the payment record opens. */
+    suspend fun acceptQuote(request: RepairRequest) {
+        val quote = checkNotNull(request.quote) { "There is no quote to accept." }
+        val now = System.currentTimeMillis()
+        requests.document(request.id)
+            .update(
+                mapOf(
+                    "status" to RepairStatus.AGREED.name,
+                    "agreedAmount" to quote.amount,
+                    "agreedAt" to now,
+                    "payment" to newPayment(request.userId, request.vendorId, quote.payeeUpiId),
+                    "updatedAt" to now,
+                ),
+            )
+            .await()
+    }
+
+    /** The payer (the customer) says they paid. */
+    suspend fun markPaid(id: String, method: PaymentMethod, upiRef: String?) {
+        requests.document(id).update(PaymentWrites.markPaid(method, upiRef, System.currentTimeMillis())).await()
+    }
+
+    /** The payee (the vendor) says the money arrived. */
+    suspend fun confirmPayment(id: String) {
+        requests.document(id).update(PaymentWrites.confirmReceived(System.currentTimeMillis())).await()
     }
 
     suspend fun deleteRequest(id: String) {

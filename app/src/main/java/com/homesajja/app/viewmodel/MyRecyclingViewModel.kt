@@ -33,7 +33,9 @@ enum class RecycleFilter(val label: String) {
     }
 
     private companion object {
-        val ACTIVE_STATUSES = setOf(RecyclingStatus.REQUESTED, RecyclingStatus.ACCEPTED, RecyclingStatus.SCHEDULED)
+        val ACTIVE_STATUSES = setOf(
+            RecyclingStatus.REQUESTED, RecyclingStatus.QUOTED, RecyclingStatus.DECLINED, RecyclingStatus.ACCEPTED, RecyclingStatus.SCHEDULED,
+        )
     }
 }
 

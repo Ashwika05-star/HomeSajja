@@ -7,6 +7,8 @@ import com.homesajja.app.data.model.PurchaseStatus
 import com.homesajja.app.data.model.RecyclingStatus
 import com.homesajja.app.data.model.RepairStatus
 import com.homesajja.app.data.model.VendorProfile
+import com.homesajja.app.payment.confirmedEarnings
+import com.homesajja.app.payment.receivable
 import com.homesajja.app.repository.VendorInbox
 
 /** Which request system an activity item came from. */
@@ -30,6 +32,8 @@ data class DashboardStats(
     val activeListings: Int,
     val pendingRequests: Int,
     val completedSales: Int,
+    /** Money actually earned, in rupees: only payments the vendor has confirmed as received (see [confirmedEarnings]). */
+    val earned: Long,
 )
 
 /** [profileIncomplete] nudges the vendor to finish their profile (description and a shop location). */
@@ -45,14 +49,17 @@ const val RECENT_ACTIVITY_COUNT = 5
 /**
  * Turns a vendor's listings and inbox into what the dashboard shows.
  * - Active listings: listings that are ACTIVE (reserved, sold or hidden ones don't count).
- * - Pending requests: purchase, exchange, repair and recycling requests still waiting for the vendor's first answer.
+ * - Pending requests: purchase, exchange, repair and recycling requests waiting for the vendor: not answered yet, or (repair and
+ *   recycling) a quote the customer declined, which needs a revised quote or closing.
  * - Completed sales: purchase requests that reached COMPLETED.
+ * - Earned: the agreed amount of every request whose payment the vendor confirmed as received. A payer's "I've paid" doesn't count
+ *   until the vendor confirms it, and money the vendor paid out themselves is not earnings.
  */
 fun buildDashboard(vendor: VendorProfile, listings: List<FurnitureListing>, inbox: VendorInbox): DashboardData {
     val pending = inbox.purchases.count { it.status == PurchaseStatus.REQUESTED } +
         inbox.exchanges.count { it.status == ExchangeStatus.PENDING } +
-        inbox.repairs.count { it.status == RepairStatus.REQUESTED } +
-        inbox.recycling.count { it.status == RecyclingStatus.REQUESTED }
+        inbox.repairs.count { it.status == RepairStatus.REQUESTED || it.status == RepairStatus.DECLINED } +
+        inbox.recycling.count { it.status == RecyclingStatus.REQUESTED || it.status == RecyclingStatus.DECLINED }
 
     val activity = buildList {
         inbox.purchases.forEach {
@@ -75,6 +82,10 @@ fun buildDashboard(vendor: VendorProfile, listings: List<FurnitureListing>, inbo
             activeListings = listings.count { it.status == ListingStatus.ACTIVE },
             pendingRequests = pending,
             completedSales = inbox.purchases.count { it.status == PurchaseStatus.COMPLETED },
+            earned = confirmedEarnings(
+                vendor.uid,
+                inbox.purchases.map { it.receivable() } + inbox.repairs.map { it.receivable() } + inbox.recycling.map { it.receivable() },
+            ),
         ),
         activity = activity,
         profileIncomplete = vendor.description.isBlank() || vendor.shopLatitude == null || vendor.shopLongitude == null,

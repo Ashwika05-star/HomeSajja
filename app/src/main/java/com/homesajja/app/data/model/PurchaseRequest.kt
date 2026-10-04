@@ -13,8 +13,9 @@ enum class PurchaseStatus(val displayName: String) {
 
 /** Stored at `purchaseRequests/{id}`. Parties: [buyerId] and [sellerId].
  * "Buy" is a request at the asking price; "Make offer" is one at a lower [offeredPrice].
- * Payment happens outside HomeSajja (GPay/UPI or cash): the seller may attach their [upiId] when accepting, and either
- * side can mark the request [paid]. Completing the sale stays a separate, seller-side step. */
+ * When the seller accepts, the price (the asking price, or the accepted offer) becomes the [agreedAmount] and a [payment] record opens.
+ * Payment happens outside HomeSajja (UPI app or cash): the buyer says they paid and the seller confirms they received it.
+ * Completing the sale stays a separate, seller-side step. */
 data class PurchaseRequest(
     val id: String = "",
     val listingId: String = "",
@@ -26,17 +27,10 @@ data class PurchaseRequest(
     val offeredPrice: Long = 0L,
     val message: String = "",
     val status: PurchaseStatus = PurchaseStatus.REQUESTED,
-    val upiId: String? = null,
-    val paid: Boolean = false,
-    val paidAt: Long? = null,
+    /** Set once, when the seller accepts: equal to [offeredPrice], and never changed afterwards. */
+    val agreedAmount: Long? = null,
+    val agreedAt: Long? = null,
+    val payment: Payment? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
-) {
-    /** The buyer can pay with UPI while the seller has accepted, gave a UPI ID and it isn't marked paid yet. */
-    val canPayWithUpi: Boolean
-        get() = upiId != null && !paid && (status == PurchaseStatus.ACCEPTED || status == PurchaseStatus.READY_FOR_PICKUP)
-
-    /** Either side can mark it paid while it is accepted (or ready for pickup). */
-    val canMarkPaid: Boolean
-        get() = !paid && (status == PurchaseStatus.ACCEPTED || status == PurchaseStatus.READY_FOR_PICKUP)
-}
+)

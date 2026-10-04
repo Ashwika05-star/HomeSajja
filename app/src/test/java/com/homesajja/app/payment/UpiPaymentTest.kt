@@ -1,7 +1,5 @@
 package com.homesajja.app.payment
 
-import com.homesajja.app.data.model.PurchaseRequest
-import com.homesajja.app.data.model.PurchaseStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -36,26 +34,5 @@ class UpiPaymentTest {
         assertFalse(UpiPayment.isValidUpiId("@bank"))
         assertFalse(UpiPayment.isValidUpiId("me era@bank"))
         assertFalse(UpiPayment.isValidUpiId(""))
-    }
-
-    private fun request(status: PurchaseStatus, upiId: String? = "s@bank", paid: Boolean = false) =
-        PurchaseRequest(status = status, upiId = upiId, paid = paid)
-
-    @Test
-    fun buyerCanPayWithUpi_onlyAfterAcceptance_withAnIdAndNotYetPaid() {
-        assertFalse(request(PurchaseStatus.REQUESTED).canPayWithUpi)
-        assertTrue(request(PurchaseStatus.ACCEPTED).canPayWithUpi)
-        assertTrue(request(PurchaseStatus.READY_FOR_PICKUP).canPayWithUpi)
-        assertFalse(request(PurchaseStatus.ACCEPTED, upiId = null).canPayWithUpi)
-        assertFalse(request(PurchaseStatus.ACCEPTED, paid = true).canPayWithUpi)
-        assertFalse(request(PurchaseStatus.COMPLETED).canPayWithUpi)
-    }
-
-    @Test
-    fun markingPaid_isOfferedEvenWithoutAnUpiId_butNotTwice() {
-        assertTrue(request(PurchaseStatus.ACCEPTED, upiId = null).canMarkPaid)
-        assertFalse(request(PurchaseStatus.ACCEPTED, paid = true).canMarkPaid)
-        assertFalse(request(PurchaseStatus.REQUESTED).canMarkPaid)
-        assertFalse(request(PurchaseStatus.CANCELLED).canMarkPaid)
     }
 }

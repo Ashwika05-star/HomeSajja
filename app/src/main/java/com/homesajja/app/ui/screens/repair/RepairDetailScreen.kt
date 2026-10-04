@@ -44,7 +44,11 @@ import com.homesajja.app.ui.components.ReviewPrompt
 import com.homesajja.app.viewmodel.ReviewParams
 import com.homesajja.app.data.model.EntityType
 import com.homesajja.app.data.model.RepairStatus
+import com.homesajja.app.ui.components.PaymentPanel
+import com.homesajja.app.ui.components.QuoteCard
+import com.homesajja.app.ui.components.QuoteDialog
 import com.homesajja.app.ui.components.RepairStatusTracker
+import com.homesajja.app.payment.paymentOpen
 import com.homesajja.app.viewmodel.RepairAction
 import com.homesajja.app.viewmodel.RepairDetailUiState
 import com.homesajja.app.viewmodel.RepairDetailViewModel
@@ -56,6 +60,7 @@ fun RepairDetailScreen(onBackClick: () -> Unit, onOpenChat: (String) -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingAction by remember { mutableStateOf<RepairAction?>(null) }
+    var quoteAction by remember { mutableStateOf<RepairAction?>(null) }
 
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
@@ -70,7 +75,7 @@ fun RepairDetailScreen(onBackClick: () -> Unit, onOpenChat: (String) -> Unit) {
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             (state as? RepairDetailUiState.Content)?.takeIf { it.actions.isNotEmpty() }?.let {
-                ActionBar(content = it, onAction = { action -> pendingAction = action })
+                ActionBar(content = it, onAction = { action -> if (action.needsQuote) quoteAction = action else pendingAction = action })
             }
         },
     ) { padding ->
@@ -78,9 +83,29 @@ fun RepairDetailScreen(onBackClick: () -> Unit, onOpenChat: (String) -> Unit) {
             when (val current = state) {
                 RepairDetailUiState.Loading -> LoadingState()
                 is RepairDetailUiState.Error -> ErrorState(message = current.message, onRetry = viewModel::retry)
-                is RepairDetailUiState.Content -> DetailContent(current, onMessage = viewModel::openChat)
+                is RepairDetailUiState.Content -> DetailContent(
+                    current,
+                    onMessage = viewModel::openChat,
+                    onMarkPaid = viewModel::markPaid,
+                    onConfirmReceived = viewModel::confirmPayment,
+                )
             }
         }
+    }
+
+    quoteAction?.let { action ->
+        val content = state as? RepairDetailUiState.Content
+        QuoteDialog(
+            repair = true,
+            revised = action == RepairAction.REVISE_QUOTE,
+            initial = content?.request?.quote,
+            vendorUpiId = content?.vendorUpiId,
+            onSend = {
+                quoteAction = null
+                viewModel.sendQuote(it)
+            },
+            onDismiss = { quoteAction = null },
+        )
     }
 
     pendingAction?.let { action ->
@@ -100,8 +125,11 @@ fun RepairDetailScreen(onBackClick: () -> Unit, onOpenChat: (String) -> Unit) {
 }
 
 private fun confirmationText(action: RepairAction): String = when (action) {
-    RepairAction.ACCEPT -> "Accept this repair job?"
+    RepairAction.SEND_QUOTE, RepairAction.REVISE_QUOTE -> "Send this quote?"
+    RepairAction.ACCEPT_QUOTE -> "Accept this quote? The price is fixed from then on, and the vendor can start work."
+    RepairAction.DECLINE_QUOTE -> "Decline this quote? The vendor can send a revised quote or close the request."
     RepairAction.REJECT -> "Reject this repair request? The customer will see it as rejected."
+    RepairAction.CLOSE -> "Close this request? The customer will see it as rejected."
     RepairAction.START -> "Mark the repair as in progress?"
     RepairAction.MARK_READY -> "Mark the furniture as ready for pickup?"
     RepairAction.COMPLETE -> "Mark this repair as completed?"
@@ -109,7 +137,12 @@ private fun confirmationText(action: RepairAction): String = when (action) {
 }
 
 @Composable
-private fun DetailContent(content: RepairDetailUiState.Content, onMessage: () -> Unit) {
+private fun DetailContent(
+    content: RepairDetailUiState.Content,
+    onMessage: () -> Unit,
+    onMarkPaid: (com.homesajja.app.data.model.PaymentMethod, String?) -> Unit,
+    onConfirmReceived: () -> Unit,
+) {
     val request = content.request
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -136,7 +169,29 @@ private fun DetailContent(content: RepairDetailUiState.Content, onMessage: () ->
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Progress", style = MaterialTheme.typography.titleSmall)
                     RepairStatusTracker(status = request.status)
+                    waitingText(request.status, content.viewerIsVendor, request.userName, request.vendorName)?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
+            }
+
+            request.quote?.let { QuoteCard(quote = it, repair = true, agreedAmount = request.agreedAmount) }
+
+            val payment = request.payment
+            val amount = request.agreedAmount
+            if (payment != null && amount != null && request.paymentOpen) {
+                PaymentPanel(
+                    amount = amount,
+                    payment = payment,
+                    viewerId = if (content.viewerIsVendor) request.vendorId else request.userId,
+                    payerName = request.userName,
+                    payeeName = request.vendorName,
+                    paymentNote = "HomeSajja repair: ${request.furnitureTitle}",
+                    cashLabel = "Cash at service",
+                    busy = content.isBusy,
+                    onMarkPaid = onMarkPaid,
+                    onConfirmReceived = onConfirmReceived,
+                )
             }
 
             DetailRow("Problem", request.problemType.displayName)
@@ -159,6 +214,15 @@ private fun DetailContent(content: RepairDetailUiState.Content, onMessage: () ->
     }
 }
 
+/** One line saying who the request is waiting for, or null when there is nothing to wait for. */
+private fun waitingText(status: RepairStatus, viewerIsVendor: Boolean, customer: String, vendor: String): String? = when (status) {
+    RepairStatus.REQUESTED -> if (viewerIsVendor) "Send a quote so $customer can agree on a price." else "Waiting for $vendor to send a quote."
+    RepairStatus.QUOTED -> if (viewerIsVendor) "Waiting for $customer to accept or decline your quote." else "Check the quote below, then accept or decline it."
+    RepairStatus.DECLINED -> if (viewerIsVendor) "$customer declined the quote. Send a revised quote or close the request." else "You declined the quote. $vendor can send a revised quote."
+    RepairStatus.AGREED, RepairStatus.ACCEPTED -> if (viewerIsVendor) "The price is agreed. You can start work." else "The price is agreed. Waiting for $vendor to start work."
+    else -> null
+}
+
 @Composable
 private fun DetailRow(label: String, value: String) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -170,17 +234,22 @@ private fun DetailRow(label: String, value: String) {
 @Composable
 private fun ActionBar(content: RepairDetailUiState.Content, onAction: (RepairAction) -> Unit) {
     Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            content.actions.forEachIndexed { index, action ->
-                val isPrimary = index == 0 && action != RepairAction.CANCEL && action != RepairAction.REJECT
-                if (isPrimary) {
-                    PrimaryButton(text = action.label, onClick = { onAction(action) }, enabled = !content.isBusy, modifier = Modifier.weight(1f))
-                } else {
-                    OutlinedButton(text = action.label, onClick = { onAction(action) }, enabled = !content.isBusy, modifier = Modifier.weight(1f))
+            // Two buttons to a row, so a long label never gets squeezed.
+            content.actions.withIndex().chunked(2).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    row.forEach { (index, action) ->
+                        val isPrimary = index == 0 && action != RepairAction.CANCEL && action != RepairAction.REJECT &&
+                            action != RepairAction.CLOSE && action != RepairAction.DECLINE_QUOTE
+                        if (isPrimary) {
+                            PrimaryButton(text = action.label, onClick = { onAction(action) }, enabled = !content.isBusy, modifier = Modifier.weight(1f))
+                        } else {
+                            OutlinedButton(text = action.label, onClick = { onAction(action) }, enabled = !content.isBusy, modifier = Modifier.weight(1f))
+                        }
+                    }
                 }
             }
         }

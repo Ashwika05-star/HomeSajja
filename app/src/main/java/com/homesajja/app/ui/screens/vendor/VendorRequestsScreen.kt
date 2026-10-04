@@ -23,6 +23,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -34,6 +36,8 @@ import com.homesajja.app.data.model.RecyclingRequest
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
 import com.homesajja.app.ui.components.CategoryChip
+import com.homesajja.app.ui.components.OutlinedButton
+import com.homesajja.app.ui.components.QuoteDialog
 import com.homesajja.app.ui.components.EmptyState
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.ItemThumbnail
@@ -118,9 +122,24 @@ private fun RecyclingSection(snackbarHostState: SnackbarHostState, onOpenRecycli
 private fun OpenPickups(snackbarHostState: SnackbarHostState) {
     val viewModel: OpenPickupsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var quoteFor by remember { mutableStateOf<RecyclingRequest?>(null) }
 
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
+    }
+
+    quoteFor?.let { request ->
+        QuoteDialog(
+            repair = false,
+            revised = false,
+            initial = null,
+            vendorUpiId = viewModel.upiId,
+            onSend = {
+                quoteFor = null
+                viewModel.claim(request, it)
+            },
+            onDismiss = { quoteFor = null },
+        )
     }
 
     when (val current = state) {
@@ -140,7 +159,12 @@ private fun OpenPickups(snackbarHostState: SnackbarHostState) {
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     items(current.pickups, key = { it.id }) { request ->
-                        PickupCard(request, busy = viewModel.busyId == request.id, onClaim = { viewModel.claim(request) })
+                        PickupCard(
+                            request,
+                            busy = viewModel.busyId == request.id,
+                            onClaim = { viewModel.claim(request) },
+                            onClaimWithQuote = { quoteFor = request },
+                        )
                     }
                 }
             }
@@ -149,7 +173,7 @@ private fun OpenPickups(snackbarHostState: SnackbarHostState) {
 }
 
 @Composable
-private fun PickupCard(request: RecyclingRequest, busy: Boolean, onClaim: () -> Unit) {
+private fun PickupCard(request: RecyclingRequest, busy: Boolean, onClaim: () -> Unit, onClaimWithQuote: () -> Unit) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -171,7 +195,10 @@ private fun PickupCard(request: RecyclingRequest, busy: Boolean, onClaim: () -> 
                     Text("From ${request.userName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            PrimaryButton(text = "Claim pickup", onClick = onClaim, enabled = !busy, modifier = Modifier.fillMaxWidth())
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                PrimaryButton(text = "Claim (free)", onClick = onClaim, enabled = !busy, modifier = Modifier.weight(1f))
+                OutlinedButton(text = "Claim & quote", onClick = onClaimWithQuote, enabled = !busy, modifier = Modifier.weight(1f))
+            }
         }
     }
 }
