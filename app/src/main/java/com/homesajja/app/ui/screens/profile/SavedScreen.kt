@@ -41,7 +41,7 @@ import com.homesajja.app.viewmodel.SavedUiState
 
 /** Everything the person has saved, as a grid. Listings that were deleted or sold since are shown as "No longer available". */
 @Composable
-fun SavedScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Unit) {
+fun SavedScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Unit, bottomBar: @Composable () -> Unit = {}) {
     val viewModel: SavedListingsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -52,6 +52,7 @@ fun SavedScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Unit) {
 
     Scaffold(
         topBar = { AppTopBar(title = "Saved furniture", onBackClick = onBackClick) },
+        bottomBar = bottomBar,
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {

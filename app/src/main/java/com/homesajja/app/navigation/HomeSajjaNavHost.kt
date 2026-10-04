@@ -4,6 +4,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import com.homesajja.app.di.AppContainer
+import com.homesajja.app.ui.components.BottomTabBar
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
@@ -49,20 +54,21 @@ import com.homesajja.app.ui.screens.SignupScreen
 import com.homesajja.app.ui.screens.SplashScreen
 import com.homesajja.app.ui.screens.UserHomeScreen
 import com.homesajja.app.ui.screens.VendorHomeScreen
-import com.homesajja.app.ui.screens.WelcomeScreen
+import com.homesajja.app.ui.screens.IntroScreen
 import com.homesajja.app.viewmodel.SplashDestination
 
 @Composable
 fun HomeSajjaNavHost(navController: NavHostController = rememberNavController()) {
+    val container = LocalAppContainer.current
     fun navigateToRoleHome(role: UserRole) {
         val target = if (role == UserRole.USER) Routes.UserHome.route else Routes.VendorHome.route
+        container.homeTabs.reset()
         navController.navigate(target) {
             popUpTo(Routes.Splash.route) { inclusive = true }
         }
     }
 
     // A tapped system notification asks for a screen; open it once the person is signed in and past the entry screens.
-    val container = LocalAppContainer.current
     val pendingRoute by container.pendingRoute.collectAsState()
     val currentEntry by navController.currentBackStackEntryFlow.collectAsState(initial = null)
     LaunchedEffect(pendingRoute, currentEntry) {
@@ -75,6 +81,16 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
         } else if (current == Routes.Welcome.route || current == Routes.Login.route) {
             container.pendingRoute.value = null   // signed out: nothing to open
         }
+    }
+
+    // Nearly every screen has the dark maroon top bar, so the status bar shows light icons; the splash and intro screens are
+    // light all the way up, so they get dark icons.
+    val view = LocalView.current
+    LaunchedEffect(currentEntry) {
+        val route = currentEntry?.destination?.route
+        val lightBackground = route == Routes.Splash.route || route == Routes.Welcome.route
+        val window = (view.context as? android.app.Activity)?.window ?: return@LaunchedEffect
+        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = lightBackground
     }
 
     NavHost(navController = navController, startDestination = Routes.Splash.route) {
@@ -93,8 +109,9 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
             )
         }
         composable(Routes.Welcome.route) {
-            WelcomeScreen(
-                onGetStartedClick = { navController.navigate(Routes.Signup.route) },
+            IntroScreen(
+                onSignIn = { navController.navigate(Routes.Login.route) },
+                onSignUp = { navController.navigate(Routes.Signup.route) },
                 onPreviewComponentsClick = if (BuildConfig.DEBUG) {
                     { navController.navigate(Routes.ComponentPreview.route) }
                 } else {
@@ -303,6 +320,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
             val homeViewModel: HomeViewModel = viewModel(factory = ViewModelFactory(container))
             Scaffold(
                 topBar = { AppTopBar(title = "Profile", onBackClick = { navController.popBackStack() }) },
+                bottomBar = { HubBottomBar(navController, container) },
                 containerColor = MaterialTheme.colorScheme.background,
             ) { padding ->
                 UserProfileScreen(
@@ -348,13 +366,20 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
             SavedScreen(
                 onBackClick = { navController.popBackStack() },
                 onOpenListing = { navController.navigate(Routes.ListingDetail.createRoute(it)) },
+                bottomBar = { HubBottomBar(navController, container) },
             )
         }
-        composable(Routes.Blocked.route) { BlockedUsersScreen(onBackClick = { navController.popBackStack() }) }
+        composable(Routes.Blocked.route) {
+            BlockedUsersScreen(
+                onBackClick = { navController.popBackStack() },
+                bottomBar = { HubBottomBar(navController, container) },
+            )
+        }
         composable(Routes.ChatList.route) {
             ChatListScreen(
                 onBackClick = { navController.popBackStack() },
                 onOpenChat = { navController.navigate(Routes.ChatThread.createRoute(it)) },
+                bottomBar = { HubBottomBar(navController, container) },
             )
         }
         composable(
@@ -370,6 +395,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
             NotificationsScreen(
                 onBackClick = { navController.popBackStack() },
                 onOpenRoute = { navController.navigate(it) },
+                bottomBar = { HubBottomBar(navController, container) },
             )
         }
         composable(Routes.VendorProfileEdit.route) {
@@ -418,5 +444,45 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
         if (BuildConfig.DEBUG) {
             composable(Routes.ComponentPreview.route) { ComponentPreviewScreen() }
         }
+    }
+}
+
+/**
+ * The bottom tab bar on the hub pages reached from a home screen's top bar (Chats, Notifications, Profile, Saved, Blocked), so the main
+ * navigation never disappears there. Tapping a tab selects it and goes back to that home screen. Which space's tabs to show depends on
+ * which home screen is below this page in the back stack.
+ *
+ * Deliberately NOT shown on screens with their own bottom action (listing detail, chat thread, Sajja AI) or that are full-screen flows
+ * (sell, repair, recycle, exchange proposal, forms) or before sign-in.
+ */
+@Composable
+private fun HubBottomBar(navController: NavHostController, container: AppContainer) {
+    val isVendor = remember(navController) {
+        runCatching { navController.getBackStackEntry(Routes.VendorHome.route) }.isSuccess
+    }
+    val homeRoute = if (isVendor) Routes.VendorHome.route else Routes.UserHome.route
+    val backToHome = { navController.popBackStack(homeRoute, inclusive = false) }
+    if (isVendor) {
+        BottomTabBar(
+            tabs = VendorTab.entries,
+            selected = null,
+            label = { it.label },
+            icon = { it.icon },
+            onSelect = { tab ->
+                container.homeTabs.vendor.value = tab
+                backToHome()
+            },
+        )
+    } else {
+        BottomTabBar(
+            tabs = UserTab.entries,
+            selected = null,
+            label = { it.label },
+            icon = { it.icon },
+            onSelect = { tab ->
+                container.homeTabs.user.value = tab
+                backToHome()
+            },
+        )
     }
 }

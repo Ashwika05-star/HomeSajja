@@ -72,12 +72,13 @@ private fun NotificationType.icon(): ImageVector = when (this) {
 
 /** The person's notifications, newest first, with an unread dot. Tapping one marks it read and opens what it is about. */
 @Composable
-fun NotificationsScreen(onBackClick: () -> Unit, onOpenRoute: (String) -> Unit) {
+fun NotificationsScreen(onBackClick: () -> Unit, onOpenRoute: (String) -> Unit, bottomBar: @Composable () -> Unit = {}) {
     val viewModel: NotificationsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val hasUnread = (state as? NotificationsUiState.Content)?.notifications?.any { !it.seen } == true
 
     Scaffold(
+        bottomBar = bottomBar,
         topBar = {
             AppTopBar(
                 title = "Notifications",

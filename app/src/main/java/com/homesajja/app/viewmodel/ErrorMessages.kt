@@ -17,9 +17,12 @@ fun mapError(throwable: Throwable, fallback: String): String = when {
     throwable is FirebaseFirestoreException && throwable.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ->
         "You don't have permission to do that."
     throwable is AiException -> when (throwable.failure) {
-        AiFailure.NOT_AVAILABLE -> "HomeSajja's AI isn't available right now."
-        AiFailure.BUSY -> "HomeSajja is busy right now. Please try again in a minute."
-        AiFailure.NO_CONNECTION -> "Network error. Check your connection and try again."
+        AiFailure.NOT_ENABLED -> "HomeSajja's AI isn't switched on yet. It needs to be enabled for this app in Firebase (AI Logic)."
+        AiFailure.QUOTA_EXCEEDED -> "The free AI limit has been reached for now. Please try again in a little while."
+        AiFailure.NO_NETWORK -> "No internet connection. Check your network and try again."
+        AiFailure.MODEL_UNAVAILABLE -> "The AI model isn't available for this project right now."
+        AiFailure.BUSY -> "The AI is very busy right now. Please try again in a moment."
+        AiFailure.BLOCKED -> "The AI couldn't answer that one. Try rewording it."
         AiFailure.BAD_ANSWER, AiFailure.OTHER -> fallback
     }
     throwable is ImageUploadException -> throwable.message ?: "Upload failed. Please try again."

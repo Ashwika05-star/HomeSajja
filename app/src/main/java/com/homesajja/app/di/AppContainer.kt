@@ -11,6 +11,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.messaging.FirebaseMessaging
+import com.homesajja.app.navigation.HomeTabState
 import com.homesajja.app.notification.SessionServices
 import com.homesajja.app.ui.components.OsmSetup
 import kotlinx.coroutines.launch
@@ -109,8 +110,14 @@ class AppContainer(private val appContext: Context) {
     val reportRepository: ReportRepository by lazy { ReportRepository(firestore) }
     val blockRepository: BlockRepository by lazy { BlockRepository(firestore) }
     val aiRepository: AiRepository by lazy {
-        GeminiAiRepository(appContext.contentResolver, appContext.getString(R.string.gemini_model))
+        GeminiAiRepository(
+            appContext.contentResolver,
+            listOf(appContext.getString(R.string.gemini_model), appContext.getString(R.string.gemini_model_fallback)).distinct(),
+        )
     }
+
+    /** The selected bottom-bar tab of each space (see [HomeTabState]). */
+    val homeTabs = HomeTabState()
 
     /** What the Smart Decision screen hands to the Sell, Repair or Recycle flow; the flow takes it once and clears it. */
     val flowPrefill = MutableStateFlow<FlowPrefill?>(null)

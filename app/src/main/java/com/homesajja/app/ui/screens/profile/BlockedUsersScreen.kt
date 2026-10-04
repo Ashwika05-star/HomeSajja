@@ -36,7 +36,7 @@ import com.homesajja.app.viewmodel.BlockedUsersViewModel
 
 /** The people you've blocked, each with an Unblock button. */
 @Composable
-fun BlockedUsersScreen(onBackClick: () -> Unit) {
+fun BlockedUsersScreen(onBackClick: () -> Unit, bottomBar: @Composable () -> Unit = {}) {
     val viewModel: BlockedUsersViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -47,6 +47,7 @@ fun BlockedUsersScreen(onBackClick: () -> Unit) {
 
     Scaffold(
         topBar = { AppTopBar(title = "Blocked people", onBackClick = onBackClick) },
+        bottomBar = bottomBar,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->

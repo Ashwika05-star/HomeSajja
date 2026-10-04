@@ -4,6 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import android.graphics.Color
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -18,7 +20,9 @@ import com.homesajja.app.ui.theme.HomeSajjaTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // Content draws behind transparent system bars; each screen pads itself with window insets (Scaffold does it by itself).
+        // Status bar icons start light (almost every screen has the dark maroon top bar); the nav host switches them per screen.
+        enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
         val container = (application as HomeSajjaApp).container
         // Opened from a tapped system notification: remember where it wanted to go.
         NotificationRouting.routeFrom(intent)?.let { container.pendingRoute.value = it }

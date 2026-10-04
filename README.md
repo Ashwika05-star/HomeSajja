@@ -55,12 +55,47 @@ git clone https://github.com/Ashwika05-star/HomeSajja.git
 
 1. **Firebase:** create a project, add an Android app with package `com.homesajja.app`, download `google-services.json` into `app/`
    (it is git-ignored). Enable **Authentication** (Email/Password and Google), **Firestore**, and
-   **AI Logic** (Build → AI Logic → Get started → Gemini Developer API).
+   **AI Logic** (Build → AI Logic → Get started → Gemini Developer API; the CLI can only switch the APIs on, the console click is
+   what creates the AI config, see below).
 2. **Web client id:** put the Google "Web client" OAuth id into `default_web_client_id` in `app/src/main/res/values/strings.xml`.
 3. **Photos:** create a free Cloudinary account and an *unsigned* upload preset named `homesajja_listings`; put your cloud name
    in `cloudinary_cloud_name` in `strings.xml`.
 4. **Rules and indexes:** `firebase deploy --only firestore --project <your-project>`
 5. Run the app from Android Studio, or `./gradlew installDebug`.
+
+### Google sign-in on each machine and for the release build
+
+Google sign-in works only for a build whose **signing key's SHA fingerprints are registered** on the Firebase Android app (email login
+needs nothing). Every teammate's Mac has its own debug key, and the Play release has its own, so each one is added once:
+
+```bash
+# print this machine's debug fingerprints (look for SHA1 and SHA256)
+keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android | grep -E "SHA1|SHA256"
+# register them (needs `firebase login`); repeat for the SHA-1 and the SHA-256, and for the release key
+firebase apps:android:sha:create <firebase-android-app-id> <SHA> --project <project-id>
+# then refresh the config and replace app/google-services.json with it
+firebase apps:sdkconfig android <firebase-android-app-id> --project <project-id> -o app/google-services.json
+```
+
+Or in the console: Project settings → Your apps → HomeSajja (Android) → **Add fingerprint**, then **Download google-services.json**. If Google sign-in
+fails, the app now says why on screen, and Logcat (tag `HomeSajjaGoogle`) prints the exact error plus *this build's* SHA-1 to register.
+After you upload to Google Play, also add the **App signing** SHA-1 and SHA-256 shown in Play Console → Setup → App signing.
+
+### Turning on the AI features
+
+Firebase AI Logic must be switched on for the project, once (already done for `homesajja-9550a`). With the Firebase CLI:
+
+```bash
+firebase experiments:enable ailogic
+firebase ailogic:providers:enable gemini-developer-api
+firebase ailogic:config:set security.auth-only false
+```
+
+The last command creates the project's AI config (without it every request fails with "genai config not found"). The console route is
+**Build → AI Logic → Get started → Gemini Developer API**. Until it is done the AI screens say "AI isn't switched on yet".
+
+The model names are in `strings.xml`: `gemini_model` (`gemini-3.8-flash`), and `gemini_model_fallback` (`gemini-flash-latest`), which is tried when the first
+model is retired or busy ("high demand"). Google retires models; `gemini-2.5-flash` is already gone for new projects, so check a name before changing it. Logcat tag `HomeSajjaAi` has the real errors.
 
 ### Try it without a real Firebase project
 

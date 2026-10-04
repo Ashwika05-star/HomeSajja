@@ -60,12 +60,13 @@ fun EntityType.chatContextLabel(): String = when (this) {
 
 /** Every chat the signed-in person is in, across listings, exchanges and repairs, with an unread dot. */
 @Composable
-fun ChatListScreen(onBackClick: () -> Unit, onOpenChat: (String) -> Unit) {
+fun ChatListScreen(onBackClick: () -> Unit, onOpenChat: (String) -> Unit, bottomBar: @Composable () -> Unit = {}) {
     val viewModel: ChatListViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = { AppTopBar(title = "Chats", onBackClick = onBackClick) },
+        bottomBar = bottomBar,
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {

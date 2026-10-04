@@ -20,6 +20,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,7 +33,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
+import com.homesajja.app.navigation.VendorTab
 import com.homesajja.app.ui.components.AppTopBar
+import com.homesajja.app.ui.components.BottomTabBar
 import com.homesajja.app.ui.components.InboxActions
 import com.homesajja.app.ui.components.RequestNotificationPermission
 import com.homesajja.app.ui.screens.material.VendorMaterialsScreen
@@ -42,14 +45,6 @@ import com.homesajja.app.ui.screens.vendor.VendorPublicProfileScreen
 import com.homesajja.app.ui.screens.vendor.VendorRequestsScreen
 import com.homesajja.app.viewmodel.ActivityKind
 import com.homesajja.app.viewmodel.HomeViewModel
-
-private enum class VendorTab(val label: String, val icon: ImageVector) {
-    DASHBOARD("Dashboard", Icons.Filled.Dashboard),
-    LISTINGS("Listings", Icons.Filled.Sell),
-    REQUESTS("Requests", Icons.AutoMirrored.Filled.ReceiptLong),
-    MATERIALS("Materials", Icons.Filled.Inventory2),
-    PROFILE("Profile", Icons.Filled.Person),
-}
 
 /** The vendor's space: dashboard, listing management, incoming requests, material requests and shop profile. */
 @Composable
@@ -69,7 +64,8 @@ fun VendorHomeScreen(
     onLoggedOut: () -> Unit,
 ) {
     val homeViewModel: HomeViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
-    var selectedTab by rememberSaveable { mutableStateOf(VendorTab.DASHBOARD) }
+    val container = LocalAppContainer.current
+    val selectedTab by container.homeTabs.vendor.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     RequestNotificationPermission()
 
@@ -86,16 +82,13 @@ fun VendorHomeScreen(
             )
         },
         bottomBar = {
-            NavigationBar {
-                VendorTab.entries.forEach { tab ->
-                    NavigationBarItem(
-                        selected = selectedTab == tab,
-                        onClick = { selectedTab = tab },
-                        icon = { Icon(tab.icon, contentDescription = null) },
-                        label = { Text(tab.label) },
-                    )
-                }
-            }
+            BottomTabBar(
+                tabs = VendorTab.entries,
+                selected = selectedTab,
+                label = { it.label },
+                icon = { it.icon },
+                onSelect = { container.homeTabs.vendor.value = it },
+            )
         },
         floatingActionButton = {
             when (selectedTab) {
@@ -112,7 +105,7 @@ fun VendorHomeScreen(
             VendorTab.DASHBOARD -> VendorDashboardScreen(
                 onOpenActivity = { item ->
                     when (item.kind) {
-                        ActivityKind.PURCHASE -> selectedTab = VendorTab.REQUESTS
+                        ActivityKind.PURCHASE -> container.homeTabs.vendor.value = VendorTab.REQUESTS
                         ActivityKind.EXCHANGE -> onOpenExchange(item.requestId)
                         ActivityKind.REPAIR -> onOpenRepair(item.requestId)
                         ActivityKind.RECYCLING -> onOpenRecycling(item.requestId)

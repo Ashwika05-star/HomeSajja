@@ -22,6 +22,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,7 +35,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
+import com.homesajja.app.navigation.UserTab
 import com.homesajja.app.ui.components.AppTopBar
+import com.homesajja.app.ui.components.BottomTabBar
 import com.homesajja.app.ui.components.InboxActions
 import com.homesajja.app.ui.components.RequestNotificationPermission
 import com.homesajja.app.ui.screens.exchange.ExchangeRequestsScreen
@@ -42,14 +45,6 @@ import com.homesajja.app.ui.screens.explore.ExploreScreen
 import com.homesajja.app.ui.screens.mylistings.MyListingsScreen
 import com.homesajja.app.ui.screens.requests.MyRequestsScreen
 import com.homesajja.app.viewmodel.HomeViewModel
-
-private enum class HomeTab(val label: String, val icon: ImageVector) {
-    EXPLORE("Explore", Icons.Filled.Explore),
-    EXCHANGE("Exchange", Icons.Filled.SwapHoriz),
-    MY_LISTINGS("My listings", Icons.Filled.Sell),
-    MY_REQUESTS("Requests", Icons.AutoMirrored.Filled.ReceiptLong),
-    SERVICES("Services", Icons.Filled.Build),
-}
 
 /** The user's space: Explore, My listings and Requests behind a bottom bar. Detail, sell and edit are separate full-screen routes. */
 @Composable
@@ -71,7 +66,8 @@ fun UserHomeScreen(
     onLoggedOut: () -> Unit,
 ) {
     val homeViewModel: HomeViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
-    var selectedTab by rememberSaveable { mutableStateOf(HomeTab.EXPLORE) }
+    val container = LocalAppContainer.current
+    val selectedTab by container.homeTabs.user.collectAsState()
     var servicesSection by rememberSaveable { mutableStateOf(ServicesSection.REPAIR) }
     val snackbarHostState = remember { SnackbarHostState() }
     RequestNotificationPermission()
@@ -88,20 +84,17 @@ fun UserHomeScreen(
             )
         },
         bottomBar = {
-            NavigationBar {
-                HomeTab.entries.forEach { tab ->
-                    NavigationBarItem(
-                        selected = selectedTab == tab,
-                        onClick = { selectedTab = tab },
-                        icon = { Icon(tab.icon, contentDescription = null) },
-                        label = { Text(tab.label) },
-                    )
-                }
-            }
+            BottomTabBar(
+                tabs = UserTab.entries,
+                selected = selectedTab,
+                label = { it.label },
+                icon = { it.icon },
+                onSelect = { container.homeTabs.user.value = it },
+            )
         },
         floatingActionButton = {
             when (selectedTab) {
-                HomeTab.EXPLORE, HomeTab.MY_LISTINGS -> ExtendedFloatingActionButton(
+                UserTab.EXPLORE, UserTab.MY_LISTINGS -> ExtendedFloatingActionButton(
                     onClick = onSell,
                     modifier = Modifier.semantics { contentDescription = "Sell an item" },
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -109,7 +102,7 @@ fun UserHomeScreen(
                     icon = { Icon(Icons.Filled.Add, contentDescription = null) },
                     text = { Text("Sell") },
                 )
-                HomeTab.EXCHANGE -> ExtendedFloatingActionButton(
+                UserTab.EXCHANGE -> ExtendedFloatingActionButton(
                     onClick = onNewExchange,
                     modifier = Modifier.semantics { contentDescription = "Propose an exchange" },
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -117,8 +110,8 @@ fun UserHomeScreen(
                     icon = { Icon(Icons.Filled.Add, contentDescription = null) },
                     text = { Text("New exchange") },
                 )
-                HomeTab.MY_REQUESTS -> Unit
-                HomeTab.SERVICES -> if (servicesSection != ServicesSection.MATERIALS) {
+                UserTab.MY_REQUESTS -> Unit
+                UserTab.SERVICES -> if (servicesSection != ServicesSection.MATERIALS) {
                     val isRepair = servicesSection == ServicesSection.REPAIR
                     ExtendedFloatingActionButton(
                         onClick = if (isRepair) onRequestRepair else onRecycle,
@@ -136,25 +129,25 @@ fun UserHomeScreen(
     ) { padding ->
         val contentModifier = Modifier.padding(padding)
         when (selectedTab) {
-            HomeTab.EXPLORE -> ExploreScreen(onOpenListing = onOpenListing, onSell = onSell, modifier = contentModifier)
-            HomeTab.EXCHANGE -> ExchangeRequestsScreen(
+            UserTab.EXPLORE -> ExploreScreen(onOpenListing = onOpenListing, onSell = onSell, modifier = contentModifier)
+            UserTab.EXCHANGE -> ExchangeRequestsScreen(
                 onOpenRequest = onOpenExchange,
                 onNewExchange = onNewExchange,
                 modifier = contentModifier,
             )
-            HomeTab.MY_LISTINGS -> MyListingsScreen(
+            UserTab.MY_LISTINGS -> MyListingsScreen(
                 snackbarHostState = snackbarHostState,
                 onOpenListing = onOpenListing,
                 onEditListing = onEditListing,
                 onSell = onSell,
                 modifier = contentModifier,
             )
-            HomeTab.MY_REQUESTS -> MyRequestsScreen(
+            UserTab.MY_REQUESTS -> MyRequestsScreen(
                 snackbarHostState = snackbarHostState,
                 onOpenListing = onOpenListing,
                 modifier = contentModifier,
             )
-            HomeTab.SERVICES -> ServicesScreen(
+            UserTab.SERVICES -> ServicesScreen(
                 section = servicesSection,
                 onSectionChange = { servicesSection = it },
                 onOpenRepair = onOpenRepair,

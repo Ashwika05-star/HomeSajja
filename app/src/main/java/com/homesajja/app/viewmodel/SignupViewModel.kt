@@ -47,6 +47,10 @@ class SignupViewModel(
     var form by mutableStateOf(SignupFormState())
         private set
 
+    /** A Google sign-in problem to show under the Google button; null when there is none. */
+    var googleError by mutableStateOf<String?>(null)
+        private set
+
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState: StateFlow<AuthUiState> = _uiState
 
@@ -88,6 +92,7 @@ class SignupViewModel(
     /** Called once Google Identity returns an ID token; authenticates immediately
      * so name/email are known, but the rest of the profile still needs [submit]. */
     fun onGoogleIdToken(idToken: String) {
+        googleError = null
         viewModelScope.launch {
             _uiState.value = AuthUiState.Loading
             authRepository.signInWithGoogle(idToken).fold(
@@ -99,13 +104,21 @@ class SignupViewModel(
                     )
                     _uiState.value = AuthUiState.Idle
                 },
-                onFailure = { _uiState.value = AuthUiState.Error(mapAuthError(it)) },
+                onFailure = {
+                    _uiState.value = AuthUiState.Idle
+                    googleError = mapAuthError(it)
+                },
             )
         }
     }
 
+    /** Shown right under the Google button (not at the top of the form, where a long Signup form would hide it). */
     fun onGoogleSignInFailed(message: String) {
-        _uiState.value = AuthUiState.Error(message)
+        googleError = message
+    }
+
+    fun onGoogleSignInStarted() {
+        googleError = null
     }
 
     fun submit() {

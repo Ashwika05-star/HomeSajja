@@ -10,4 +10,6 @@
     <string name="cloudinary_upload_preset" translatable="false">homesajja_listings</string>
     <!-- The Gemini model used through Firebase AI Logic. Change it here if Google retires or renames it. -->
     <string name="gemini_model" translatable="false">gemini-3.8-flash</string>
+    <!-- Used only if the model above doesn't exist for the project, so the AI keeps working. -->
+    <string name="gemini_model_fallback" translatable="false">gemini-flash-latest</string>
 </resources>

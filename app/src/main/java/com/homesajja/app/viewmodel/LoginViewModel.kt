@@ -32,6 +32,10 @@ class LoginViewModel(
     var form by mutableStateOf(LoginFormState())
         private set
 
+    /** A Google sign-in problem to show under the Google button; null when there is none. */
+    var googleError by mutableStateOf<String?>(null)
+        private set
+
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState: StateFlow<AuthUiState> = _uiState
 
@@ -59,17 +63,26 @@ class LoginViewModel(
     }
 
     fun onGoogleIdToken(idToken: String) {
+        googleError = null
         viewModelScope.launch {
             _uiState.value = AuthUiState.Loading
             authRepository.signInWithGoogle(idToken).fold(
                 onSuccess = { uid -> resolveRoleAndFinish(uid) },
-                onFailure = { _uiState.value = AuthUiState.Error(mapAuthError(it)) },
+                onFailure = {
+                    _uiState.value = AuthUiState.Idle
+                    googleError = mapAuthError(it)
+                },
             )
         }
     }
 
+    /** Shown right under the Google button (not at the top of the form, where a long Signup form would hide it). */
     fun onGoogleSignInFailed(message: String) {
-        _uiState.value = AuthUiState.Error(message)
+        googleError = message
+    }
+
+    fun onGoogleSignInStarted() {
+        googleError = null
     }
 
     private suspend fun resolveRoleAndFinish(uid: String) {
