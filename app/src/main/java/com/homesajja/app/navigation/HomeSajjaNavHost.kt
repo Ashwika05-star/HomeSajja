@@ -44,6 +44,7 @@ import com.homesajja.app.ui.screens.listing.ListingDetailScreen
 import com.homesajja.app.ui.screens.material.MaterialRequestDetailScreen
 import com.homesajja.app.ui.screens.material.MaterialRequestFormScreen
 import com.homesajja.app.ui.screens.vendor.VendorProfileEditScreen
+import com.homesajja.app.ui.screens.vendor.VendorReportScreen
 import com.homesajja.app.ui.screens.vendor.VendorPublicProfileScreen
 import com.homesajja.app.ui.screens.recycle.RecycleDetailScreen
 import com.homesajja.app.ui.screens.recycle.RecycleRequestScreen
@@ -287,6 +288,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onNewMaterialRequest = { navController.navigate(Routes.MaterialForm.createRoute()) },
                 onOpenMaterialRequest = { navController.navigate(Routes.MaterialDetail.createRoute(it)) },
                 onEditProfile = { navController.navigate(Routes.VendorProfileEdit.route) },
+                onOpenReports = { navController.navigate(Routes.VendorReport.route) },
                 onOpenChats = { navController.navigate(Routes.ChatList.route) },
                 onOpenNotifications = { navController.navigate(Routes.Notifications.route) },
                 onOpenBlocked = { navController.navigate(Routes.Blocked.route) },
@@ -397,6 +399,9 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onOpenRoute = { navController.navigate(it) },
                 bottomBar = { HubBottomBar(navController, container) },
             )
+        }
+        composable(Routes.VendorReport.route) {
+            VendorReportScreen(onBackClick = { navController.popBackStack() })
         }
         composable(Routes.VendorProfileEdit.route) {
             VendorProfileEditScreen(onBackClick = { navController.popBackStack() })

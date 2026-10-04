@@ -43,7 +43,6 @@ import com.homesajja.app.ui.screens.mylistings.MyListingsScreen
 import com.homesajja.app.ui.screens.vendor.VendorDashboardScreen
 import com.homesajja.app.ui.screens.vendor.VendorPublicProfileScreen
 import com.homesajja.app.ui.screens.vendor.VendorRequestsScreen
-import com.homesajja.app.viewmodel.ActivityKind
 import com.homesajja.app.viewmodel.HomeViewModel
 
 /** The vendor's space: dashboard, listing management, incoming requests, material requests and shop profile. */
@@ -58,6 +57,7 @@ fun VendorHomeScreen(
     onNewMaterialRequest: () -> Unit,
     onOpenMaterialRequest: (String) -> Unit,
     onEditProfile: () -> Unit,
+    onOpenReports: () -> Unit,
     onOpenChats: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenBlocked: () -> Unit,
@@ -103,14 +103,9 @@ fun VendorHomeScreen(
         val contentModifier = Modifier.padding(padding)
         when (selectedTab) {
             VendorTab.DASHBOARD -> VendorDashboardScreen(
-                onOpenActivity = { item ->
-                    when (item.kind) {
-                        ActivityKind.PURCHASE -> container.homeTabs.vendor.value = VendorTab.REQUESTS
-                        ActivityKind.EXCHANGE -> onOpenExchange(item.requestId)
-                        ActivityKind.REPAIR -> onOpenRepair(item.requestId)
-                        ActivityKind.RECYCLING -> onOpenRecycling(item.requestId)
-                    }
-                },
+                onOpenTab = { container.homeTabs.vendor.value = it },
+                onOpenReports = onOpenReports,
+                onAddListing = onAddListing,
                 onEditProfile = onEditProfile,
                 modifier = contentModifier,
             )

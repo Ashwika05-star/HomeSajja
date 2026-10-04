@@ -1,6 +1,6 @@
 const fs = require('fs');
 const { initializeTestEnvironment, assertSucceeds, assertFails } = require('@firebase/rules-unit-testing');
-const { setLogLevel, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, orderBy, writeBatch } = require('firebase/firestore');
+const { setLogLevel, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, orderBy, writeBatch, limit, getCountFromServer, getAggregateFromServer, average, count } = require('firebase/firestore');
 
 const RULES = require('path').join(__dirname, '..', 'firestore.rules');
 setLogLevel('silent');
@@ -759,6 +759,33 @@ const deny = (n, p) => check(n, p, false);
   await allow('someone else still messages an unblocked chat', setDoc(doc(as('alice'), 'chats/ch1/messages/m77'), { senderId: 'alice', text: 'still fine' }));
   await allow('unblock', deleteDoc(doc(as('alice'), 'blocks/alice_carol')));
   await allow('chat works again after unblock', setDoc(doc(as('carol'), 'chats/blkchat/messages/m3'), { senderId: 'carol', text: 'hi again' }));
+
+  // ---------- dashboard, report and profile-summary reads ----------
+  // The numbers on the vendor dashboard, the monthly report and the profile cards come from count/aggregation queries and one ordered query of
+  // confirmed payments per collection. Each query names the signed-in person, which is what lets the rules allow it; none of them reads anyone else's.
+  const confirmedQ = (uid, coll, field, extra = []) => query(collection(as(uid), coll), where(field, '==', uid), where('payment.status', '==', 'CONFIRMED'), ...extra, orderBy('payment.confirmedAt', 'desc'), limit(300));
+  await allow('seller reads their confirmed sales, newest first', getDocs(confirmedQ('bob', 'purchaseRequests', 'sellerId')));
+  await allow('seller reads one month of confirmed sales', getDocs(confirmedQ('bob', 'purchaseRequests', 'sellerId', [where('payment.confirmedAt', '>=', now - 1000), where('payment.confirmedAt', '<', now + 1000)])));
+  await allow('repair vendor reads their confirmed repair payments', getDocs(confirmedQ('vic', 'repairRequests', 'vendorId')));
+  await allow('recycler reads the payments they received', getDocs(query(collection(as('vic'), 'recyclingRequests'), where('vendorId', '==', 'vic'), where('payment.payeeId', '==', 'vic'), where('payment.status', '==', 'CONFIRMED'), orderBy('payment.confirmedAt', 'desc'), limit(300))));
+  await deny('reading everyone\'s confirmed payments', getDocs(query(collection(as('bob'), 'purchaseRequests'), where('payment.status', '==', 'CONFIRMED'), orderBy('payment.confirmedAt', 'desc'), limit(300))));
+  await deny('reading someone else\'s confirmed sales', getDocs(query(collection(as('carol'), 'purchaseRequests'), where('sellerId', '==', 'bob'), where('payment.status', '==', 'CONFIRMED'), orderBy('payment.confirmedAt', 'desc'))));
+  await deny('finding payments by payee alone', getDocs(query(collection(as('bob'), 'repairRequests'), where('payment.payeeId', '==', 'bob'), where('payment.status', '==', 'CONFIRMED'))));
+  const countQ = (uid, coll, field, status) => getCountFromServer(query(collection(as(uid), coll), where(field, '==', uid), where('status', '==', status)));
+  await allow('seller counts their completed sales', countQ('bob', 'purchaseRequests', 'sellerId', 'COMPLETED'));
+  await allow('buyer counts what they bought', countQ('alice', 'purchaseRequests', 'buyerId', 'COMPLETED'));
+  await allow('vendor counts completed repairs', countQ('vic', 'repairRequests', 'vendorId', 'COMPLETED'));
+  await allow('customer counts their repaired items', countQ('alice', 'repairRequests', 'userId', 'COMPLETED'));
+  await allow('vendor counts completed recycling jobs', countQ('vic', 'recyclingRequests', 'vendorId', 'COMPLETED'));
+  await allow('customer counts their recycled items', countQ('alice', 'recyclingRequests', 'userId', 'COMPLETED'));
+  await allow('person counts exchanges they sent', countQ('alice', 'exchangeRequests', 'senderId', 'COMPLETED'));
+  await allow('person counts exchanges they received', countQ('bob', 'exchangeRequests', 'receiverId', 'COMPLETED'));
+  await allow('vendor counts open requests with a status list', getCountFromServer(query(collection(as('vic'), 'repairRequests'), where('vendorId', '==', 'vic'), where('status', 'in', ['REQUESTED', 'QUOTED', 'AGREED']))));
+  await allow('vendor counts their active listings', getCountFromServer(query(collection(as('vic'), 'listings'), where('ownerId', '==', 'vic'), where('status', '==', 'ACTIVE'))));
+  await deny('counting someone else\'s completed sales', getCountFromServer(query(collection(as('carol'), 'purchaseRequests'), where('sellerId', '==', 'bob'), where('status', '==', 'COMPLETED'))));
+  await deny('counting every completed repair', getCountFromServer(query(collection(as('carol'), 'repairRequests'), where('status', '==', 'COMPLETED'))));
+  await allow('average rating as one aggregation query', getAggregateFromServer(query(collection(as('alice'), 'reviews'), where('targetUserId', '==', 'vic')), { average: average('rating'), reviews: count() }));
+  await deny('signed-out visitor reads a rating', getAggregateFromServer(query(collection(anon, 'reviews'), where('targetUserId', '==', 'vic')), { reviews: count() }));
 
   console.log(`\n${passed} passed, ${failed} failed`);
   await env.cleanup();

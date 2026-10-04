@@ -11,6 +11,7 @@ import com.homesajja.app.data.model.UserProfile
 import com.homesajja.app.payment.UpiPayment
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.ReviewRepository
+import com.homesajja.app.repository.StatsRepository
 import com.homesajja.app.repository.UserRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -18,6 +19,28 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+
+/** The two cards on your own profile: what you earned from selling, and the furniture you reused, repaired and recycled. */
+data class ProfileSummary(
+    /** Money received from your own sales: only payments you confirmed as received. */
+    val totalEarned: Long,
+    val earnedIsPartial: Boolean,
+    val counts: UserTaskCounts,
+) {
+    val itemsSold: Int get() = counts.itemsSold
+    val itemsReused: Int get() = counts.itemsReused
+    val itemsRepaired: Int get() = counts.repaired
+    val itemsRecycled: Int get() = counts.recycled
+
+    /** True when there is nothing to show yet (the cards then explain how to get started). */
+    val isEmpty: Boolean get() = totalEarned == 0L && itemsReused == 0 && itemsRepaired == 0 && itemsRecycled == 0
+}
+
+sealed interface SummaryState {
+    data object Loading : SummaryState
+    data class Error(val message: String) : SummaryState
+    data class Loaded(val summary: ProfileSummary) : SummaryState
+}
 
 sealed interface UserProfileUiState {
     data object Loading : UserProfileUiState
@@ -45,6 +68,7 @@ class UserProfileViewModel(
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
     private val reviewRepository: ReviewRepository,
+    private val statsRepository: StatsRepository,
 ) : ViewModel() {
 
     private val myId: String? = authRepository.currentUserId
@@ -94,16 +118,46 @@ class UserProfileViewModel(
         }
     }
 
+    /** The earnings and sustainability numbers on your own profile (not loaded for other people's profiles). */
+    var summary by mutableStateOf<SummaryState>(SummaryState.Loading)
+        private set
+
     private val refreshGate = RefreshGate()
 
     init {
         load(showLoading = true)
+        if (userId != null && userId == myId) loadSummary()
+    }
+
+    fun retrySummary() = loadSummary()
+
+    /** Counts use aggregation queries and the money is read from your confirmed sales only, so this stays cheap (see [StatsRepository]). */
+    private fun loadSummary() {
+        val id = myId ?: return
+        summary = SummaryState.Loading
+        viewModelScope.launch {
+            try {
+                val (counts, earned) = coroutineScope {
+                    val c = async { statsRepository.userTaskCounts(id) }
+                    val e = async { statsRepository.userEarned(id) }
+                    c.await() to e.await()
+                }
+                summary = SummaryState.Loaded(ProfileSummary(totalOf(earned.items), earned.isPartial, counts))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                summary = SummaryState.Error(mapError(e, "Couldn't load your summary."))
+            }
+        }
     }
 
     fun retry() = load(showLoading = true)
 
     fun refreshIfStale() {
-        if (refreshGate.isStale()) load(showLoading = false)
+        if (refreshGate.isStale()) {
+            load(showLoading = false)
+            if (userId != null && userId == myId && summary !is SummaryState.Loading) loadSummary()
+        }
     }
 
     private fun load(showLoading: Boolean) {

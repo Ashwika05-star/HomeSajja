@@ -44,6 +44,7 @@ import com.homesajja.app.viewmodel.VendorMaterialsViewModel
 import com.homesajja.app.viewmodel.VendorProfileEditViewModel
 import com.homesajja.app.viewmodel.VendorPublicProfileViewModel
 import com.homesajja.app.viewmodel.VendorRecyclingViewModel
+import com.homesajja.app.viewmodel.VendorReportViewModel
 import com.homesajja.app.viewmodel.VendorRequestsViewModel
 import com.homesajja.app.viewmodel.VendorRepairsViewModel
 import com.homesajja.app.viewmodel.SignupViewModel
@@ -205,8 +206,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
             VendorDashboardViewModel::class.java -> VendorDashboardViewModel(
                 container.authRepository,
                 container.vendorRepository,
-                container.listingRepository,
-                container.vendorInboxRepository,
+                container.statsRepository,
             )
             VendorRequestsViewModel::class.java -> VendorRequestsViewModel(
                 container.authRepository,
@@ -217,6 +217,12 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.vendorRepository,
                 container.recyclingRepository,
                 container.notificationSender,
+            )
+            VendorReportViewModel::class.java -> VendorReportViewModel(
+                container.authRepository,
+                container.vendorRepository,
+                container.statsRepository,
+                container.reportExporter,
             )
             VendorProfileEditViewModel::class.java -> VendorProfileEditViewModel(
                 container.authRepository,
@@ -293,6 +299,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.authRepository,
                 container.userRepository,
                 container.reviewRepository,
+                container.statsRepository,
             )
             SmartDecisionViewModel::class.java -> SmartDecisionViewModel(
                 container.authRepository,

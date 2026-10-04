@@ -3,8 +3,7 @@ package com.homesajja.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.homesajja.app.repository.AuthRepository
-import com.homesajja.app.repository.ListingRepository
-import com.homesajja.app.repository.VendorInboxRepository
+import com.homesajja.app.repository.StatsRepository
 import com.homesajja.app.repository.VendorRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -19,18 +18,23 @@ sealed interface VendorDashboardUiState {
     data class Content(val data: DashboardData) : VendorDashboardUiState
 }
 
-/** The vendor's home: shop name, verification badge, stat cards and the recent-activity feed. */
+/** How long the dashboard's numbers are trusted when the screen comes back into view, to keep Firestore reads low. */
+private const val DASHBOARD_STALE_MILLIS = 20_000L
+
+/**
+ * The vendor's home: total and monthly earnings, the last six months as a chart, completed and pending work by type, the average rating and
+ * shortcuts. Everything is read with count and aggregation queries and one ordered query of confirmed payments per collection (see [StatsRepository]).
+ */
 class VendorDashboardViewModel(
     private val authRepository: AuthRepository,
     private val vendorRepository: VendorRepository,
-    private val listingRepository: ListingRepository,
-    private val inboxRepository: VendorInboxRepository,
+    private val statsRepository: StatsRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<VendorDashboardUiState>(VendorDashboardUiState.Loading)
     val uiState: StateFlow<VendorDashboardUiState> = _uiState
 
-    private val refreshGate = RefreshGate()
+    private val refreshGate = RefreshGate(DASHBOARD_STALE_MILLIS)
 
     init {
         load(showLoading = true)
@@ -55,10 +59,13 @@ class VendorDashboardViewModel(
             try {
                 val data = coroutineScope {
                     val vendor = async { vendorRepository.getVendorProfile(uid) }
-                    val listings = async { listingRepository.getListingsByOwner(uid) }
-                    val inbox = async { inboxRepository.load(uid) }
+                    val listings = async { statsRepository.activeListings(uid) }
+                    val tasks = async { statsRepository.vendorTaskCounts(uid) }
+                    val earned = async { statsRepository.vendorEarned(uid) }
+                    val rating = async { statsRepository.rating(uid) }
                     val profile = vendor.await() ?: throw IllegalStateException("No vendor profile")
-                    buildDashboard(profile, listings.await(), inbox.await())
+                    val batch = earned.await()
+                    buildDashboard(profile, listings.await(), tasks.await(), batch.items, rating.await(), batch.isPartial)
                 }
                 _uiState.value = VendorDashboardUiState.Content(data)
             } catch (e: CancellationException) {

@@ -80,3 +80,14 @@ deliberate weakenings (refund check, reason list, listing freed, exchange vendor
 a repair with a confirmed payment cancelled by its vendor (reason required, refund tick required, confirmation step, then the customer saw the reason and
 "Refund: ₹3,000 marked as refunded"); an unpaid purchase cancelled by its seller (the listing went back to ACTIVE); an accepted exchange cancelled by a vendor party
 (both items back to ACTIVE); the customer's notifications carried each reason. Not tried on a phone: the recycling cancel (covered by rules and logic tests).
+
+## 7. Upgrade 5: dashboard, reports and profile summary
+
+Unit tests (49 suites) cover the month maths in a fixed time zone (month ends, year ends, the last-six-months window), what counts as earned (confirmed, to that person,
+not refunded), the dashboard builder and its new-vendor state, the profile counts, the report builder and the CSV (quoting, formula defusing), and that the new indexes exist. Rules tests
+(501) check that each dashboard, report and profile query is allowed for the person it names and refused for anyone else's. On the emulators with the demo data, on a phone: the dashboard
+for a vendor with earnings (₹3,000 from two confirmed repair payments, chart, rating 4.5 from 2 reviews, completed 2 / pending 0), a vendor with nothing yet (welcome card), the monthly report
+for a month with payments and for an empty month, the PDF (1 page, and 2 pages when a month had 62 payments) and the CSV, the share sheet opening with the file, the profile cards for a customer
+and for someone who had sold two items (₹9,700 earned, 2 sold). On the real project: the dashboard and the report screen loaded with every new query, so the indexes and the aggregation queries
+work there (the emulators don't check indexes). Not tried on a phone: sharing the file to a particular app.
+

@@ -16,8 +16,6 @@ import com.homesajja.app.data.model.RepairStatus
 import com.homesajja.app.data.model.VendorProfile
 import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.PaymentWrites
-import com.homesajja.app.repository.VendorInbox
-import com.homesajja.app.viewmodel.buildDashboard
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -226,28 +224,6 @@ class EarningsTest {
         val repair = RepairRequest(agreedAmount = 2500, payment = confirmed).receivable()
         val recycling = RecyclingRequest(agreedAmount = 800, payment = confirmed).receivable()
         assertEquals(7300L, confirmedEarnings("vendor", listOf(purchase, repair, recycling)))
-    }
-
-    @Test
-    fun dashboard_showsEarnedFromConfirmedPaymentsOnly_andCountsDeclinedQuotesAsPending() {
-        val vendor = VendorProfile(uid = "vendor")
-        val inbox = VendorInbox(
-            purchases = listOf(PurchaseRequest(id = "p", status = PurchaseStatus.COMPLETED, agreedAmount = 4000, payment = payment(PaymentStatus.CONFIRMED))),
-            repairs = listOf(
-                RepairRequest(id = "r1", status = RepairStatus.COMPLETED, agreedAmount = 2500, payment = payment(PaymentStatus.CONFIRMED)),
-                RepairRequest(id = "r2", status = RepairStatus.COMPLETED, agreedAmount = 9000, payment = payment(PaymentStatus.MARKED_PAID)),
-                RepairRequest(id = "r3", status = RepairStatus.DECLINED),
-                RepairRequest(id = "r4", status = RepairStatus.QUOTED),
-            ),
-            recycling = listOf(
-                RecyclingRequest(id = "c1", status = RecyclingStatus.DECLINED),
-                RecyclingRequest(id = "c2", status = RecyclingStatus.COMPLETED, agreedAmount = 300, payment = payment(PaymentStatus.CONFIRMED, payee = "customer", payer = "vendor")),
-            ),
-        )
-        val stats = buildDashboard(vendor, emptyList(), inbox).stats
-        assertEquals(6500L, stats.earned)
-        // r3 (declined repair quote) and c1 (declined recycling quote) wait for the vendor; the open quote r4 waits for the customer.
-        assertEquals(2, stats.pendingRequests)
     }
 }
 

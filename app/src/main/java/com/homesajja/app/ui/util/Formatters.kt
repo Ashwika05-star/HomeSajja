@@ -59,3 +59,14 @@ fun formatMessageTime(timestamp: Long, now: Long = System.currentTimeMillis()): 
     val date = java.util.Date(timestamp)
     return if (sameDay) clockFormat.format(date) else dayFormat.format(date)
 }
+
+/** A short rupee amount for chart labels: ₹850, ₹1.2k, ₹45k, ₹1.5L (lakh), ₹2.4Cr (crore). */
+fun formatCompactPrice(amount: Long): String {
+    fun trimmed(value: Double): String = String.format(java.util.Locale.US, "%.1f", value).removeSuffix(".0")
+    return when {
+        amount < 1_000 -> "₹$amount"
+        amount < 100_000 -> "₹" + trimmed(amount / 1_000.0) + "k"
+        amount < 10_000_000 -> "₹" + trimmed(amount / 100_000.0) + "L"
+        else -> "₹" + trimmed(amount / 10_000_000.0) + "Cr"
+    }
+}

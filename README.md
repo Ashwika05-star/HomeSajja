@@ -142,6 +142,24 @@ in the request's `cancellation`.
   unchanged, except that a seller can no longer end an accepted order with the plain `CANCELLED` status: it has to be a vendor cancellation with a reason.
 - **Rolling out:** deploy `firestore.rules` before people use a build with this upgrade. No new index is needed.
 
+### Vendor dashboard, monthly reports and profile summary
+
+- **Dashboard (vendor home tab):** total earned, earned this month, a six-month bar chart, completed and pending work by type (sales, repairs, exchanges,
+  recycling), the average rating, and shortcuts to My listings, Incoming requests, Material requests and the monthly report. A new vendor sees a welcome card
+  instead of a wall of zeros. **"Earned" counts only payments with status Confirmed received** (and not refunded), nowhere else.
+- **Monthly report:** pick one of the last six months, see the summary and the payments received, then **Export PDF** or **Export CSV** and share it from the
+  Android share sheet. Both are made on the phone with **no third-party library**: the PDF with Android's own `android.graphics.pdf.PdfDocument`, the CSV
+  with a small hand-written writer (quotes fields, defuses spreadsheet formulas, adds a byte-order mark so Excel reads the rupee sign). Files are written to the app's cache and handed to the share
+  sheet through a `FileProvider` (so nothing is uploaded); the chart is plain Compose boxes, no chart library either.
+- **Profile (your own):** a Total Earned / Items Sold card from your completed sales, and a sustainability card: items **reused** (each completed sale or purchase is one item,
+  each completed exchange two), **repaired** and **recycled** (your completed repair and recycling requests).
+- **Reads on the free plan** (`StatsRepository`): counts use `count()` aggregation queries (one read per 1,000 matching documents, at least one per query) instead of reading documents;
+  the rating is one `average` + `count` aggregation; money is read only from payments that are already confirmed, newest first, at most 300 per collection (a vendor with more sees the
+  most recent ones, shown as "₹X+"), and a monthly report adds a `payment.confirmedAt` range so it reads that month alone. A dashboard load is about ten count queries, one aggregation, and
+  one query per collection for the confirmed payments (a few reads each for a typical vendor); the dashboard refreshes at most every 20 seconds when you come back to it. Indexes for
+  these are in `firestore.indexes.json` (confirmed payments newest first for purchases, repairs and recycling, and `reviews` by `targetUserId` + `rating`); they take a minute or two to
+  build after `firebase deploy --only firestore:indexes`, and until then the dashboard shows its Error state with Try again. The security rules did not change: every query names the signed-in person.
+
 ### Firestore indexes (Explore and Exchange browsing)
 
 Browsing runs one Firestore query per page: `listings` where `city` and `status = ACTIVE` match, plus optionally `category`, `actionType`
@@ -181,7 +199,7 @@ material requests and finished jobs with reviews. See its README. Every demo acc
 
 ```bash
 ./gradlew testDebugUnitTest            # unit tests (logic, parsing, colour contrast, UPI links, notifications...)
-cd firestore-rules-tests && npm install && npm test    # 480 security-rules checks against the Firestore emulator
+cd firestore-rules-tests && npm install && npm test    # 501 security-rules checks against the Firestore emulator
 ```
 
 `docs/quality-audit.md` records the state-handling, accessibility and performance audit and the final QA results.

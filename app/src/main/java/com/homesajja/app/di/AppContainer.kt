@@ -38,7 +38,8 @@ import com.homesajja.app.repository.RepairRepository
 import com.homesajja.app.repository.ReviewRepository
 import com.homesajja.app.repository.SessionRepository
 import com.homesajja.app.repository.UserRepository
-import com.homesajja.app.repository.VendorInboxRepository
+import com.homesajja.app.repository.StatsRepository
+import com.homesajja.app.report.ReportExporter
 import com.homesajja.app.repository.VendorRepository
 
 /**
@@ -125,9 +126,8 @@ class AppContainer(private val appContext: Context) {
     /** A screen to open once the app is signed in and showing, set when a system notification is tapped. */
     val pendingRoute = MutableStateFlow<String?>(null)
     val reviewRepository: ReviewRepository by lazy { ReviewRepository(firestore) }
-    val vendorInboxRepository: VendorInboxRepository by lazy {
-        VendorInboxRepository(purchaseRequestRepository, exchangeRepository, repairRepository, recyclingRepository)
-    }
+    val statsRepository: StatsRepository by lazy { StatsRepository(firestore) }
+    val reportExporter: ReportExporter by lazy { ReportExporter(appContext) }
     val favouriteRepository: FavouriteRepository by lazy { FavouriteRepository(firestore) }
 
     fun googleSignInManager(context: Context): GoogleSignInManager {

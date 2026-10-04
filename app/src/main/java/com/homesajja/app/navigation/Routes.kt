@@ -65,6 +65,7 @@ sealed class Routes(val route: String) {
     }
 
     data object VendorProfileEdit : Routes("vendor_profile_edit")
+    data object VendorReport : Routes("vendor_report")
 
     /** Post a material request; with a requestId it edits that request instead. */
     data object MaterialForm : Routes("material_form?requestId={requestId}") {
