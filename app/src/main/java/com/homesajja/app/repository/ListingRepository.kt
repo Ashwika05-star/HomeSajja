@@ -6,6 +6,7 @@ import com.homesajja.app.data.model.FurnitureCategory
 import com.homesajja.app.data.model.FurnitureListing
 import com.homesajja.app.data.model.ListingActionType
 import com.homesajja.app.data.model.ListingStatus
+import com.homesajja.app.data.model.SellerType
 import kotlinx.coroutines.tasks.await
 
 private const val COLLECTION = "listings"
@@ -15,6 +16,11 @@ class ListingRepository(firestore: FirebaseFirestore) {
 
     private val listings = firestore.collection(COLLECTION)
 
+    /** Goes up each time this app creates, edits, closes or deletes a listing, so a browse screen can tell its pages are out of date. */
+    @Volatile
+    var changeCount = 0
+        private set
+
     /** Reserves an id up front so photos can be uploaded to listings/{owner}/{id}/ before the document exists. */
     fun newListingId(): String = listings.document().id
 
@@ -22,6 +28,7 @@ class ListingRepository(firestore: FirebaseFirestore) {
     suspend fun createListing(listing: FurnitureListing): FurnitureListing {
         val saved = if (listing.id.isBlank()) listing.copy(id = newListingId()) else listing
         listings.document(saved.id).set(saved).await()
+        changeCount++
         return saved
     }
 
@@ -30,12 +37,15 @@ class ListingRepository(firestore: FirebaseFirestore) {
     /** City-scoped discovery of ACTIVE listings, newest first. Needs the
      * composite indexes declared in firestore.indexes.json.
      *
+     * [sellerType] (Individual / Vendor) is a server-side filter too, like category.
+     *
      * Paging uses a cursor: pass the `createdAt` of the last listing you already
      * have as [afterCreatedAt] to get the next batch. */
     suspend fun getListings(
         city: String,
         category: FurnitureCategory? = null,
         actionType: ListingActionType? = null,
+        sellerType: SellerType? = null,
         afterCreatedAt: Long? = null,
         limit: Int = DEFAULT_PAGE_SIZE,
     ): List<FurnitureListing> {
@@ -44,6 +54,7 @@ class ListingRepository(firestore: FirebaseFirestore) {
             .whereEqualTo("status", ListingStatus.ACTIVE.name)
         category?.let { query = query.whereEqualTo("category", it.name) }
         actionType?.let { query = query.whereEqualTo("actionType", it.name) }
+        sellerType?.let { query = query.whereEqualTo("sellerType", it.name) }
         query = query.orderBy("createdAt", Query.Direction.DESCENDING)
         afterCreatedAt?.let { query = query.startAfter(it) }
         return query.limit(limit.toLong()).getAllAs()
@@ -58,15 +69,18 @@ class ListingRepository(firestore: FirebaseFirestore) {
 
     suspend fun updateListing(listing: FurnitureListing) {
         listings.document(listing.id).set(listing.copy(updatedAt = System.currentTimeMillis())).await()
+        changeCount++
     }
 
     suspend fun updateListingStatus(id: String, status: ListingStatus) {
         listings.document(id)
             .update(mapOf("status" to status.name, "updatedAt" to System.currentTimeMillis()))
             .await()
+        changeCount++
     }
 
     suspend fun deleteListing(id: String) {
         listings.document(id).delete().await()
+        changeCount++
     }
 }

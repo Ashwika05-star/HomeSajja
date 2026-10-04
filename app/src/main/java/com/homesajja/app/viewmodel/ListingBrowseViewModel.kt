@@ -9,7 +9,8 @@ import com.homesajja.app.data.model.FurnitureCategory
 import com.homesajja.app.data.model.FurnitureListing
 import com.homesajja.app.data.model.ListingActionType
 import com.homesajja.app.data.model.ListingFilters
-import com.homesajja.app.data.model.matchesSearch
+import com.homesajja.app.data.model.SellerType
+import com.homesajja.app.data.model.visibleBrowseListings
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.FavouriteRepository
 import com.homesajja.app.repository.ListingRepository
@@ -28,7 +29,7 @@ sealed interface BrowseUiState {
     data object Loading : BrowseUiState
     data class Error(val message: String) : BrowseUiState
 
-    /** [listings] already has the search, filters and "not my own listing" rules applied.
+    /** [listings] already has the search, filters and (where the screen hides them) "not my own listing" rules applied.
      * An empty list means Empty (nothing in the city) or No Results (search/filters
      * hid everything) — the screen tells them apart using [ListingBrowseViewModel.hasActiveNarrowing]. */
     data class Content(
@@ -47,8 +48,11 @@ sealed interface BrowseUiState {
  * the fetched listings on the device; if that leaves fewer than a page, more
  * pages are fetched until there are enough or the city runs out.
  *
+ * Category and seller type (Individual / Vendor) are queried on the server too, so changing either starts over from page one.
+ *
  * Buy (Explore) and Exchange each subclass this with their own action type, so each
- * system keeps its own ViewModel and state while sharing the paging logic.
+ * system keeps its own ViewModel and state while sharing the paging logic. [includeOwnListings] is
+ * true for Explore: the person's own listings sit in the feed (badged, with no buy/chat actions).
  */
 abstract class ListingBrowseViewModel(
     authRepository: AuthRepository,
@@ -56,6 +60,7 @@ abstract class ListingBrowseViewModel(
     private val listingRepository: ListingRepository,
     favouriteRepository: FavouriteRepository,
     private val actionType: ListingActionType,
+    private val includeOwnListings: Boolean = false,
 ) : ViewModel() {
 
     private val saved = SavedIds(authRepository, favouriteRepository, viewModelScope)
@@ -69,6 +74,8 @@ abstract class ListingBrowseViewModel(
         private set
     var category by mutableStateOf<FurnitureCategory?>(null)
         private set
+    var sellerType by mutableStateOf<SellerType?>(null)
+        private set
     var filters by mutableStateOf(ListingFilters())
         private set
     var city by mutableStateOf("")
@@ -80,13 +87,17 @@ abstract class ListingBrowseViewModel(
     val uiState: StateFlow<BrowseUiState> = _uiState
 
     val hasActiveNarrowing: Boolean
-        get() = query.isNotBlank() || category != null || filters.isActive
+        get() = query.isNotBlank() || category != null || sellerType != null || filters.isActive
 
     private val myId = authRepository.currentUserId
+
+    /** True for the signed-in person's own listings, so the grid can badge them. */
+    fun isMine(listing: FurnitureListing): Boolean = myId != null && listing.ownerId == myId
     private var fetched = emptyList<FurnitureListing>()
     private var cursor: Long? = null
     private var endReached = false
     private var job: Job? = null
+    private var seenListingChanges = listingRepository.changeCount
 
     init {
         saved.load()
@@ -109,11 +120,19 @@ abstract class ListingBrowseViewModel(
         reload(showFullScreenLoading = true)
     }
 
+    /** Seller type is a server-side filter too, so changing it starts over from page one. */
+    fun onSellerTypeChange(value: SellerType?) {
+        if (value == sellerType) return
+        sellerType = value
+        reload(showFullScreenLoading = true)
+    }
+
     fun clearNarrowing() {
         query = ""
         filters = ListingFilters()
-        if (category != null) {
+        if (category != null || sellerType != null) {
             category = null
+            sellerType = null
             reload(showFullScreenLoading = true)
         } else {
             refilter()
@@ -123,6 +142,11 @@ abstract class ListingBrowseViewModel(
     fun retry() = reload(showFullScreenLoading = true)
 
     fun refresh() = reload(showFullScreenLoading = false)
+
+    /** Coming back to the feed: if a listing was created, edited, sold or deleted meanwhile, quietly reload. Otherwise leave the scroll position alone. */
+    fun refreshIfListingsChanged() {
+        if (listingRepository.changeCount != seenListingChanges && _uiState.value is BrowseUiState.Content) refresh()
+    }
 
     fun loadMore() {
         val current = _uiState.value as? BrowseUiState.Content ?: return
@@ -145,6 +169,7 @@ abstract class ListingBrowseViewModel(
 
     private fun reload(showFullScreenLoading: Boolean) {
         job?.cancel()
+        seenListingChanges = listingRepository.changeCount
         fetched = emptyList()
         cursor = null
         endReached = false
@@ -190,6 +215,7 @@ abstract class ListingBrowseViewModel(
                 city = city,
                 category = category,
                 actionType = actionType,
+                sellerType = sellerType,
                 afterCreatedAt = cursor,
                 limit = PAGE_SIZE,
             )
@@ -199,9 +225,8 @@ abstract class ListingBrowseViewModel(
         }
     }
 
-    private fun visible(): List<FurnitureListing> = fetched.filter {
-        it.ownerId != myId && filters.matches(it) && it.matchesSearch(query)
-    }
+    private fun visible(): List<FurnitureListing> =
+        visibleBrowseListings(fetched, myId, includeOwnListings, sellerType, filters, query)
 
     private fun publish() {
         _uiState.value = BrowseUiState.Content(listings = visible(), endReached = endReached)

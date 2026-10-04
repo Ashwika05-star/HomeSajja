@@ -263,6 +263,7 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.auth.uid in incoming().participantIds
         && incoming().participantIds.size() == 2
+        && incoming().participantIds[0] != incoming().participantIds[1]
         && !blocked(incoming().participantIds[0], incoming().participantIds[1]);
       // Participants can refresh the last-message preview, and stamp their own "last read" time
       // (and nobody else's).

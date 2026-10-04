@@ -50,6 +50,10 @@ sealed interface ListingDetailUiState {
         val canRequestPurchase: Boolean
             get() = !isOwner && !sellerBlocked && listing.actionType == ListingActionType.SELL && listing.status == ListingStatus.ACTIVE &&
                 (myRequest == null || myRequest.status in ENDED_STATUSES)
+
+        /** Owner actions on a listing that is still open (the same rule as My listings). */
+        val canMarkSold: Boolean
+            get() = isOwner && listing.status in setOf(ListingStatus.ACTIVE, ListingStatus.RESERVED)
     }
 }
 
@@ -94,11 +98,18 @@ class ListingDetailViewModel(
     private val _openChat = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val openChat: SharedFlow<String> = _openChat
 
+    /** Emits once the owner has deleted the listing, so the screen can close. */
+    private val _deleted = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val deleted: SharedFlow<Unit> = _deleted
+
+    private val refreshGate = RefreshGate()
+
     init {
         load()
     }
 
     fun load() {
+        refreshGate.markLoaded()
         _uiState.value = ListingDetailUiState.Loading
         viewModelScope.launch {
             try {
@@ -129,19 +140,19 @@ class ListingDetailViewModel(
 
     /** "Buy": a request at the full asking price. */
     fun buy() {
-        val content = content() ?: return
+        val content = content()?.takeIf { !it.isOwner } ?: return
         sendRequest(content, content.listing.price, "Buy request sent to ${content.listing.ownerName}.")
     }
 
     /** "Make offer": a request at a lower price the seller can accept or reject. */
     fun makeOffer(amount: Long) {
-        val content = content() ?: return
+        val content = content()?.takeIf { !it.isOwner } ?: return
         sendRequest(content, amount, "Offer of ₹$amount sent to ${content.listing.ownerName}.")
     }
 
     /** Finds or creates the chat with the seller about this listing, then opens it. */
     fun chatWithSeller() {
-        val content = content() ?: return
+        val content = content()?.takeIf { !it.isOwner } ?: return
         if (content.sellerBlocked) {
             _messages.tryEmit("You've blocked ${content.listing.ownerName}. Unblock them to chat.")
             return
@@ -156,6 +167,36 @@ class ListingDetailViewModel(
                 contextImage = content.listing.images.firstOrNull(),
             )
             _openChat.tryEmit(chat.id)
+        }
+    }
+
+    /** Coming back from editing: an owner sees their changes without a full reload. Other viewers' data is left alone. */
+    fun refreshOwnListing() {
+        val content = _uiState.value as? ListingDetailUiState.Content ?: return
+        if (!content.isOwner || content.isBusy || !refreshGate.isStale()) return
+        refreshGate.markLoaded()
+        viewModelScope.launch {
+            val latest = runCatching { listingRepository.getListing(listingId) }.getOrNull() ?: return@launch
+            update { it.copy(listing = latest) }
+        }
+    }
+
+    /** Owner only: closes the listing as sold. */
+    fun markAsSold() {
+        val content = content()?.takeIf { it.canMarkSold } ?: return
+        runBusy(content, failure = "Couldn't mark it as sold.") {
+            listingRepository.updateListingStatus(content.listing.id, ListingStatus.SOLD)
+            update { it.copy(listing = it.listing.copy(status = ListingStatus.SOLD)) }
+            _messages.tryEmit("Marked \"${content.listing.title}\" as sold.")
+        }
+    }
+
+    /** Owner only: deletes the listing for good, then tells the screen to close. */
+    fun deleteListing() {
+        val content = content()?.takeIf { it.isOwner } ?: return
+        runBusy(content, failure = "Couldn't delete the listing.") {
+            listingRepository.deleteListing(content.listing.id)
+            _deleted.tryEmit(Unit)
         }
     }
 

@@ -43,6 +43,25 @@ data class ListingFilters(
     }
 }
 
+/**
+ * What a browse screen shows out of the pages fetched so far. [includeOwn] lets a person's own listings through (Explore shows them
+ * with a "Your listing" badge; Exchange still hides them). [sellerType] is also queried on the server; checking it here as well
+ * means a stale page can never show the wrong kind of seller. Search and the filter sheet narrow the rest.
+ */
+fun visibleBrowseListings(
+    fetched: List<FurnitureListing>,
+    myId: String?,
+    includeOwn: Boolean,
+    sellerType: SellerType?,
+    filters: ListingFilters,
+    query: String,
+): List<FurnitureListing> = fetched.filter {
+    (includeOwn || it.ownerId != myId) &&
+        (sellerType == null || it.sellerType == sellerType) &&
+        filters.matches(it) &&
+        it.matchesSearch(query)
+}
+
 /** Case-insensitive match on title, description or category name. Blank matches everything. */
 fun FurnitureListing.matchesSearch(query: String): Boolean {
     val needle = query.trim()

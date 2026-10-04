@@ -45,11 +45,12 @@ fun FurnitureCard(
     onClick: (() -> Unit)? = null,
     isSaved: Boolean = false,
     onToggleSaved: (() -> Unit)? = null,
+    badge: String? = null,
 ) {
     val shape = RoundedCornerShape(16.dp)
     val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     val elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    val content: @Composable () -> Unit = { FurnitureCardContent(title, price, imageUrl, subtitle, isSaved, onToggleSaved) }
+    val content: @Composable () -> Unit = { FurnitureCardContent(title, price, imageUrl, subtitle, isSaved, onToggleSaved, badge) }
 
     if (onClick != null) {
         Card(onClick = onClick, modifier = modifier, shape = shape, colors = colors, elevation = elevation) {
@@ -70,6 +71,7 @@ private fun FurnitureCardContent(
     subtitle: String?,
     isSaved: Boolean,
     onToggleSaved: (() -> Unit)?,
+    badge: String?,
 ) {
     Column {
         Box(
@@ -91,6 +93,19 @@ private fun FurnitureCardContent(
                     contentDescription = title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f),
+                )
+            }
+            // A short label over the photo, e.g. "Your listing" on the person's own items.
+            if (badge != null) {
+                Text(
+                    text = badge,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp)
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(50))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
                 )
             }
             // The heart: filled when the listing is saved. Shown only where the caller can save.

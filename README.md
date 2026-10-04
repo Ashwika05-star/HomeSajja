@@ -17,7 +17,7 @@ own space. Discovery is city-scoped (Mumbai, Pune, Bengaluru, Delhi, Hyderabad).
 ## Features
 
 **For users**
-- **Buy and sell** with photo upload, filters, search, favourites (Saved), offers, and payment through **Google Pay (UPI)**
+- **Buy and sell** with photo upload, filters (category, price, condition, Individual / Vendor sellers), search, your own listings badged in the feed, favourites (Saved), offers, and payment through **Google Pay (UPI)**
 - **Exchange** items with other people, with an accept/decline flow
 - **Repair**: describe the damage, choose a repair provider in your city, follow *Requested → Accepted → In progress → Ready → Completed*
 - **Recycle**: pickup or drop-off, followed through *Requested → Accepted → Scheduled → Completed*
@@ -55,8 +55,7 @@ git clone https://github.com/Ashwika05-star/HomeSajja.git
 
 1. **Firebase:** create a project, add an Android app with package `com.homesajja.app`, download `google-services.json` into `app/`
    (it is git-ignored). Enable **Authentication** (Email/Password and Google), **Firestore**, and
-   **AI Logic** (Build → AI Logic → Get started → Gemini Developer API; the CLI can only switch the APIs on, the console click is
-   what creates the AI config, see below).
+   **AI Logic** (see "Turning on the AI features" below).
 2. **Web client id:** put the Google "Web client" OAuth id into `default_web_client_id` in `app/src/main/res/values/strings.xml`.
 3. **Photos:** create a free Cloudinary account and an *unsigned* upload preset named `homesajja_listings`; put your cloud name
    in `cloudinary_cloud_name` in `strings.xml`.
@@ -96,6 +95,28 @@ The last command creates the project's AI config (without it every request fails
 
 The model names are in `strings.xml`: `gemini_model` (`gemini-3.8-flash`), and `gemini_model_fallback` (`gemini-flash-latest`), which is tried when the first
 model is retired or busy ("high demand"). Google retires models; `gemini-2.5-flash` is already gone for new projects, so check a name before changing it. Logcat tag `HomeSajjaAi` has the real errors.
+
+### Firestore indexes (Explore and Exchange browsing)
+
+Browsing runs one Firestore query per page: `listings` where `city` and `status = ACTIVE` match, plus optionally `category`, `actionType`
+and `sellerType` (the Individual / Vendor chips on Explore), ordered by `createdAt` descending. Every combination needs its own composite
+index, all declared in `firestore.indexes.json`:
+
+| Filters on top of `city` + `status` | Fields (then `createdAt` desc) |
+|---|---|
+| none | `city, status` |
+| category | `city, status, category` |
+| action type (Explore = SELL, Exchange = EXCHANGE) | `city, status, actionType` |
+| category + action type | `city, status, category, actionType` |
+| seller type | `city, status, actionType, sellerType` (as served by Explore) |
+| seller type + category | `city, status, category, actionType, sellerType` |
+
+The four `sellerType` rows are the ones added in Upgrade 2: `city, status, sellerType`, `city, status, category, sellerType`,
+`city, status, actionType, sellerType` and `city, status, category, actionType, sellerType`. Deploy them with
+`firebase deploy --only firestore:indexes --project <your-project>`; a new index takes a minute or two to build, and until it is ready
+the feed shows the normal "Couldn't load listings" error with a Try again button. A unit test (`SellerTypeIndexTest`) fails if a filter
+combination has no index. Listings written by the app always carry `sellerType`; a listing without that field would not match the
+Individual / Vendor chips.
 
 ### Try it without a real Firebase project
 

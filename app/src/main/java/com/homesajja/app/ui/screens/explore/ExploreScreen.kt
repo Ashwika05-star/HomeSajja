@@ -46,10 +46,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.homesajja.app.data.model.FurnitureListing
 import com.homesajja.app.data.model.FurnitureCategory
+import com.homesajja.app.data.model.SellerType
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
 import com.homesajja.app.ui.components.CategoryChip
@@ -78,6 +80,7 @@ fun ExploreScreen(
         emptySubtitle = "Be the first to list something for sale here.",
         emptyActionLabel = "Sell an item",
         onEmptyAction = onSell,
+        showSellerTypeFilter = true,
         modifier = modifier,
     )
 }
@@ -85,7 +88,8 @@ fun ExploreScreen(
 /**
  * Search bar, category chips, filter sheet and the paged listing grid, driven by any
  * [ListingBrowseViewModel]. Shared by Buy (Explore) and Exchange; each passes its own
- * ViewModel and decides what tapping a card and the empty screen do.
+ * ViewModel and decides what tapping a card and the empty screen do. [showSellerTypeFilter] adds the
+ * All / Individual / Vendor row (Explore only). Cards of the person's own listings get a "Your listing" badge.
  */
 @Composable
 fun ListingBrowser(
@@ -96,9 +100,15 @@ fun ListingBrowser(
     emptyActionLabel: String?,
     onEmptyAction: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    showSellerTypeFilter: Boolean = false,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showFilters by rememberSaveable { mutableStateOf(false) }
+
+    LifecycleResumeEffect(viewModel) {
+        viewModel.refreshIfListingsChanged()
+        onPauseOrDispose {}
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         SearchBar(
@@ -108,6 +118,9 @@ fun ListingBrowser(
             onFiltersClick = { showFilters = true },
         )
         CategoryRow(selected = viewModel.category, onSelect = viewModel::onCategoryChange)
+        if (showSellerTypeFilter) {
+            SellerTypeRow(selected = viewModel.sellerType, onSelect = viewModel::onSellerTypeChange)
+        }
 
         Box(modifier = Modifier.weight(1f)) {
             when (val current = state) {
@@ -124,6 +137,7 @@ fun ListingBrowser(
                     onListingClick = onListingClick,
                     savedIds = viewModel.savedIds,
                     onToggleSaved = viewModel::toggleSaved,
+                    isMine = viewModel::isMine,
                     emptyTitle = emptyTitle,
                     emptySubtitle = emptySubtitle,
                     emptyActionLabel = emptyActionLabel,
@@ -198,6 +212,21 @@ private fun CategoryRow(selected: FurnitureCategory?, onSelect: (FurnitureCatego
     }
 }
 
+/** All / Individual / Vendor: whose listings to show. Combines with search, category and the filter sheet. */
+@Composable
+private fun SellerTypeRow(selected: SellerType?, onSelect: (SellerType?) -> Unit) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(bottom = 8.dp),
+    ) {
+        item { CategoryChip(label = "All sellers", selected = selected == null, onClick = { onSelect(null) }) }
+        items(SellerType.entries) { type ->
+            CategoryChip(label = type.displayName, selected = selected == type, onClick = { onSelect(type) })
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ExploreContent(
@@ -211,6 +240,7 @@ private fun ExploreContent(
     onListingClick: (FurnitureListing) -> Unit,
     savedIds: Set<String>,
     onToggleSaved: (String) -> Unit,
+    isMine: (FurnitureListing) -> Boolean,
     emptyTitle: (String) -> String,
     emptySubtitle: String,
     emptyActionLabel: String?,
@@ -275,14 +305,17 @@ private fun ExploreContent(
             modifier = Modifier.fillMaxSize(),
         ) {
             items(content.listings, key = { it.id }) { listing ->
+                val mine = isMine(listing)
                 FurnitureCard(
                     title = listing.title,
                     price = listing.priceLabel(),
                     imageUrl = listing.images.firstOrNull(),
                     subtitle = cardSubtitle(listing),
                     onClick = { onListingClick(listing) },
+                    // Nobody saves their own item; it carries a badge instead.
                     isSaved = listing.id in savedIds,
-                    onToggleSaved = { onToggleSaved(listing.id) },
+                    onToggleSaved = if (mine) null else ({ onToggleSaved(listing.id) }),
+                    badge = if (mine) "Your listing" else null,
                 )
             }
             item(span = { GridItemSpan(maxLineSpan) }) {

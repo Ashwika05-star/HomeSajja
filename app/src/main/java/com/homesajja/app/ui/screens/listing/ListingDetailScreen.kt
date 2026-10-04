@@ -102,8 +102,12 @@ fun ListingDetailScreen(
     LaunchedEffect(viewModel) {
         viewModel.openChat.collect { onOpenChat(it) }
     }
+    LaunchedEffect(viewModel) {
+        viewModel.deleted.collect { onBackClick() }
+    }
     LifecycleResumeEffect(viewModel) {
         viewModel.refreshSellerBlocked()
+        viewModel.refreshOwnListing()
         onPauseOrDispose {}
     }
 
@@ -114,15 +118,21 @@ fun ListingDetailScreen(
                 title = "Listing",
                 onBackClick = onBackClick,
                 actions = {
-                    if (listing != null) TrustMenu(userId = listing.ownerId, userName = listing.ownerName, listingId = listing.id, listingTitle = listing.title)
+                    // Reporting or blocking yourself makes no sense.
+                    if (listing != null && !(state as ListingDetailUiState.Content).isOwner) TrustMenu(userId = listing.ownerId, userName = listing.ownerName, listingId = listing.id, listingTitle = listing.title)
                 },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            (state as? ListingDetailUiState.Content)?.takeIf { !it.isOwner }?.let {
-                ActionBar(content = it, viewModel = viewModel, onProposeExchange = onProposeExchange)
+            (state as? ListingDetailUiState.Content)?.let {
+                // Owners get edit / mark sold / delete instead of Buy, Make offer, Chat and Exchange.
+                if (it.isOwner) {
+                    OwnerActionBar(content = it, viewModel = viewModel, onEdit = { onEditListing(it.listing.id) })
+                } else {
+                    ActionBar(content = it, viewModel = viewModel, onProposeExchange = onProposeExchange)
+                }
             }
         },
     ) { padding ->
@@ -167,15 +177,14 @@ private fun DetailContent(
             }
 
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (content.isOwner) StatusBadge(status = "Your listing")
                 StatusBadge(status = listing.condition.displayName)
                 StatusBadge(status = listing.category.displayName)
                 if (listing.itemState() == ItemState.REFURBISHED) StatusBadge(status = "Refurbished")
                 if (listing.status != ListingStatus.ACTIVE) StatusBadge(status = listing.status.displayName)
             }
 
-            if (content.isOwner) {
-                OwnerNotice(onEdit = { onEditListing(listing.id) })
-            }
+            if (content.isOwner) OwnerNotice()
 
             content.myRequest?.let { MyRequestCard(it) }
 
@@ -295,24 +304,62 @@ private fun MyRequestCard(request: PurchaseRequest) {
 }
 
 @Composable
-private fun OwnerNotice(onEdit: () -> Unit) {
+private fun OwnerNotice() {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Text(
+            "This is your listing. Buying, offers and chat are switched off for your own item; you can edit it, mark it sold or delete it below.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+/** What the owner can do with their own listing: edit it, close it as sold, or delete it (after a confirmation). */
+@Composable
+private fun OwnerActionBar(
+    content: ListingDetailUiState.Content,
+    viewModel: ListingDetailViewModel,
+    onEdit: () -> Unit,
+) {
+    val listing = content.listing
+    var confirmDelete by remember { mutableStateOf(false) }
+    val enabled = !content.isBusy
+
+    Surface(color = MaterialTheme.colorScheme.background, shadowElevation = 8.dp) {
+        Column(
+            modifier = Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                "This is your listing.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = onEdit) { Text("Edit") }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                PrimaryButton(text = "Edit", onClick = onEdit, enabled = enabled, modifier = Modifier.weight(1f))
+                if (content.canMarkSold) {
+                    SecondaryButton(text = "Mark as sold", onClick = viewModel::markAsSold, enabled = enabled, modifier = Modifier.weight(1f))
+                }
+            }
+            TextButton(onClick = { confirmDelete = true }, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+                Text("Delete listing", color = MaterialTheme.colorScheme.error)
+            }
         }
+    }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete listing?") },
+            text = { Text("\"${listing.title}\" will be removed for good. This can't be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDelete = false
+                    viewModel.deleteListing()
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
+        )
     }
 }
 
