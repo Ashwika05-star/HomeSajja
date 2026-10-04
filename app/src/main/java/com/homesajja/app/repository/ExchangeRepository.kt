@@ -2,6 +2,7 @@ package com.homesajja.app.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.homesajja.app.data.model.Cancellation
 import com.homesajja.app.data.model.ExchangeRequest
 import com.homesajja.app.data.model.ExchangeStatus
 import com.homesajja.app.data.model.FurnitureListing
@@ -106,6 +107,27 @@ class ExchangeRepository(private val firestore: FirebaseFirestore) {
                         ),
                     )
                 }
+            }
+            .commit()
+            .await()
+    }
+
+    /**
+     * A vendor party cancels an accepted exchange with a reason. One batch: the request becomes CANCELLED_BY_VENDOR and each of the two
+     * items that is still reserved for this exchange goes back to ACTIVE (an item that was deleted or changed in the meantime is left alone).
+     */
+    suspend fun cancelByVendor(request: ExchangeRequest, cancellation: Cancellation) {
+        val now = System.currentTimeMillis()
+        val reserved = listOf(request.offeredListingId, request.requestedListingId).filter { id ->
+            listings.document(id).get().await().let { it.exists() && it.getString("status") == ListingStatus.RESERVED.name }
+        }
+        firestore.batch()
+            .update(
+                requests.document(request.id),
+                mapOf("status" to ExchangeStatus.CANCELLED_BY_VENDOR.name, "cancellation" to cancellation, "updatedAt" to now),
+            )
+            .apply {
+                reserved.forEach { id -> update(listings.document(id), mapOf("status" to ListingStatus.ACTIVE.name, "updatedAt" to now)) }
             }
             .commit()
             .await()

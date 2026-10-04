@@ -43,7 +43,7 @@ class RecycleActionsTest {
     fun customerCannotCancel_onceAPaymentIsMarked() {
         val paid = request(RecyclingStatus.ACCEPTED).copy(payment = Payment(payerId = "user", payeeId = "recycler", status = PaymentStatus.MARKED_PAID))
         assertTrue(recycleActionsFor(paid, "user").isEmpty())
-        assertEquals(listOf(RecycleAction.SCHEDULE), recycleActionsFor(paid, "recycler"))
+        assertEquals(listOf(RecycleAction.SCHEDULE, RecycleAction.CANCEL_BY_VENDOR), recycleActionsFor(paid, "recycler"))
     }
 
     @Test
@@ -52,8 +52,35 @@ class RecycleActionsTest {
             listOf(RecycleAction.ACCEPT, RecycleAction.SEND_QUOTE, RecycleAction.REJECT),
             recycleActionsFor(request(RecyclingStatus.REQUESTED), "recycler"),
         )
-        assertEquals(listOf(RecycleAction.SCHEDULE), recycleActionsFor(request(RecyclingStatus.ACCEPTED), "recycler"))
-        assertEquals(listOf(RecycleAction.COMPLETE), recycleActionsFor(request(RecyclingStatus.SCHEDULED), "recycler"))
+        assertEquals(listOf(RecycleAction.SCHEDULE, RecycleAction.CANCEL_BY_VENDOR), recycleActionsFor(request(RecyclingStatus.ACCEPTED), "recycler"))
+        assertEquals(listOf(RecycleAction.COMPLETE, RecycleAction.CANCEL_BY_VENDOR), recycleActionsFor(request(RecyclingStatus.SCHEDULED), "recycler"))
+    }
+
+    @Test
+    fun recyclerCanCancel_onlyWhileAcceptedOrScheduled() {
+        listOf(RecyclingStatus.ACCEPTED, RecyclingStatus.SCHEDULED).forEach {
+            assertTrue("$it", RecycleAction.CANCEL_BY_VENDOR in recycleActionsFor(request(it), "recycler"))
+        }
+        listOf(
+            RecyclingStatus.REQUESTED, RecyclingStatus.QUOTED, RecyclingStatus.DECLINED, RecyclingStatus.COMPLETED,
+            RecyclingStatus.REJECTED, RecyclingStatus.CANCELLED, RecyclingStatus.CANCELLED_BY_VENDOR,
+        ).forEach {
+            assertTrue("$it", RecycleAction.CANCEL_BY_VENDOR !in recycleActionsFor(request(it), "recycler"))
+        }
+        RecyclingStatus.entries.forEach {
+            assertTrue("$it", RecycleAction.CANCEL_BY_VENDOR !in recycleActionsFor(request(it), "user"))
+            assertTrue("$it", RecycleAction.CANCEL_BY_VENDOR !in recycleActionsFor(request(it), null))
+        }
+        assertTrue(RecycleAction.CANCEL_BY_VENDOR.needsCancellation)
+        assertEquals(RecyclingStatus.CANCELLED_BY_VENDOR, RecycleAction.CANCEL_BY_VENDOR.target)
+    }
+
+    @Test
+    fun recyclerWhoAlreadyPaidTheCustomer_cannotCancel() {
+        fun payout(status: PaymentStatus) = request(RecyclingStatus.ACCEPTED).copy(payment = Payment(payerId = "recycler", payeeId = "user", status = status))
+        assertTrue(RecycleAction.CANCEL_BY_VENDOR in recycleActionsFor(payout(PaymentStatus.UNPAID), "recycler"))
+        assertTrue(RecycleAction.CANCEL_BY_VENDOR !in recycleActionsFor(payout(PaymentStatus.MARKED_PAID), "recycler"))
+        assertTrue(RecycleAction.CANCEL_BY_VENDOR !in recycleActionsFor(payout(PaymentStatus.CONFIRMED), "recycler"))
     }
 
     @Test

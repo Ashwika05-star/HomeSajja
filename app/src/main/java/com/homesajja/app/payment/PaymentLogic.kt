@@ -116,18 +116,18 @@ val RepairRequest.paymentOpen: Boolean
 val RecyclingRequest.paymentOpen: Boolean
     get() = payment != null && status in setOf(RecyclingStatus.ACCEPTED, RecyclingStatus.SCHEDULED, RecyclingStatus.COMPLETED)
 
-/** One agreed amount and its payment record, whichever kind of request it came from. */
-data class Receivable(val amount: Long?, val payment: Payment?)
+/** One agreed amount and its payment record, whichever kind of request it came from. [refunded] is true once the vendor cancelled and refunded it. */
+data class Receivable(val amount: Long?, val payment: Payment?, val refunded: Boolean = false)
 
 /**
  * Money [personId] has actually earned: the agreed amount of every request whose payment they were due to receive and
  * whose payment is CONFIRMED. A payer's "I've paid" does not count until the payee confirms it, and money the person
- * paid out themselves (a recycler paying a customer) is never earnings.
+ * paid out themselves (a recycler paying a customer) is never earnings. A payment that was refunded when the vendor cancelled stops counting.
  */
 fun confirmedEarnings(personId: String, items: List<Receivable>): Long = items
-    .filter { it.payment?.status == PaymentStatus.CONFIRMED && it.payment.payeeId == personId }
+    .filter { !it.refunded && it.payment?.status == PaymentStatus.CONFIRMED && it.payment.payeeId == personId }
     .sumOf { it.amount ?: 0L }
 
-fun PurchaseRequest.receivable() = Receivable(agreedAmount, payment)
-fun RepairRequest.receivable() = Receivable(agreedAmount, payment)
-fun RecyclingRequest.receivable() = Receivable(agreedAmount, payment)
+fun PurchaseRequest.receivable() = Receivable(agreedAmount, payment, refunded = refund != null)
+fun RepairRequest.receivable() = Receivable(agreedAmount, payment, refunded = refund != null)
+fun RecyclingRequest.receivable() = Receivable(agreedAmount, payment, refunded = refund != null)

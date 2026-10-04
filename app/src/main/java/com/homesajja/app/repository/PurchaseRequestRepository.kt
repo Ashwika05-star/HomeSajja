@@ -2,10 +2,12 @@ package com.homesajja.app.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.homesajja.app.data.model.Cancellation
 import com.homesajja.app.data.model.ListingStatus
 import com.homesajja.app.data.model.PaymentMethod
 import com.homesajja.app.data.model.PurchaseRequest
 import com.homesajja.app.data.model.PurchaseStatus
+import com.homesajja.app.data.model.Refund
 import com.homesajja.app.payment.newPayment
 import kotlinx.coroutines.tasks.await
 
@@ -80,6 +82,28 @@ class PurchaseRequestRepository(private val firestore: FirebaseFirestore) {
             .update(firestore.collection("listings").document(request.listingId), mapOf("status" to ListingStatus.RESERVED.name, "updatedAt" to now))
             .commit()
             .await()
+    }
+
+    /**
+     * The seller cancels an order they had accepted. One batch: the request becomes CANCELLED_BY_VENDOR with the reason (and the refund, when
+     * they had confirmed receiving payment), and the listing goes back on sale if it is still reserved for this order.
+     */
+    suspend fun cancelByVendor(request: PurchaseRequest, cancellation: Cancellation, refund: Refund?) {
+        val now = System.currentTimeMillis()
+        val changes = mutableMapOf<String, Any>(
+            "status" to PurchaseStatus.CANCELLED_BY_VENDOR.name,
+            "cancellation" to cancellation,
+            "updatedAt" to now,
+        )
+        refund?.let { changes["refund"] = it }
+        val listingRef = firestore.collection("listings").document(request.listingId)
+        val listingStatus = listingRef.get().await().getString("status")
+        val batch = firestore.batch().update(requests.document(request.id), changes)
+        // The item is available again, unless it was deleted or the seller already changed it themselves.
+        if (listingStatus == ListingStatus.RESERVED.name) {
+            batch.update(listingRef, mapOf("status" to ListingStatus.ACTIVE.name, "updatedAt" to now))
+        }
+        batch.commit().await()
     }
 
     /** The buyer records that they paid, by UPI or in cash. */

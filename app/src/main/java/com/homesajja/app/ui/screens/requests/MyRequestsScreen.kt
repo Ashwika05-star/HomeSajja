@@ -51,7 +51,12 @@ import com.homesajja.app.ui.util.formatPrice
 import com.homesajja.app.data.model.PaymentMethod
 import com.homesajja.app.payment.UpiPayment
 import com.homesajja.app.payment.paymentOpen
+import com.homesajja.app.data.model.CancelContext
+import com.homesajja.app.data.model.CancelReason
+import com.homesajja.app.payment.refundRequired
+import com.homesajja.app.ui.components.CancellationCard
 import com.homesajja.app.ui.components.PaymentPanel
+import com.homesajja.app.ui.components.VendorCancelDialog
 import com.homesajja.app.ui.components.ReviewPrompt
 import com.homesajja.app.viewmodel.ReviewParams
 import com.homesajja.app.data.model.EntityType
@@ -133,6 +138,7 @@ fun MyRequestsScreen(
                                 onClick = { onOpenListing(request.listingId) },
                                 onCancel = { viewModel.cancelRequest(request) },
                                 onSellerAction = { action, upiId -> viewModel.performSellerAction(request, action, upiId) },
+                                onCancelOrder = { reason, note, refundDone -> viewModel.cancelOrder(request, reason, note, refundDone) },
                                 myUpiId = viewModel.myUpiId,
                                 onMarkPaid = { method, ref -> viewModel.markPaid(request, method, ref) },
                                 onConfirmReceived = { viewModel.confirmPayment(request) },
@@ -153,11 +159,13 @@ private fun RequestCard(
     onClick: () -> Unit,
     onCancel: () -> Unit,
     onSellerAction: (SellerAction, String?) -> Unit,
+    onCancelOrder: (CancelReason, String, Boolean) -> Unit,
     myUpiId: String?,
     onMarkPaid: (PaymentMethod, String?) -> Unit,
     onConfirmReceived: () -> Unit,
 ) {
     var askUpiId by remember { mutableStateOf(false) }
+    var askCancel by remember { mutableStateOf(false) }
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
@@ -178,6 +186,16 @@ private fun RequestCard(
                 )
             }
             PurchaseStatusTracker(status = request.status)
+            request.cancellation?.let {
+                CancellationCard(
+                    vendorName = request.sellerName.ifBlank { "the seller" },
+                    cancellation = it,
+                    agreedAmount = request.agreedAmount,
+                    payment = request.payment,
+                    refund = request.refund,
+                    viewerIsPayer = isSent,
+                )
+            }
             val payment = request.payment
             if (payment != null && request.paymentOpen) {
                 PaymentPanel(
@@ -208,12 +226,18 @@ private fun RequestCard(
                     ReviewPrompt(ReviewParams(EntityType.PURCHASE_REQUEST, request.id, request.sellerId, "the seller"))
                 }
             } else {
-                val actions = sellerActionsFor(request.status, request.payment)
+                val actions = sellerActionsFor(request.status)
                 if (actions.isNotEmpty()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                         actions.forEachIndexed { index, action ->
                             // Accepting is where the seller says how they want to be paid, so it asks first.
-                            val onActionClick = { if (action == SellerAction.ACCEPT) askUpiId = true else onSellerAction(action, null) }
+                            val onActionClick = {
+                                when (action) {
+                                    SellerAction.ACCEPT -> askUpiId = true
+                                    SellerAction.CANCEL_ORDER -> askCancel = true
+                                    else -> onSellerAction(action, null)
+                                }
+                            }
                             if (index == 0) {
                                 PrimaryButton(
                                     text = action.label,
@@ -234,6 +258,21 @@ private fun RequestCard(
                 }
             }
         }
+    }
+
+    if (askCancel) {
+        VendorCancelDialog(
+            context = CancelContext.PURCHASE,
+            title = "Cancel this order?",
+            otherName = request.buyerName,
+            // The seller confirmed receiving the buyer's payment: they must refund it before the cancel can go through.
+            refundAmount = if (refundRequired(request.payment, request.sellerId)) request.agreedAmount ?: request.offeredPrice else null,
+            onConfirm = { reason, note, refundDone ->
+                askCancel = false
+                onCancelOrder(reason, note, refundDone)
+            },
+            onDismiss = { askCancel = false },
+        )
     }
 
     if (askUpiId) {

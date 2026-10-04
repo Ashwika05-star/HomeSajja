@@ -560,6 +560,176 @@ const deny = (n, p) => check(n, p, false);
   await allow('seller completes the sale', updateDoc(doc(as('bob'), 'purchaseRequests/ppay6'), { status: 'COMPLETED', updatedAt: now }));
   await allow('a completed sale can still be paid for', updateDoc(doc(as('alice'), 'purchaseRequests/ppay6'), { payment: { ...P('alice', 'bob', null), status: 'MARKED_PAID', method: 'CASH', markedPaidAt: now }, updatedAt: now }));
 
+  // ============================== vendor cancellation ==============================
+  // After accepting, the vendor on a request can cancel it with a reason (CANCELLED_BY_VENDOR). If they had confirmed receiving the
+  // payment, the same write must carry the refund marked DONE. Purchases and exchanges must also put their item(s) back on sale.
+  const CX = (uid, extra = {}) => ({ reason: 'ITEM_UNAVAILABLE', note: 'Sold it elsewhere', cancelledBy: uid, cancelledAt: now, ...extra });
+  const RF = (extra = {}) => ({ amount: 90, status: 'DONE', doneAt: now, ...extra });
+  const VC = 'CANCELLED_BY_VENDOR';
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    const L = (owner, status, extra = {}) => ({ ownerId: owner, title: 'Item', price: 100, status, actionType: 'SELL', images: ['a.jpg'], ...extra });
+    for (const k of ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']) await setDoc(doc(db, `listings/vc${k}`), L('bob', 'RESERVED'));
+    await setDoc(doc(db, 'listings/vcU'), L('bob', 'UNAVAILABLE'));
+    const pur = (listingId, status, payment, extra = {}) => ({ buyerId: 'alice', sellerId: 'bob', listingId, status, offeredPrice: 90, agreedAmount: 90, agreedAt: now, payment, cancellation: null, refund: null, ...extra });
+    await setDoc(doc(db, 'purchaseRequests/pvc1'), pur('vcA', 'ACCEPTED', P('alice', 'bob', null)));
+    await setDoc(doc(db, 'purchaseRequests/pvc2'), pur('vcB', 'ACCEPTED', P('alice', 'bob', null, { status: 'CONFIRMED', method: 'CASH', markedPaidAt: now, confirmedAt: now })));
+    await setDoc(doc(db, 'purchaseRequests/pvc3'), pur('vcC', 'READY_FOR_PICKUP', P('alice', 'bob', null, { status: 'MARKED_PAID', method: 'CASH', markedPaidAt: now })));
+    await setDoc(doc(db, 'purchaseRequests/pvc4'), { buyerId: 'alice', sellerId: 'bob', listingId: 'vcD', status: 'REQUESTED', offeredPrice: 90 });
+    await setDoc(doc(db, 'purchaseRequests/pvc5'), pur('vcE', 'COMPLETED', P('alice', 'bob', null, { status: 'CONFIRMED', method: 'CASH', markedPaidAt: now, confirmedAt: now })));
+    await setDoc(doc(db, 'purchaseRequests/pvc6'), pur('vcGone', 'ACCEPTED', P('alice', 'bob', null)));
+    await setDoc(doc(db, 'purchaseRequests/pvc7'), pur('vcU', 'ACCEPTED', P('alice', 'bob', null)));
+    await setDoc(doc(db, 'purchaseRequests/pvc8'), pur('vcF', 'ACCEPTED', P('alice', 'bob', null)));
+    await setDoc(doc(db, 'purchaseRequests/pvc9'), { buyerId: 'alice', sellerId: 'bob', listingId: 'vcG', status: 'REQUESTED', offeredPrice: 90 });
+    await setDoc(doc(db, 'purchaseRequests/pvc10'), pur('vcH', 'ACCEPTED', P('alice', 'bob', null)));
+    // repair jobs in each state a vendor may cancel from
+    const rep = (status, payment, extra = {}) => ({ userId: 'alice', vendorId: 'vic', status, quote: Q(), agreedAmount: 5000, agreedAt: now, payment, cancellation: null, refund: null, ...extra });
+    await setDoc(doc(db, 'repairRequests/rvc1'), rep('AGREED', P('alice', 'vic', null)));
+    await setDoc(doc(db, 'repairRequests/rvc2'), rep('IN_PROGRESS', P('alice', 'vic', null, { status: 'CONFIRMED', method: 'UPI', markedPaidAt: now, confirmedAt: now })));
+    await setDoc(doc(db, 'repairRequests/rvc3'), rep('READY', P('alice', 'vic', null, { status: 'MARKED_PAID', method: 'CASH', markedPaidAt: now })));
+    await setDoc(doc(db, 'repairRequests/rvc4'), { userId: 'alice', vendorId: 'vic', status: 'REQUESTED' });
+    await setDoc(doc(db, 'repairRequests/rvc5'), { userId: 'alice', vendorId: 'vic', status: 'ACCEPTED' });
+    await setDoc(doc(db, 'repairRequests/rvc6'), rep('COMPLETED', P('alice', 'vic', null, { status: 'CONFIRMED', method: 'CASH', markedPaidAt: now, confirmedAt: now })));
+    await setDoc(doc(db, 'repairRequests/rvc7'), rep('AGREED', P('alice', 'vic', null)));
+    await setDoc(doc(db, 'repairRequests/rvc8'), rep('QUOTED', null, { agreedAmount: null, agreedAt: null }));
+    await setDoc(doc(db, 'repairRequests/rvc9'), rep('AGREED', P('alice', 'vic', null)));
+    // recycling jobs
+    const rcy = (status, payment, extra = {}) => ({ userId: 'alice', vendorId: 'vic', method: 'DROP_OFF', status, quote: payment ? RQ({ amount: 800 }) : null, agreedAmount: payment ? 800 : null, agreedAt: payment ? now : null, payment, cancellation: null, refund: null, ...extra });
+    await setDoc(doc(db, 'recyclingRequests/rcv1'), rcy('ACCEPTED', null));
+    await setDoc(doc(db, 'recyclingRequests/rcv2'), rcy('SCHEDULED', P('alice', 'vic', null, { status: 'CONFIRMED', method: 'CASH', markedPaidAt: now, confirmedAt: now })));
+    await setDoc(doc(db, 'recyclingRequests/rcv3'), rcy('ACCEPTED', P('vic', 'alice', 'alice@ybl', { status: 'MARKED_PAID', method: 'UPI', markedPaidAt: now }), { quote: RQ({ amount: 800, direction: 'VENDOR_PAYS_USER' }) }));
+    await setDoc(doc(db, 'recyclingRequests/rcv4'), rcy('ACCEPTED', P('vic', 'alice', 'alice@ybl'), { quote: RQ({ amount: 800, direction: 'VENDOR_PAYS_USER' }) }));
+    await setDoc(doc(db, 'recyclingRequests/rcv5'), rcy('ACCEPTED', P('vic', 'alice', 'alice@ybl', { status: 'CONFIRMED', method: 'UPI', markedPaidAt: now, confirmedAt: now }), { quote: RQ({ amount: 800, direction: 'VENDOR_PAYS_USER' }) }));
+    await setDoc(doc(db, 'recyclingRequests/rcv6'), rcy('QUOTED', null, { quote: RQ({ amount: 800 }) }));
+    await setDoc(doc(db, 'recyclingRequests/rcv7'), rcy('COMPLETED', null));
+    await setDoc(doc(db, 'recyclingRequests/rcv8'), rcy('ACCEPTED', null));
+    // exchanges: alice <-> shopv (a vendor), bob <-> alice (no vendor), vic (a vendor) -> alice
+    const swapListings = async (k, ownerA, ownerB, exId) => {
+      await setDoc(doc(db, `listings/exa${k}`), L(ownerA, 'RESERVED', { actionType: 'EXCHANGE', exchangeRequestId: exId }));
+      await setDoc(doc(db, `listings/exb${k}`), L(ownerB, 'RESERVED', { actionType: 'EXCHANGE', exchangeRequestId: exId }));
+      await setDoc(doc(db, `exchangeRequests/${exId}`), { senderId: ownerA, receiverId: ownerB, offeredListingId: `exa${k}`, requestedListingId: `exb${k}`, status: 'ACCEPTED', cancellation: null });
+    };
+    await swapListings('1', 'alice', 'shopv', 'exv1');
+    await swapListings('2', 'alice', 'bob', 'exv2');
+    await swapListings('3', 'vic', 'alice', 'exv3');
+    await swapListings('4', 'alice', 'shopv', 'exv4');
+    await swapListings('5', 'alice', 'shopv', 'exv5');
+    await setDoc(doc(db, 'exchangeRequests/exv6'), { senderId: 'alice', receiverId: 'shopv', offeredListingId: 'exa1', requestedListingId: 'exb1', status: 'PENDING', cancellation: null });
+  });
+
+  // ---- purchases
+  const cancelOrder = (uid, id, listingId, changes = {}, free = true) => {
+    const db = as(uid); const b = writeBatch(db);
+    b.update(doc(db, `purchaseRequests/${id}`), { status: VC, updatedAt: now, cancellation: CX(uid), ...changes });
+    if (free) b.update(doc(db, `listings/${listingId}`), { status: 'ACTIVE', updatedAt: now });
+    return b.commit();
+  };
+  await deny('buyer cancels as the vendor', cancelOrder('alice', 'pvc1', 'vcA', {}, false));
+  await deny('outsider cancels an order', cancelOrder('carol', 'pvc1', 'vcA', {}, false));
+  await deny('seller cancels with the old plain status', updateDoc(doc(as('bob'), 'purchaseRequests/pvc1'), { status: 'CANCELLED', updatedAt: now }));
+  await deny('cancelled by vendor without a reason', (() => { const db = as('bob'); const b = writeBatch(db); b.update(doc(db, 'purchaseRequests/pvc1'), { status: VC, updatedAt: now }); b.update(doc(db, 'listings/vcA'), { status: 'ACTIVE', updatedAt: now }); return b.commit(); })());
+  await deny('reason that is not on the purchase list', cancelOrder('bob', 'pvc1', 'vcA', { cancellation: CX('bob', { reason: 'CANNOT_COMPLETE_JOB' }) }));
+  await deny('made-up reason', cancelOrder('bob', 'pvc1', 'vcA', { cancellation: CX('bob', { reason: 'BORED' }) }));
+  await deny('note over 300 characters', cancelOrder('bob', 'pvc1', 'vcA', { cancellation: CX('bob', { note: 'x'.repeat(301) }) }));
+  await deny('cancellation naming someone else', cancelOrder('bob', 'pvc1', 'vcA', { cancellation: CX('alice') }));
+  await deny('cancellation with an extra field', cancelOrder('bob', 'pvc1', 'vcA', { cancellation: { ...CX('bob'), discount: 5 } }));
+  await deny('cancelling and changing the price too', cancelOrder('bob', 'pvc1', 'vcA', { offeredPrice: 1 }));
+  await deny('cancelling and editing the agreed amount', cancelOrder('bob', 'pvc1', 'vcA', { agreedAmount: 1 }));
+  await deny('cancelling without putting the listing back on sale', cancelOrder('bob', 'pvc1', 'vcA', {}, false));
+  await deny('refund claimed when nothing was paid', cancelOrder('bob', 'pvc1', 'vcA', { refund: RF() }));
+  await allow('seller cancels an unpaid order: listing goes back on sale', cancelOrder('bob', 'pvc1', 'vcA'));
+  await deny('cancelling twice', cancelOrder('bob', 'pvc1', 'vcA'));
+  await deny('paying for a cancelled order', updateDoc(doc(as('alice'), 'purchaseRequests/pvc1'), { payment: { ...P('alice', 'bob', null), status: 'MARKED_PAID', method: 'CASH', markedPaidAt: now }, updatedAt: now }));
+  // refund safeguard: money already confirmed must be refunded (marked done) in the same write
+  await deny('cancelling a paid order without marking the refund', cancelOrder('bob', 'pvc2', 'vcB'));
+  await deny('refund for the wrong amount', cancelOrder('bob', 'pvc2', 'vcB', { refund: RF({ amount: 50 }) }));
+  await deny('refund that is not marked done', cancelOrder('bob', 'pvc2', 'vcB', { refund: RF({ status: 'PENDING' }) }));
+  await deny('refund with an extra field', cancelOrder('bob', 'pvc2', 'vcB', { refund: { ...RF(), note: 'x' } }));
+  await deny('refund written as null', cancelOrder('bob', 'pvc2', 'vcB', { refund: null }));
+  await allow('seller cancels a confirmed-paid order with the refund marked done', cancelOrder('bob', 'pvc2', 'vcB', { refund: RF() }));
+  await deny('refund claimed for a payment that was only marked', cancelOrder('bob', 'pvc3', 'vcC', { refund: RF() }));
+  await allow('seller cancels an order whose payment was only marked (no refund to mark)', cancelOrder('bob', 'pvc3', 'vcC'));
+  await deny('cancelling a request nobody accepted yet', cancelOrder('bob', 'pvc4', 'vcD'));
+  await deny('cancelling a completed sale', cancelOrder('bob', 'pvc5', 'vcE', { refund: RF() }));
+  await allow('cancelling when the listing was deleted (nothing to put back)', updateDoc(doc(as('bob'), 'purchaseRequests/pvc6'), { status: VC, updatedAt: now, cancellation: CX('bob') }));
+  await allow('cancelling when the seller had already hidden the item', updateDoc(doc(as('bob'), 'purchaseRequests/pvc7'), { status: VC, updatedAt: now, cancellation: CX('bob') }));
+  // the buyer's own cancel still works, but only before the seller accepts
+  await allow('buyer still withdraws a request nobody answered', updateDoc(doc(as('alice'), 'purchaseRequests/pvc9'), { status: 'CANCELLED', updatedAt: now }));
+  await deny('buyer cannot cancel an accepted order', updateDoc(doc(as('alice'), 'purchaseRequests/pvc8'), { status: 'CANCELLED', updatedAt: now }));
+  await deny('buyer cannot use the vendor cancellation', updateDoc(doc(as('alice'), 'purchaseRequests/pvc10'), { status: VC, updatedAt: now, cancellation: CX('alice') }));
+  await allow('seller still moves an order forward', updateDoc(doc(as('bob'), 'purchaseRequests/pvc10'), { status: 'READY_FOR_PICKUP', updatedAt: now }));
+
+  // ---- repair
+  const cancelJob = (uid, coll, id, changes = {}) => updateDoc(doc(as(uid), `${coll}/${id}`), { status: VC, updatedAt: now, cancellation: CX(uid, { reason: 'CANNOT_COMPLETE_JOB' }), ...changes });
+  await deny('customer cancels a repair as the vendor', cancelJob('alice', 'repairRequests', 'rvc1'));
+  await deny('outsider cancels a repair', cancelJob('carol', 'repairRequests', 'rvc1'));
+  await deny('another vendor cancels a repair', cancelJob('shopv', 'repairRequests', 'rvc1'));
+  await deny('repair cancelled without a reason', updateDoc(doc(as('vic'), 'repairRequests/rvc1'), { status: VC, updatedAt: now }));
+  await deny('repair reason that is not on its list', cancelJob('vic', 'repairRequests', 'rvc1', { cancellation: CX('vic', { reason: 'ITEM_UNAVAILABLE' }) }));
+  await deny('repair cancellation naming someone else', cancelJob('vic', 'repairRequests', 'rvc1', { cancellation: CX('alice', { reason: 'SCHEDULE_CONFLICT' }) }));
+  await deny('repair cancelled while editing the agreed amount', cancelJob('vic', 'repairRequests', 'rvc1', { agreedAmount: 1 }));
+  await deny('refund claimed on an unpaid repair', cancelJob('vic', 'repairRequests', 'rvc1', { refund: RF({ amount: 5000 }) }));
+  await allow('vendor cancels an agreed repair (nothing paid)', cancelJob('vic', 'repairRequests', 'rvc1'));
+  await deny('repair cancelled twice', cancelJob('vic', 'repairRequests', 'rvc1'));
+  await deny('repair cancelled by the customer after the vendor cancelled', updateDoc(doc(as('alice'), 'repairRequests/rvc1'), { status: 'CANCELLED', updatedAt: now }));
+  await deny('paying for a vendor-cancelled repair', updateDoc(doc(as('alice'), 'repairRequests/rvc1'), { payment: { ...P('alice', 'vic', null), status: 'MARKED_PAID', method: 'CASH', markedPaidAt: now }, updatedAt: now }));
+  await deny('confirmed-paid repair cancelled without a refund', cancelJob('vic', 'repairRequests', 'rvc2'));
+  await deny('repair refund for the wrong amount', cancelJob('vic', 'repairRequests', 'rvc2', { refund: RF({ amount: 4999 }) }));
+  await deny('repair refund not marked done', cancelJob('vic', 'repairRequests', 'rvc2', { refund: RF({ amount: 5000, status: 'PENDING' }) }));
+  await allow('vendor cancels a confirmed-paid repair with the refund marked done', cancelJob('vic', 'repairRequests', 'rvc2', { refund: RF({ amount: 5000 }) }));
+  await allow('vendor cancels a ready repair whose payment was only marked', cancelJob('vic', 'repairRequests', 'rvc3'));
+  await deny('vendor cancels a repair nobody quoted yet', cancelJob('vic', 'repairRequests', 'rvc4'));
+  await deny('vendor cancels a repair with an open quote', cancelJob('vic', 'repairRequests', 'rvc8'));
+  await deny('vendor cancels a completed repair', cancelJob('vic', 'repairRequests', 'rvc6', { refund: RF({ amount: 5000 }) }));
+  await allow('vendor cancels an old accepted repair', cancelJob('vic', 'repairRequests', 'rvc5'));
+  await allow('customer still cancels an agreed repair before work starts', updateDoc(doc(as('alice'), 'repairRequests/rvc7'), { status: 'CANCELLED', updatedAt: now }));
+  await deny('customer cannot set the vendor cancellation status', updateDoc(doc(as('alice'), 'repairRequests/rvc9'), { status: VC, updatedAt: now, cancellation: CX('alice', { reason: 'CANNOT_COMPLETE_JOB' }) }));
+
+  // ---- recycling
+  await deny('customer cancels a recycling job as the recycler', cancelJob('alice', 'recyclingRequests', 'rcv1'));
+  await deny('recycling reason that is not on its list', cancelJob('vic', 'recyclingRequests', 'rcv1', { cancellation: CX('vic', { reason: 'PARTS_UNAVAILABLE' }) }));
+  await deny('recycling cancelled without a reason', updateDoc(doc(as('vic'), 'recyclingRequests/rcv1'), { status: VC, updatedAt: now }));
+  await allow('recycler cancels a free accepted job', cancelJob('vic', 'recyclingRequests', 'rcv1', { cancellation: CX('vic', { reason: 'SCHEDULE_CONFLICT', note: '' }) }));
+  await deny('recycling cancelled twice', cancelJob('vic', 'recyclingRequests', 'rcv1'));
+  await deny('scheduled job with confirmed payment cancelled without a refund', cancelJob('vic', 'recyclingRequests', 'rcv2'));
+  await deny('recycling refund for the wrong amount', cancelJob('vic', 'recyclingRequests', 'rcv2', { refund: RF({ amount: 799 }) }));
+  await allow('recycler cancels a scheduled job and marks the refund done', cancelJob('vic', 'recyclingRequests', 'rcv2', { refund: RF({ amount: 800 }) }));
+  await deny('recycler cancels after paying the customer (payment marked)', cancelJob('vic', 'recyclingRequests', 'rcv3'));
+  await deny('recycler cancels after the customer received a payout', cancelJob('vic', 'recyclingRequests', 'rcv5', { refund: RF({ amount: 800 }) }));
+  await allow('recycler cancels a payout job before anything was paid', cancelJob('vic', 'recyclingRequests', 'rcv4'));
+  await deny('recycler cancels a job with an open quote', cancelJob('vic', 'recyclingRequests', 'rcv6'));
+  await deny('recycler cancels a completed job', cancelJob('vic', 'recyclingRequests', 'rcv7'));
+  await allow('customer still cancels an accepted job before it is scheduled', updateDoc(doc(as('alice'), 'recyclingRequests/rcv8'), { status: 'CANCELLED', updatedAt: now }));
+
+  // ---- exchange: a vendor party cancels an accepted exchange; both items go back on sale in the same batch
+  const cancelSwap = (uid, exId, k, changes = {}, free = [`exa${k}`, `exb${k}`]) => {
+    const db = as(uid); const b = writeBatch(db);
+    b.update(doc(db, `exchangeRequests/${exId}`), { status: VC, updatedAt: now, cancellation: CX(uid), ...changes });
+    free.forEach((id) => b.update(doc(db, `listings/${id}`), { status: 'ACTIVE', updatedAt: now }));
+    return b.commit();
+  };
+  await deny('a non-vendor party cancels an accepted exchange', cancelSwap('alice', 'exv1', '1'));
+  await deny('two non-vendor parties cannot cancel', cancelSwap('bob', 'exv2', '2'));
+  await deny('a vendor who is not a party cancels', cancelSwap('vic', 'exv1', '1', { cancellation: CX('vic') }));
+  await deny('exchange cancelled without a reason', (() => { const db = as('shopv'); const b = writeBatch(db); b.update(doc(db, 'exchangeRequests/exv1'), { status: VC, updatedAt: now }); ['exa1', 'exb1'].forEach((id) => b.update(doc(db, `listings/${id}`), { status: 'ACTIVE', updatedAt: now })); return b.commit(); })());
+  await deny('exchange reason that is not on its list', cancelSwap('shopv', 'exv1', '1', { cancellation: CX('shopv', { reason: 'PARTS_UNAVAILABLE' }) }));
+  await deny('exchange cancellation naming someone else', cancelSwap('shopv', 'exv1', '1', { cancellation: CX('alice') }));
+  await deny('exchange cancelled without putting the items back on sale', cancelSwap('shopv', 'exv1', '1', {}, []));
+  await deny('exchange cancelled freeing only one item', cancelSwap('shopv', 'exv1', '1', {}, ['exa1']));
+  await deny('exchange cancelled while changing another field', cancelSwap('shopv', 'exv1', '1', { message: 'hi' }));
+  await deny('cancelling a pending exchange as a vendor', (() => { const db = as('shopv'); const b = writeBatch(db); b.update(doc(db, 'exchangeRequests/exv6'), { status: VC, updatedAt: now, cancellation: CX('shopv') }); return b.commit(); })());
+  await deny('freeing an item without cancelling the exchange', updateDoc(doc(as('shopv'), 'listings/exa5'), { status: 'ACTIVE', updatedAt: now }));
+  await allow('a vendor receiver cancels an accepted exchange: both items go back on sale', cancelSwap('shopv', 'exv1', '1'));
+  await deny('exchange cancelled twice', cancelSwap('shopv', 'exv1', '1'));
+  await deny('completing a vendor-cancelled exchange', updateDoc(doc(as('alice'), 'exchangeRequests/exv1'), { status: 'COMPLETED', updatedAt: now }));
+  await allow('a vendor sender cancels an accepted exchange', cancelSwap('vic', 'exv3', '3'));
+  await allow('another accepted exchange with the same vendor can be cancelled too', cancelSwap('shopv', 'exv4', '4', { cancellation: CX('shopv', { reason: 'CUSTOMER_UNREACHABLE', note: '' }) }));
+  await deny('a plain sender cancel of an accepted exchange still fails', updateDoc(doc(as('alice'), 'exchangeRequests/exv5'), { status: 'CANCELLED', updatedAt: now }));
+  await allow('either party can still complete an accepted exchange', (() => { const db = as('alice'); const b = writeBatch(db); b.update(doc(db, 'exchangeRequests/exv5'), { status: 'COMPLETED', updatedAt: now }); ['exa5', 'exb5'].forEach((id) => b.update(doc(db, `listings/${id}`), { status: 'EXCHANGED', exchangeRequestId: 'exv5', updatedAt: now })); return b.commit(); })());
+  await deny('exchange request arriving already cancelled', setDoc(doc(as('alice'), 'exchangeRequests/e99'), { senderId: 'alice', receiverId: 'bob', offeredListingId: 'alice1', requestedListingId: 'swap1', status: 'PENDING', cancellation: CX('alice') }));
+  await deny('purchase request arriving with a cancellation', setDoc(doc(as('alice'), 'purchaseRequests/p99'), { buyerId: 'alice', sellerId: 'bob', listingId: 'sell1', status: 'REQUESTED', offeredPrice: 80, cancellation: CX('bob') }));
+  await deny('repair request arriving with a refund', setDoc(doc(as('alice'), 'repairRequests/r99'), { userId: 'alice', vendorId: 'vic', status: 'REQUESTED', refund: RF() }));
+
   // reports
   const rep = { reporterId: 'alice', targetType: 'LISTING', targetId: 'sell1', targetName: 'Sofa', reason: 'SPAM', details: '' };
   await allow('report a listing', setDoc(doc(as('alice'), 'reports/alice_LISTING_sell1'), rep));

@@ -54,6 +54,9 @@ import com.homesajja.app.data.model.ExchangeStatus
 import com.homesajja.app.viewmodel.ExchangeAction
 import com.homesajja.app.viewmodel.ExchangeDetailUiState
 import com.homesajja.app.viewmodel.ExchangeDetailViewModel
+import com.homesajja.app.data.model.CancelContext
+import com.homesajja.app.ui.components.CancellationCard
+import com.homesajja.app.ui.components.VendorCancelDialog
 
 /** One exchange request: both items compared, its status, and the actions the viewer may take. */
 @Composable
@@ -62,6 +65,7 @@ fun ExchangeDetailScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Uni
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingAction by remember { mutableStateOf<ExchangeAction?>(null) }
+    var cancelling by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
@@ -73,7 +77,7 @@ fun ExchangeDetailScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Uni
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             (state as? ExchangeDetailUiState.Content)?.takeIf { it.actions.isNotEmpty() }?.let {
-                ActionBar(content = it, onAction = { action -> pendingAction = action })
+                ActionBar(content = it, onAction = { action -> if (action == ExchangeAction.CANCEL_BY_VENDOR) cancelling = true else pendingAction = action })
             }
         },
     ) { padding ->
@@ -83,6 +87,25 @@ fun ExchangeDetailScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Uni
                 is ExchangeDetailUiState.Error -> ErrorState(message = current.message, onRetry = viewModel::retry)
                 is ExchangeDetailUiState.Content -> DetailContent(current, onOpenListing, onOpenChat)
             }
+        }
+    }
+
+    if (cancelling) {
+        val content = state as? ExchangeDetailUiState.Content
+        if (content == null) {
+            cancelling = false
+        } else {
+            VendorCancelDialog(
+                context = CancelContext.EXCHANGE,
+                title = "Cancel this exchange?",
+                otherName = if (content.isSender) content.request.receiverName else content.request.senderName,
+                refundAmount = null, // an exchange moves no money
+                onConfirm = { reason, note, _ ->
+                    cancelling = false
+                    viewModel.cancelByVendor(reason, note)
+                },
+                onDismiss = { cancelling = false },
+            )
         }
     }
 
@@ -121,6 +144,18 @@ private fun DetailContent(content: ExchangeDetailUiState.Content, onOpenListing:
                 )
                 ExchangeStatusTracker(status = request.status)
             }
+        }
+
+        request.cancellation?.let {
+            CancellationCard(
+                vendorName = if (it.cancelledBy == request.senderId) request.senderName else request.receiverName,
+                cancellation = it,
+                agreedAmount = null,
+                payment = null,
+                refund = null,
+                viewerIsPayer = false,
+                showMoney = false,
+            )
         }
 
         ItemComparison(
@@ -164,7 +199,7 @@ private fun ActionBar(content: ExchangeDetailUiState.Content, onAction: (Exchang
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             content.actions.forEachIndexed { index, action ->
-                if (index == 0 && action != ExchangeAction.CANCEL) {
+                if (index == 0 && action != ExchangeAction.CANCEL && action != ExchangeAction.CANCEL_BY_VENDOR) {
                     PrimaryButton(
                         text = action.label,
                         onClick = { onAction(action) },
@@ -189,6 +224,7 @@ private fun ExchangeAction.confirmTitle() = when (this) {
     ExchangeAction.DECLINE -> "Decline this exchange?"
     ExchangeAction.CANCEL -> "Cancel your request?"
     ExchangeAction.COMPLETE -> "Mark as completed?"
+    ExchangeAction.CANCEL_BY_VENDOR -> "Cancel this exchange?"
 }
 
 private fun ExchangeAction.confirmText() = when (this) {
@@ -196,4 +232,5 @@ private fun ExchangeAction.confirmText() = when (this) {
     ExchangeAction.DECLINE -> "The sender will see that you declined. This can't be undone."
     ExchangeAction.CANCEL -> "The request will be withdrawn. This can't be undone."
     ExchangeAction.COMPLETE -> "Confirm that the swap has happened. Both items will be marked as exchanged."
+    ExchangeAction.CANCEL_BY_VENDOR -> "You'll be asked for a reason. Both items go back on sale."
 }

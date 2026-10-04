@@ -1,13 +1,15 @@
 package com.homesajja.app.data.model
 
 /** PENDING -> ACCEPTED (by receiver) -> COMPLETED (by either party).
- * A PENDING request can instead be DECLINED (receiver) or CANCELLED (sender). */
+ * A PENDING request can instead be DECLINED (receiver) or CANCELLED (sender). Once ACCEPTED, whichever party is a vendor can still
+ * cancel it with a reason (CANCELLED_BY_VENDOR), which frees both items again. */
 enum class ExchangeStatus(val displayName: String) {
     PENDING("Pending"),
     ACCEPTED("Accepted"),
     DECLINED("Declined"),
     CANCELLED("Cancelled"),
     COMPLETED("Completed"),
+    CANCELLED_BY_VENDOR("Cancelled by vendor"),
 }
 
 /**
@@ -32,6 +34,8 @@ data class ExchangeRequest(
     val receiverName: String = "",
     val message: String = "",
     val status: ExchangeStatus = ExchangeStatus.PENDING,
+    /** Set when a vendor party cancelled after accepting: the reason, an optional note, who ([Cancellation.cancelledBy]) and when. */
+    val cancellation: Cancellation? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 )

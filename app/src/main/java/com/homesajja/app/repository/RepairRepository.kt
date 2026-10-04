@@ -2,7 +2,9 @@ package com.homesajja.app.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.homesajja.app.data.model.Cancellation
 import com.homesajja.app.data.model.PaymentMethod
+import com.homesajja.app.data.model.Refund
 import com.homesajja.app.data.model.Quote
 import com.homesajja.app.data.model.RepairRequest
 import com.homesajja.app.data.model.RepairStatus
@@ -69,6 +71,17 @@ class RepairRepository(firestore: FirebaseFirestore) {
                 ),
             )
             .await()
+    }
+
+    /** The vendor cancels an agreed job with a reason; [refund] is set when they had confirmed receiving payment. */
+    suspend fun cancelByVendor(id: String, cancellation: Cancellation, refund: Refund?) {
+        val changes = mutableMapOf<String, Any>(
+            "status" to RepairStatus.CANCELLED_BY_VENDOR.name,
+            "cancellation" to cancellation,
+            "updatedAt" to System.currentTimeMillis(),
+        )
+        refund?.let { changes["refund"] = it }
+        requests.document(id).update(changes).await()
     }
 
     /** The payer (the customer) says they paid. */

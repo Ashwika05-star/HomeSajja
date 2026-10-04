@@ -147,6 +147,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.listingRepository,
                 container.chatRepository,
                 container.notificationSender,
+                container.vendorRepository,
             )
             RepairRequestViewModel::class.java -> RepairRequestViewModel(
                 container.authRepository,

@@ -119,12 +119,78 @@ service cloud.firestore {
         && incoming().payment.confirmedAt is int;
     }
 
+    // ---------- vendor cancellation ----------
+    // After accepting, the vendor on a request (the seller of a purchase, the vendor of a repair or recycling job, a vendor party of an
+    // exchange) can cancel it: the status becomes CANCELLED_BY_VENDOR, with a required reason from that system's short list and an optional
+    // note. Refund safeguard: if the vendor had already confirmed receiving the payment, the same write must carry the refund marked DONE
+    // for the full agreed amount; otherwise there must be no refund. A vendor can't cancel after paying money out themselves. Nothing else
+    // may change in the write, and a purchase or exchange must free its item(s) in the same batch.
+    function purchaseCancelReasons() {
+      return ['ITEM_UNAVAILABLE', 'PRICE_OR_DETAILS_CHANGED', 'CUSTOMER_UNREACHABLE', 'OTHER'];
+    }
+
+    function exchangeCancelReasons() {
+      return ['ITEM_UNAVAILABLE', 'PRICE_OR_DETAILS_CHANGED', 'CUSTOMER_UNREACHABLE', 'OTHER'];
+    }
+
+    function repairCancelReasons() {
+      return ['CANNOT_COMPLETE_JOB', 'PARTS_UNAVAILABLE', 'SCHEDULE_CONFLICT', 'CUSTOMER_UNREACHABLE', 'OTHER'];
+    }
+
+    function recyclingCancelReasons() {
+      return ['CANNOT_COMPLETE_JOB', 'SCHEDULE_CONFLICT', 'CUSTOMER_UNREACHABLE', 'OTHER'];
+    }
+
+    function cancellationOk(c, reasons) {
+      return c is map
+        && c.keys().hasOnly(['reason', 'note', 'cancelledBy', 'cancelledAt'])
+        && c.reason in reasons
+        && c.note is string && c.note.size() <= 300
+        && c.cancelledBy == request.auth.uid
+        && c.cancelledAt is int;
+    }
+
+    function vendorCancelPaymentOk() {
+      return existing().get('payment', null) == null
+        || existing().payment.status == 'UNPAID'
+        || existing().payment.payeeId == request.auth.uid;
+    }
+
+    function vendorCancelRefundOk() {
+      return (existing().get('payment', null) != null && existing().payment.status == 'CONFIRMED')
+        ? (incoming().get('refund', null) != null
+           && incoming().refund.keys().hasOnly(['amount', 'status', 'doneAt'])
+           && incoming().refund.amount == existing().agreedAmount
+           && incoming().refund.status == 'DONE'
+           && incoming().refund.doneAt is int)
+        : incoming().get('refund', null) == null;
+    }
+
+    // Purchase, repair and recycling: [vendorUid] is the vendor's uid on the request, [fromStatuses] the states a cancel is allowed from.
+    function vendorCancelsRequest(vendorUid, fromStatuses, reasons) {
+      return changedKeys().hasOnly(['status', 'updatedAt', 'cancellation', 'refund'])
+        && isSelf(vendorUid)
+        && existing().status in fromStatuses && incoming().status == 'CANCELLED_BY_VENDOR'
+        && existing().get('cancellation', null) == null
+        && cancellationOk(incoming().cancellation, reasons)
+        && vendorCancelPaymentOk()
+        && vendorCancelRefundOk();
+    }
+
+    // An item reserved for the request goes back on sale in the same batch (an item that was deleted, or the owner already moved, is left alone).
+    function listingFreedAfter(listingId) {
+      let path = /databases/$(database)/documents/listings/$(listingId);
+      return !exists(path) || get(path).data.status != 'RESERVED' || getAfter(path).data.status == 'ACTIVE';
+    }
+
     // A new request starts with no quote, no agreed amount and no payment.
     function startsUnagreed() {
       return incoming().get('quote', null) == null
         && incoming().get('agreedAmount', null) == null
         && incoming().get('agreedAt', null) == null
-        && incoming().get('payment', null) == null;
+        && incoming().get('payment', null) == null
+        && incoming().get('cancellation', null) == null
+        && incoming().get('refund', null) == null;
     }
 
     // ---------- accounts ----------
@@ -169,7 +235,8 @@ service cloud.firestore {
 
     // The exchange this write refers to (`exchangeRequestId` on the listing) is read as it
     // will be *after* the same batch/transaction, so the request and both listings must
-    // change together: ACCEPTED reserves the item, COMPLETED marks it exchanged.
+    // change together: ACCEPTED reserves the item, COMPLETED marks it exchanged, and CANCELLED_BY_VENDOR puts a reserved item back on sale
+    // (only the item's status changes, and it must still be the one reserved for that exchange).
     function exchangeMovesListing(listingId) {
       let exchange = getAfter(/databases/$(database)/documents/exchangeRequests/$(incoming().exchangeRequestId)).data;
       return isSignedIn()
@@ -177,18 +244,21 @@ service cloud.firestore {
         && request.auth.uid in [exchange.senderId, exchange.receiverId]
         && listingId in [exchange.offeredListingId, exchange.requestedListingId]
         && ((exchange.status == 'ACCEPTED' && existing().status == 'ACTIVE' && incoming().status == 'RESERVED')
-            || (exchange.status == 'COMPLETED' && existing().status == 'RESERVED' && incoming().status == 'EXCHANGED'));
+            || (exchange.status == 'COMPLETED' && existing().status == 'RESERVED' && incoming().status == 'EXCHANGED')
+            || (exchange.status == 'CANCELLED_BY_VENDOR' && existing().status == 'RESERVED' && incoming().status == 'ACTIVE'
+                && existing().get('exchangeRequestId', null) == incoming().exchangeRequestId));
     }
 
-    // Buyer <-> seller. The seller answers (REQUESTED -> ACCEPTED/REJECTED, then READY_FOR_PICKUP -> COMPLETED, or CANCELLED);
-    // the buyer can only withdraw a request the seller hasn't answered yet.
+    // Buyer <-> seller. The seller answers (REQUESTED -> ACCEPTED/REJECTED, then READY_FOR_PICKUP -> COMPLETED); the buyer can only
+    // withdraw a request the seller hasn't answered yet (CANCELLED). After accepting, the seller can still cancel it with a reason
+    // (CANCELLED_BY_VENDOR, see vendorCancelsRequest) and the listing goes back on sale.
     // Accepting is the agreement: it fixes the amount (the offered price, i.e. the asking price or the accepted offer) and opens the
     // payment record (unless the item is free). After that the amount can't change, and the buyer / seller move the payment
-    // UNPAID -> MARKED_PAID -> CONFIRMED (see payerMarksPaid / payeeConfirms). Nobody can cancel once a payment is marked.
+    // UNPAID -> MARKED_PAID -> CONFIRMED (see payerMarksPaid / payeeConfirms).
     function purchaseSellerMove(from, to) {
       return (from == 'REQUESTED' && to == 'REJECTED')
-        || (from == 'ACCEPTED' && to in ['READY_FOR_PICKUP', 'CANCELLED'])
-        || (from == 'READY_FOR_PICKUP' && to in ['COMPLETED', 'CANCELLED']);
+        || (from == 'ACCEPTED' && to == 'READY_FOR_PICKUP')
+        || (from == 'READY_FOR_PICKUP' && to == 'COMPLETED');
     }
 
     function purchaseAccepts() {
@@ -215,10 +285,11 @@ service cloud.firestore {
         && startsUnagreed()
         && get(/databases/$(database)/documents/listings/$(incoming().listingId)).data.ownerId == incoming().sellerId;
       allow update: if (changedKeys().hasOnly(['status', 'updatedAt'])
-          && ((isSelf(existing().sellerId) && purchaseSellerMove(existing().status, incoming().status)
-                && (incoming().status != 'CANCELLED' || paymentUntouched()))
+          && ((isSelf(existing().sellerId) && purchaseSellerMove(existing().status, incoming().status))
               || (isSelf(existing().buyerId) && existing().status == 'REQUESTED' && incoming().status == 'CANCELLED')))
         || purchaseAccepts()
+        || (vendorCancelsRequest(existing().sellerId, ['ACCEPTED', 'READY_FOR_PICKUP'], purchaseCancelReasons())
+            && listingFreedAfter(existing().listingId))
         || payerMarksPaid(['ACCEPTED', 'READY_FOR_PICKUP', 'COMPLETED'])
         || payeeConfirms(['ACCEPTED', 'READY_FOR_PICKUP', 'COMPLETED']);
       allow delete: if isSelf(existing().buyerId) && existing().status == 'REQUESTED';
@@ -227,7 +298,7 @@ service cloud.firestore {
     // Sender <-> receiver. The sender offers one of their own active listings for the
     // receiver's active exchange listing. Unlike the other systems, the status pipeline is
     // enforced here: PENDING -> ACCEPTED/DECLINED (receiver) or CANCELLED (sender), and
-    // ACCEPTED -> COMPLETED (either party).
+    // ACCEPTED -> COMPLETED (either party) or CANCELLED_BY_VENDOR (a vendor party, with a reason).
     match /exchangeRequests/{requestId} {
       allow get: if isSignedIn()
         && (resource == null
@@ -238,18 +309,28 @@ service cloud.firestore {
         && incoming().receiverId != incoming().senderId
         && !blocked(incoming().senderId, incoming().receiverId)
         && incoming().status == 'PENDING'
+        && incoming().get('cancellation', null) == null
         && get(/databases/$(database)/documents/listings/$(incoming().offeredListingId)).data.ownerId == incoming().senderId
         && get(/databases/$(database)/documents/listings/$(incoming().offeredListingId)).data.status == 'ACTIVE'
         && get(/databases/$(database)/documents/listings/$(incoming().requestedListingId)).data.ownerId == incoming().receiverId
         && get(/databases/$(database)/documents/listings/$(incoming().requestedListingId)).data.status == 'ACTIVE'
         && get(/databases/$(database)/documents/listings/$(incoming().requestedListingId)).data.actionType == 'EXCHANGE';
-      allow update: if changedKeys().hasOnly(['status', 'updatedAt'])
-        && ((existing().status == 'PENDING'
-              && ((isSelf(existing().receiverId) && incoming().status in ['ACCEPTED', 'DECLINED'])
-                  || (isSelf(existing().senderId) && incoming().status == 'CANCELLED')))
-            || (existing().status == 'ACCEPTED'
-                && (isSelf(existing().senderId) || isSelf(existing().receiverId))
-                && incoming().status == 'COMPLETED'));
+      allow update: if (changedKeys().hasOnly(['status', 'updatedAt'])
+          && ((existing().status == 'PENDING'
+                && ((isSelf(existing().receiverId) && incoming().status in ['ACCEPTED', 'DECLINED'])
+                    || (isSelf(existing().senderId) && incoming().status == 'CANCELLED')))
+              || (existing().status == 'ACCEPTED'
+                  && (isSelf(existing().senderId) || isSelf(existing().receiverId))
+                  && incoming().status == 'COMPLETED')))
+        // Once accepted, whichever party has a vendor account can cancel it, with a reason; both items go back on sale in the same batch.
+        || (changedKeys().hasOnly(['status', 'updatedAt', 'cancellation'])
+          && (isSelf(existing().senderId) || isSelf(existing().receiverId))
+          && vendorExists(request.auth.uid)
+          && existing().status == 'ACCEPTED' && incoming().status == 'CANCELLED_BY_VENDOR'
+          && existing().get('cancellation', null) == null
+          && cancellationOk(incoming().cancellation, exchangeCancelReasons())
+          && listingFreedAfter(existing().offeredListingId)
+          && listingFreedAfter(existing().requestedListingId));
       allow delete: if isSelf(existing().senderId) && existing().status == 'PENDING';
     }
 
@@ -309,6 +390,7 @@ service cloud.firestore {
               || (isSelf(existing().userId) && repairUserMove(existing().status, incoming().status) && paymentUntouched())))
         || repairQuotes()
         || repairAccepts()
+        || vendorCancelsRequest(existing().vendorId, ['AGREED', 'ACCEPTED', 'IN_PROGRESS', 'READY'], repairCancelReasons())
         || payerMarksPaid(['AGREED', 'IN_PROGRESS', 'READY', 'COMPLETED'])
         || payeeConfirms(['AGREED', 'IN_PROGRESS', 'READY', 'COMPLETED']);
       allow delete: if isSelf(existing().userId) && existing().status == 'REQUESTED';
@@ -387,6 +469,7 @@ service cloud.firestore {
               || (isSelf(existing().userId) && recyclingUserMove(existing().status, incoming().status) && paymentUntouched())))
         || recyclingQuotes()
         || recyclingAccepts()
+        || vendorCancelsRequest(existing().vendorId, ['ACCEPTED', 'SCHEDULED'], recyclingCancelReasons())
         || (claimablePickup()
             && changedKeys().hasOnly(['vendorId', 'vendorName', 'status', 'updatedAt'])
             && incoming().status == 'ACCEPTED')

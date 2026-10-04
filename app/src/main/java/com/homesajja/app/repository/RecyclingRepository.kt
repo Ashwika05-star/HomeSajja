@@ -2,9 +2,11 @@ package com.homesajja.app.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.homesajja.app.data.model.Cancellation
 import com.homesajja.app.data.model.PayDirection
 import com.homesajja.app.data.model.PaymentMethod
 import com.homesajja.app.data.model.Quote
+import com.homesajja.app.data.model.Refund
 import com.homesajja.app.data.model.RecyclingRequest
 import com.homesajja.app.data.model.RecyclingStatus
 import com.homesajja.app.payment.newPayment
@@ -92,6 +94,17 @@ class RecyclingRepository(firestore: FirebaseFirestore) {
                 ),
             )
             .await()
+    }
+
+    /** The recycler cancels an accepted job with a reason; [refund] is set when they had confirmed receiving payment. */
+    suspend fun cancelByVendor(id: String, cancellation: Cancellation, refund: Refund?) {
+        val changes = mutableMapOf<String, Any>(
+            "status" to RecyclingStatus.CANCELLED_BY_VENDOR.name,
+            "cancellation" to cancellation,
+            "updatedAt" to System.currentTimeMillis(),
+        )
+        refund?.let { changes["refund"] = it }
+        requests.document(id).update(changes).await()
     }
 
     /** The payer (whoever the quote says pays) records that they paid. */

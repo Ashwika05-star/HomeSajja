@@ -22,9 +22,35 @@ class RepairActionsTest {
     fun vendorWalksTheWholePipeline_quoteFirst() {
         assertEquals(listOf(RepairAction.SEND_QUOTE, RepairAction.REJECT), repairActionsFor(request(RepairStatus.REQUESTED), "vendor"))
         assertTrue(repairActionsFor(request(RepairStatus.QUOTED), "vendor").isEmpty())
-        assertEquals(listOf(RepairAction.START), repairActionsFor(request(RepairStatus.AGREED), "vendor"))
-        assertEquals(listOf(RepairAction.MARK_READY), repairActionsFor(request(RepairStatus.IN_PROGRESS), "vendor"))
-        assertEquals(listOf(RepairAction.COMPLETE), repairActionsFor(request(RepairStatus.READY), "vendor"))
+        assertEquals(listOf(RepairAction.START, RepairAction.CANCEL_BY_VENDOR), repairActionsFor(request(RepairStatus.AGREED), "vendor"))
+        assertEquals(listOf(RepairAction.MARK_READY, RepairAction.CANCEL_BY_VENDOR), repairActionsFor(request(RepairStatus.IN_PROGRESS), "vendor"))
+        assertEquals(listOf(RepairAction.COMPLETE, RepairAction.CANCEL_BY_VENDOR), repairActionsFor(request(RepairStatus.READY), "vendor"))
+    }
+
+    @Test
+    fun vendorCanCancel_onlyAfterTheUserAgreed_andNeverAfterTheJobEnded() {
+        listOf(RepairStatus.AGREED, RepairStatus.ACCEPTED, RepairStatus.IN_PROGRESS, RepairStatus.READY).forEach {
+            assertTrue("$it", RepairAction.CANCEL_BY_VENDOR in repairActionsFor(request(it), "vendor"))
+        }
+        listOf(
+            RepairStatus.REQUESTED, RepairStatus.QUOTED, RepairStatus.DECLINED, RepairStatus.COMPLETED,
+            RepairStatus.REJECTED, RepairStatus.CANCELLED, RepairStatus.CANCELLED_BY_VENDOR,
+        ).forEach {
+            assertTrue("$it", RepairAction.CANCEL_BY_VENDOR !in repairActionsFor(request(it), "vendor"))
+        }
+    }
+
+    @Test
+    fun userAndStrangersNeverGetTheVendorCancel_andItNeedsAReason() {
+        RepairStatus.entries.forEach {
+            assertTrue("$it", RepairAction.CANCEL_BY_VENDOR !in repairActionsFor(request(it), "user"))
+            assertTrue("$it", RepairAction.CANCEL_BY_VENDOR !in repairActionsFor(request(it), "someone-else"))
+            assertTrue("$it", RepairAction.CANCEL_BY_VENDOR !in repairActionsFor(request(it), null))
+        }
+        assertTrue(RepairAction.CANCEL_BY_VENDOR.needsCancellation)
+        assertEquals(RepairStatus.CANCELLED_BY_VENDOR, RepairAction.CANCEL_BY_VENDOR.target)
+        assertTrue(repairActionsFor(request(RepairStatus.CANCELLED_BY_VENDOR), "vendor").isEmpty())
+        assertTrue(repairActionsFor(request(RepairStatus.CANCELLED_BY_VENDOR), "user").isEmpty())
     }
 
     @Test
@@ -53,7 +79,7 @@ class RepairActionsTest {
 
     @Test
     fun legacyAcceptedRequests_carryOnAsAgreed() {
-        assertEquals(listOf(RepairAction.START), repairActionsFor(request(RepairStatus.ACCEPTED), "vendor"))
+        assertEquals(listOf(RepairAction.START, RepairAction.CANCEL_BY_VENDOR), repairActionsFor(request(RepairStatus.ACCEPTED), "vendor"))
         assertEquals(listOf(RepairAction.CANCEL), repairActionsFor(request(RepairStatus.ACCEPTED), "user"))
     }
 

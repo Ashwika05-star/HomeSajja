@@ -3,6 +3,13 @@ package com.homesajja.app.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.homesajja.app.data.model.CancelContext
+import com.homesajja.app.data.model.CancelReason
+import com.homesajja.app.payment.buildCancellation
+import com.homesajja.app.payment.buildRefund
+import com.homesajja.app.payment.cancelError
+import com.homesajja.app.payment.refundRequired
+import com.homesajja.app.payment.refundStatusFor
 import com.homesajja.app.data.model.EntityType
 import com.homesajja.app.data.model.PayDirection
 import com.homesajja.app.data.model.PaymentMethod
@@ -88,7 +95,7 @@ class RecycleDetailViewModel(
      * where the recycler pays: where the money should be sent (null = cash).
      */
     fun perform(action: RecycleAction, customerUpiId: String? = null) {
-        if (action.needsQuote) return
+        if (action.needsQuote || action.needsCancellation) return
         act("Couldn't update the request.") { content ->
             val request = content.request
             if (action !in content.actions) return@act
@@ -109,6 +116,38 @@ class RecycleDetailViewModel(
                     _messages.tryEmit("Status updated to ${action.target.displayName}.")
                 }
             }
+        }
+    }
+
+    /**
+     * The recycler cancels an accepted job. A [reason] from the recycling list is required, the [note] is optional, and if they had confirmed
+     * receiving payment they must say they refunded it ([refundDone]) first. The customer is told the reason.
+     */
+    fun cancelByVendor(reason: CancelReason, note: String, refundDone: Boolean) {
+        act("Couldn't cancel the job.") { content ->
+            val request = content.request
+            val vendorId = myId ?: return@act
+            if (RecycleAction.CANCEL_BY_VENDOR !in content.actions) return@act
+            val problem = cancelError(reason, note, CancelContext.RECYCLING)
+            if (problem != null) {
+                _messages.tryEmit(problem)
+                return@act
+            }
+            val needsRefund = refundRequired(request.payment, vendorId)
+            if (needsRefund && !refundDone) {
+                _messages.tryEmit("Mark the refund as done before cancelling.")
+                return@act
+            }
+            val cancellation = buildCancellation(reason, note, vendorId)
+            val refund = if (needsRefund) buildRefund(request.agreedAmount ?: 0L) else null
+            recyclingRepository.cancelByVendor(request.id, cancellation, refund)
+            notificationSender.send(
+                NotificationTemplates.vendorCancelled(
+                    request.userId, vendorId, request.vendorName.orEmpty().ifBlank { "The recycler" }, "your recycling request", cancellation,
+                    refundStatusFor(request.payment, refund), refund?.amount, EntityType.RECYCLING_REQUEST, request.id,
+                ),
+            )
+            _messages.tryEmit("Job cancelled. ${request.userName} has been told why.")
         }
     }
 

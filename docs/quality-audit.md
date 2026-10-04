@@ -72,3 +72,11 @@ Requested → Quoted → Agreed with the customer paying by UPI (reference enter
 recycling quote where the recycler pays the customer (the customer's UPI ID pre-filled); a purchase accepted at the offered price with the payment opening; the
 "no UPI app" message; the QR code. Found and fixed while testing: the first version of the purchase rule blocked a seller from marking a paid sale ready or
 completing it (it should only block cancelling), and the six-step repair tracker broke "Completed" over two lines.
+
+## 6. Upgrade 4: vendor cancellation
+
+Rules (90 new checks, 480 in all) cover who can cancel, from which states, with which reasons, the refund safeguard, and the items going back on sale; five
+deliberate weakenings (refund check, reason list, listing freed, exchange vendor check, vendor identity) each made tests fail. On the emulators with a phone:
+a repair with a confirmed payment cancelled by its vendor (reason required, refund tick required, confirmation step, then the customer saw the reason and
+"Refund: ₹3,000 marked as refunded"); an unpaid purchase cancelled by its seller (the listing went back to ACTIVE); an accepted exchange cancelled by a vendor party
+(both items back to ACTIVE); the customer's notifications carried each reason. Not tried on a phone: the recycling cancel (covered by rules and logic tests).

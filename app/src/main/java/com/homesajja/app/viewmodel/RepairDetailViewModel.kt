@@ -3,6 +3,13 @@ package com.homesajja.app.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.homesajja.app.data.model.CancelContext
+import com.homesajja.app.data.model.CancelReason
+import com.homesajja.app.payment.buildCancellation
+import com.homesajja.app.payment.buildRefund
+import com.homesajja.app.payment.cancelError
+import com.homesajja.app.payment.refundRequired
+import com.homesajja.app.payment.refundStatusFor
 import com.homesajja.app.data.model.PaymentMethod
 import com.homesajja.app.data.model.RepairRequest
 import com.homesajja.app.payment.QuoteForm
@@ -88,7 +95,7 @@ class RepairDetailViewModel(
 
     /** A step that needs no form. Sending a quote goes through [sendQuote]. */
     fun perform(action: RepairAction) {
-        if (action.needsQuote) return
+        if (action.needsQuote || action.needsCancellation) return
         act("Couldn't update the request.") { content ->
             val request = content.request
             if (action !in content.actions) return@act
@@ -109,6 +116,38 @@ class RepairDetailViewModel(
                     _messages.tryEmit("Status updated to ${action.target.displayName}.")
                 }
             }
+        }
+    }
+
+    /**
+     * The vendor cancels an agreed job. A [reason] from the repair list is required, the [note] is optional, and if they had confirmed receiving
+     * payment they must say they refunded it ([refundDone]) before the cancel goes through. The customer is told the reason.
+     */
+    fun cancelByVendor(reason: CancelReason, note: String, refundDone: Boolean) {
+        act("Couldn't cancel the job.") { content ->
+            val request = content.request
+            val vendorId = myId ?: return@act
+            if (RepairAction.CANCEL_BY_VENDOR !in content.actions) return@act
+            val problem = cancelError(reason, note, CancelContext.REPAIR)
+            if (problem != null) {
+                _messages.tryEmit(problem)
+                return@act
+            }
+            val needsRefund = refundRequired(request.payment, vendorId)
+            if (needsRefund && !refundDone) {
+                _messages.tryEmit("Mark the refund as done before cancelling.")
+                return@act
+            }
+            val cancellation = buildCancellation(reason, note, vendorId)
+            val refund = if (needsRefund) buildRefund(request.agreedAmount ?: 0L) else null
+            repairRepository.cancelByVendor(request.id, cancellation, refund)
+            notificationSender.send(
+                NotificationTemplates.vendorCancelled(
+                    request.userId, vendorId, request.vendorName, "your repair of ${request.furnitureTitle}", cancellation,
+                    refundStatusFor(request.payment, refund), refund?.amount, EntityType.REPAIR_REQUEST, request.id,
+                ),
+            )
+            _messages.tryEmit("Job cancelled. ${request.userName} has been told why.")
         }
     }
 

@@ -20,6 +20,12 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+import com.homesajja.app.data.model.CancelContext
+import com.homesajja.app.data.model.CancelReason
+import com.homesajja.app.payment.buildCancellation
+import com.homesajja.app.payment.cancelError
+import com.homesajja.app.repository.VendorRepository
+
 sealed interface ExchangeDetailUiState {
     data object Loading : ExchangeDetailUiState
     data class Error(val message: String) : ExchangeDetailUiState
@@ -32,6 +38,8 @@ sealed interface ExchangeDetailUiState {
         val requested: FurnitureListing?,
         val actions: List<ExchangeAction>,
         val isSender: Boolean,
+        /** Whether the viewer has a vendor account: only a vendor party can cancel an accepted exchange. */
+        val viewerIsVendor: Boolean = false,
         val chatId: String?,
         val isBusy: Boolean = false,
     ) : ExchangeDetailUiState
@@ -48,6 +56,7 @@ class ExchangeDetailViewModel(
     private val listingRepository: ListingRepository,
     private val chatRepository: ChatRepository,
     private val notificationSender: NotificationSender,
+    private val vendorRepository: VendorRepository,
 ) : ViewModel() {
 
     private val requestId: String = checkNotNull(savedStateHandle["requestId"])
@@ -65,9 +74,53 @@ class ExchangeDetailViewModel(
 
     fun retry() = load(showLoading = true)
 
+    /**
+     * A vendor party cancels the accepted exchange. A [reason] from the exchange list is required, the [note] is optional. Both items go back on
+     * sale and the other person is told the reason.
+     */
+    fun cancelByVendor(reason: CancelReason, note: String) {
+        val content = _uiState.value as? ExchangeDetailUiState.Content ?: return
+        if (content.isBusy || ExchangeAction.CANCEL_BY_VENDOR !in content.actions) return
+        val vendorId = myId ?: return
+        val problem = cancelError(reason, note, CancelContext.EXCHANGE)
+        if (problem != null) {
+            _messages.tryEmit(problem)
+            return
+        }
+        _uiState.value = content.copy(isBusy = true)
+        viewModelScope.launch {
+            try {
+                val request = content.request
+                val cancellation = buildCancellation(reason, note, vendorId)
+                exchangeRepository.cancelByVendor(request, cancellation)
+                val iAmSender = vendorId == request.senderId
+                notificationSender.send(
+                    NotificationTemplates.vendorCancelled(
+                        recipientId = if (iAmSender) request.receiverId else request.senderId,
+                        vendorId = vendorId,
+                        vendorName = if (iAmSender) request.senderName else request.receiverName,
+                        what = "your exchange of ${request.requestedTitle} and ${request.offeredTitle}",
+                        cancellation = cancellation,
+                        refundStatus = null,
+                        refundAmount = null,
+                        relatedType = EntityType.EXCHANGE_REQUEST,
+                        relatedId = request.id,
+                    ),
+                )
+                _messages.tryEmit("Exchange cancelled and both items are back on sale. They have been told why.")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _messages.tryEmit(mapError(e, "Couldn't cancel the exchange."))
+            } finally {
+                load(showLoading = false)
+            }
+        }
+    }
+
     fun perform(action: ExchangeAction) {
         val content = _uiState.value as? ExchangeDetailUiState.Content ?: return
-        if (content.isBusy) return
+        if (content.isBusy || action == ExchangeAction.CANCEL_BY_VENDOR) return
         _uiState.value = content.copy(isBusy = true)
 
         viewModelScope.launch {
@@ -96,6 +149,7 @@ class ExchangeDetailViewModel(
                         exchangeRepository.completeRequest(request)
                         _messages.tryEmit("Exchange marked as completed.")
                     }
+                    ExchangeAction.CANCEL_BY_VENDOR -> Unit // goes through cancelByVendor, which needs a reason
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -118,12 +172,16 @@ class ExchangeDetailViewModel(
                     return@launch
                 }
                 val chatId = if (request.status in CHAT_STATUSES) ensureChat(request) else null
+                // Only a vendor party can cancel an accepted exchange (the rules check the same thing).
+                val viewerIsVendor = request.status == ExchangeStatus.ACCEPTED && myId != null &&
+                    runCatching { vendorRepository.getVendorProfile(myId) != null }.getOrDefault(false)
                 _uiState.value = ExchangeDetailUiState.Content(
                     request = request,
                     offered = listingRepository.getListing(request.offeredListingId),
                     requested = listingRepository.getListing(request.requestedListingId),
-                    actions = exchangeActionsFor(request, myId),
+                    actions = exchangeActionsFor(request, myId, viewerIsVendor),
                     isSender = myId == request.senderId,
+                    viewerIsVendor = viewerIsVendor,
                     chatId = chatId,
                 )
             } catch (e: CancellationException) {

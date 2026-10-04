@@ -3,7 +3,8 @@ package com.homesajja.app.data.model
 /** REQUESTED -> ACCEPTED -> SCHEDULED -> COMPLETED. Free by default.
  * A recycler may instead send a quote with an amount and a direction (QUOTED): the customer accepts it (ACCEPTED, and the amount is agreed)
  * or declines it (DECLINED), after which the recycler sends a revised quote or closes the request (REJECTED).
- * The recycler moves it forward (or REJECTs it); the user can CANCEL until it is scheduled. */
+ * The recycler moves it forward (or REJECTs it); the user can CANCEL until it is scheduled. After accepting, the recycler can still cancel
+ * (CANCELLED_BY_VENDOR) with a reason; if they had confirmed receiving payment they must mark a refund done first. */
 enum class RecyclingStatus(val displayName: String) {
     REQUESTED("Requested"),
     QUOTED("Quoted"),
@@ -13,6 +14,7 @@ enum class RecyclingStatus(val displayName: String) {
     COMPLETED("Completed"),
     REJECTED("Rejected"),
     CANCELLED("Cancelled"),
+    CANCELLED_BY_VENDOR("Cancelled by recycler"),
 }
 
 /** What state the furniture is in, which tells the recycler what can be done with it. */
@@ -57,6 +59,8 @@ data class RecyclingRequest(
     val agreedAmount: Long? = null,
     val agreedAt: Long? = null,
     val payment: Payment? = null,
+    val cancellation: Cancellation? = null,
+    val refund: Refund? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 )

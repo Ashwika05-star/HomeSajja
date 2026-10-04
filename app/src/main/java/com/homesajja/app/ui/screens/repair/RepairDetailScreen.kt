@@ -44,7 +44,11 @@ import com.homesajja.app.ui.components.ReviewPrompt
 import com.homesajja.app.viewmodel.ReviewParams
 import com.homesajja.app.data.model.EntityType
 import com.homesajja.app.data.model.RepairStatus
+import com.homesajja.app.data.model.CancelContext
+import com.homesajja.app.payment.refundRequired
+import com.homesajja.app.ui.components.CancellationCard
 import com.homesajja.app.ui.components.PaymentPanel
+import com.homesajja.app.ui.components.VendorCancelDialog
 import com.homesajja.app.ui.components.QuoteCard
 import com.homesajja.app.ui.components.QuoteDialog
 import com.homesajja.app.ui.components.RepairStatusTracker
@@ -61,6 +65,7 @@ fun RepairDetailScreen(onBackClick: () -> Unit, onOpenChat: (String) -> Unit) {
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingAction by remember { mutableStateOf<RepairAction?>(null) }
     var quoteAction by remember { mutableStateOf<RepairAction?>(null) }
+    var cancelling by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
@@ -75,7 +80,16 @@ fun RepairDetailScreen(onBackClick: () -> Unit, onOpenChat: (String) -> Unit) {
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             (state as? RepairDetailUiState.Content)?.takeIf { it.actions.isNotEmpty() }?.let {
-                ActionBar(content = it, onAction = { action -> if (action.needsQuote) quoteAction = action else pendingAction = action })
+                ActionBar(
+                    content = it,
+                    onAction = { action ->
+                        when {
+                            action.needsCancellation -> cancelling = true
+                            action.needsQuote -> quoteAction = action
+                            else -> pendingAction = action
+                        }
+                    },
+                )
             }
         },
     ) { padding ->
@@ -90,6 +104,26 @@ fun RepairDetailScreen(onBackClick: () -> Unit, onOpenChat: (String) -> Unit) {
                     onConfirmReceived = viewModel::confirmPayment,
                 )
             }
+        }
+    }
+
+    if (cancelling) {
+        val content = state as? RepairDetailUiState.Content
+        if (content == null) {
+            cancelling = false
+        } else {
+            VendorCancelDialog(
+                context = CancelContext.REPAIR,
+                title = "Cancel this job?",
+                otherName = content.request.userName,
+                // The vendor confirmed receiving the customer's payment: they must refund it before the cancel can go through.
+                refundAmount = if (refundRequired(content.request.payment, content.request.vendorId)) content.request.agreedAmount else null,
+                onConfirm = { reason, note, refundDone ->
+                    cancelling = false
+                    viewModel.cancelByVendor(reason, note, refundDone)
+                },
+                onDismiss = { cancelling = false },
+            )
         }
     }
 
@@ -130,6 +164,7 @@ private fun confirmationText(action: RepairAction): String = when (action) {
     RepairAction.DECLINE_QUOTE -> "Decline this quote? The vendor can send a revised quote or close the request."
     RepairAction.REJECT -> "Reject this repair request? The customer will see it as rejected."
     RepairAction.CLOSE -> "Close this request? The customer will see it as rejected."
+    RepairAction.CANCEL_BY_VENDOR -> "Cancel this job? You'll be asked for a reason."
     RepairAction.START -> "Mark the repair as in progress?"
     RepairAction.MARK_READY -> "Mark the furniture as ready for pickup?"
     RepairAction.COMPLETE -> "Mark this repair as completed?"
@@ -176,6 +211,17 @@ private fun DetailContent(
             }
 
             request.quote?.let { QuoteCard(quote = it, repair = true, agreedAmount = request.agreedAmount) }
+
+            request.cancellation?.let {
+                CancellationCard(
+                    vendorName = request.vendorName,
+                    cancellation = it,
+                    agreedAmount = request.agreedAmount,
+                    payment = request.payment,
+                    refund = request.refund,
+                    viewerIsPayer = !content.viewerIsVendor,
+                )
+            }
 
             val payment = request.payment
             val amount = request.agreedAmount
@@ -243,7 +289,7 @@ private fun ActionBar(content: RepairDetailUiState.Content, onAction: (RepairAct
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     row.forEach { (index, action) ->
                         val isPrimary = index == 0 && action != RepairAction.CANCEL && action != RepairAction.REJECT &&
-                            action != RepairAction.CLOSE && action != RepairAction.DECLINE_QUOTE
+                            action != RepairAction.CLOSE && action != RepairAction.DECLINE_QUOTE && action != RepairAction.CANCEL_BY_VENDOR
                         if (isPrimary) {
                             PrimaryButton(text = action.label, onClick = { onAction(action) }, enabled = !content.isBusy, modifier = Modifier.weight(1f))
                         } else {

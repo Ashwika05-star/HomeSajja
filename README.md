@@ -123,6 +123,25 @@ HomeSajja never moves money and has no payment gateway.
 upgrade, and expect older builds to be refused on the new repair, recycling and accept steps. No new index is needed. Purchase requests accepted before this upgrade
 keep their old fields but have no payment record, so they can't be paid in the new way.
 
+### Vendor cancellation
+
+After accepting, the vendor on a request can cancel it, in all four systems. Each pipeline gets a **Cancelled by vendor** status (`CANCELLED_BY_VENDOR`):
+a purchase (the seller) from Accepted or Ready for pickup, a repair from Agreed, In progress or Ready, a recycling job from Accepted or Scheduled, and an
+accepted exchange (whichever party has a vendor account). The vendor picks a **reason** from a short list for that system, may add a note (up to 300
+characters) and sees a confirmation before it goes through; the other person gets a notification with the reason. The reason, note, who and when are stored
+in the request's `cancellation`.
+
+- **Items:** cancelling a purchase puts the listing back on sale, and cancelling an exchange puts both items back on sale, in the same atomic write
+  (an item that was deleted, or that the owner already moved, is left alone).
+- **Refund safeguard:** if the vendor had already **confirmed receiving the payment**, the cancel dialog has a required "I've refunded ₹X" tick, and the same
+  write stores `refund` (marked done, for the full agreed amount); the cancel can't complete without it. The customer sees "Refund: ₹X marked as refunded".
+  A payment the customer only marked (never confirmed) needs no refund, and the customer is told to check with the vendor; an unpaid job just says nothing was paid.
+  A refunded payment stops counting as earned. A recycler who has already paid the customer can't cancel (there is nothing to refund).
+- **Rules:** only the vendor on that request can cancel, only from the states above, with a reason from that system's list, nothing else changing in the write,
+  and the refund and the freed items enforced (`vendorCancelsRequest`, `listingFreedAfter` in `firestore.rules`). The buyer's, user's and sender's own cancels are
+  unchanged, except that a seller can no longer end an accepted order with the plain `CANCELLED` status: it has to be a vendor cancellation with a reason.
+- **Rolling out:** deploy `firestore.rules` before people use a build with this upgrade. No new index is needed.
+
 ### Firestore indexes (Explore and Exchange browsing)
 
 Browsing runs one Firestore query per page: `listings` where `city` and `status = ACTIVE` match, plus optionally `category`, `actionType`
@@ -162,7 +181,7 @@ material requests and finished jobs with reviews. See its README. Every demo acc
 
 ```bash
 ./gradlew testDebugUnitTest            # unit tests (logic, parsing, colour contrast, UPI links, notifications...)
-cd firestore-rules-tests && npm install && npm test    # 390 security-rules checks against the Firestore emulator
+cd firestore-rules-tests && npm install && npm test    # 480 security-rules checks against the Firestore emulator
 ```
 
 `docs/quality-audit.md` records the state-handling, accessibility and performance audit and the final QA results.

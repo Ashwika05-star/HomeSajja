@@ -68,10 +68,10 @@ class MarketplaceLogicTest {
     @Test
     fun sellerActions_followThePipeline() {
         assertEquals(listOf(SellerAction.ACCEPT, SellerAction.REJECT), sellerActionsFor(PurchaseStatus.REQUESTED))
-        assertEquals(listOf(SellerAction.MARK_READY, SellerAction.CANCEL), sellerActionsFor(PurchaseStatus.ACCEPTED))
-        assertEquals(listOf(SellerAction.COMPLETE, SellerAction.CANCEL), sellerActionsFor(PurchaseStatus.READY_FOR_PICKUP))
+        assertEquals(listOf(SellerAction.MARK_READY, SellerAction.CANCEL_ORDER), sellerActionsFor(PurchaseStatus.ACCEPTED))
+        assertEquals(listOf(SellerAction.COMPLETE, SellerAction.CANCEL_ORDER), sellerActionsFor(PurchaseStatus.READY_FOR_PICKUP))
         PurchaseStatus.entries
-            .filter { it in setOf(PurchaseStatus.COMPLETED, PurchaseStatus.REJECTED, PurchaseStatus.CANCELLED) }
+            .filter { it in setOf(PurchaseStatus.COMPLETED, PurchaseStatus.REJECTED, PurchaseStatus.CANCELLED, PurchaseStatus.CANCELLED_BY_VENDOR) }
             .forEach { assertEquals(emptyList<SellerAction>(), sellerActionsFor(it)) }
     }
 }

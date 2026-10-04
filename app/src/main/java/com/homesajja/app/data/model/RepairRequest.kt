@@ -3,6 +3,7 @@ package com.homesajja.app.data.model
 /** REQUESTED -> QUOTED -> AGREED -> IN_PROGRESS -> READY -> COMPLETED.
  * The vendor sends a quote; the user accepts it (AGREED) or declines it (DECLINED), after which the vendor sends a revised quote
  * (QUOTED again) or closes the request (REJECTED). Only the vendor moves an agreed job forward; the user can CANCEL until work starts.
+ * After the user agrees, the vendor can still cancel (CANCELLED_BY_VENDOR) with a reason; if they had confirmed payment they must mark a refund done first.
  * ACCEPTED is the old "accepted without a price" step: requests that were already there keep working, but no new request reaches it. */
 enum class RepairStatus(val displayName: String) {
     REQUESTED("Requested"),
@@ -15,6 +16,7 @@ enum class RepairStatus(val displayName: String) {
     COMPLETED("Completed"),
     REJECTED("Rejected"),
     CANCELLED("Cancelled"),
+    CANCELLED_BY_VENDOR("Cancelled by vendor"),
 }
 
 /** What is wrong with the furniture. [displayName] is shown in the UI; the enum name is stored. */
@@ -53,6 +55,8 @@ data class RepairRequest(
     val agreedAt: Long? = null,
     /** Opened when the quote is accepted. */
     val payment: Payment? = null,
+    val cancellation: Cancellation? = null,
+    val refund: Refund? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 )

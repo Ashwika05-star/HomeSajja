@@ -1,7 +1,7 @@
 package com.homesajja.app.data.model
 
-/** REQUESTED -> ACCEPTED -> READY_FOR_PICKUP -> COMPLETED. The seller can also
- * REJECT a request, and either side can end it as CANCELLED. */
+/** REQUESTED -> ACCEPTED -> READY_FOR_PICKUP -> COMPLETED. The seller can also REJECT a request; the buyer can withdraw it (CANCELLED)
+ * until it is accepted; after that the seller can still cancel it, with a reason (CANCELLED_BY_VENDOR). */
 enum class PurchaseStatus(val displayName: String) {
     REQUESTED("Requested"),
     ACCEPTED("Accepted"),
@@ -9,6 +9,7 @@ enum class PurchaseStatus(val displayName: String) {
     COMPLETED("Completed"),
     REJECTED("Rejected"),
     CANCELLED("Cancelled"),
+    CANCELLED_BY_VENDOR("Cancelled by seller"),
 }
 
 /** Stored at `purchaseRequests/{id}`. Parties: [buyerId] and [sellerId].
@@ -31,6 +32,10 @@ data class PurchaseRequest(
     val agreedAmount: Long? = null,
     val agreedAt: Long? = null,
     val payment: Payment? = null,
+    /** Set when the seller cancelled after accepting: the reason, an optional note, who and when. */
+    val cancellation: Cancellation? = null,
+    /** Set only when the seller cancelled after confirming they had received payment: the refund they marked done. */
+    val refund: Refund? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 )

@@ -51,7 +51,11 @@ import com.homesajja.app.viewmodel.RecycleDetailViewModel
 import com.homesajja.app.data.model.PayDirection
 import com.homesajja.app.data.model.PaymentMethod
 import com.homesajja.app.payment.paymentOpen
+import com.homesajja.app.data.model.CancelContext
+import com.homesajja.app.payment.refundRequired
+import com.homesajja.app.ui.components.CancellationCard
 import com.homesajja.app.ui.components.PaymentPanel
+import com.homesajja.app.ui.components.VendorCancelDialog
 import com.homesajja.app.ui.components.PayoutUpiDialog
 import com.homesajja.app.ui.components.QuoteCard
 import com.homesajja.app.ui.components.QuoteDialog
@@ -64,6 +68,7 @@ fun RecycleDetailScreen(onBackClick: () -> Unit) {
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingAction by remember { mutableStateOf<RecycleAction?>(null) }
     var quoteAction by remember { mutableStateOf<RecycleAction?>(null) }
+    var cancelling by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
@@ -75,7 +80,16 @@ fun RecycleDetailScreen(onBackClick: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             (state as? RecycleDetailUiState.Content)?.takeIf { it.actions.isNotEmpty() }?.let {
-                ActionBar(content = it, onAction = { action -> if (action.needsQuote) quoteAction = action else pendingAction = action })
+                ActionBar(
+                    content = it,
+                    onAction = { action ->
+                        when {
+                            action.needsCancellation -> cancelling = true
+                            action.needsQuote -> quoteAction = action
+                            else -> pendingAction = action
+                        }
+                    },
+                )
             }
         },
     ) { padding ->
@@ -85,6 +99,25 @@ fun RecycleDetailScreen(onBackClick: () -> Unit) {
                 is RecycleDetailUiState.Error -> ErrorState(message = current.message, onRetry = viewModel::retry)
                 is RecycleDetailUiState.Content -> DetailContent(current, onMarkPaid = viewModel::markPaid, onConfirmReceived = viewModel::confirmPayment)
             }
+        }
+    }
+
+    if (cancelling) {
+        val content = state as? RecycleDetailUiState.Content
+        if (content == null) {
+            cancelling = false
+        } else {
+            VendorCancelDialog(
+                context = CancelContext.RECYCLING,
+                title = "Cancel this job?",
+                otherName = content.request.userName,
+                refundAmount = if (refundRequired(content.request.payment, content.request.vendorId)) content.request.agreedAmount else null,
+                onConfirm = { reason, note, refundDone ->
+                    cancelling = false
+                    viewModel.cancelByVendor(reason, note, refundDone)
+                },
+                onDismiss = { cancelling = false },
+            )
         }
     }
 
@@ -140,6 +173,7 @@ private fun confirmationText(action: RecycleAction): String = when (action) {
     RecycleAction.ACCEPT_QUOTE -> "Accept this quote? The amount is fixed from then on."
     RecycleAction.DECLINE_QUOTE -> "Decline this quote? The recycler can send a revised quote or close the request."
     RecycleAction.CLOSE -> "Close this request? The customer will see it as rejected."
+    RecycleAction.CANCEL_BY_VENDOR -> "Cancel this job? You'll be asked for a reason."
     RecycleAction.REJECT -> "Reject this recycling request? The customer will see it as rejected."
     RecycleAction.SCHEDULE -> "Mark the pickup or drop-off as scheduled?"
     RecycleAction.COMPLETE -> "Mark this recycling request as completed?"
@@ -185,6 +219,17 @@ private fun DetailContent(
             }
 
             request.quote?.let { QuoteCard(quote = it, repair = false, agreedAmount = request.agreedAmount) }
+
+            request.cancellation?.let {
+                CancellationCard(
+                    vendorName = request.vendorName.orEmpty().ifBlank { "the recycler" },
+                    cancellation = it,
+                    agreedAmount = request.agreedAmount,
+                    payment = request.payment,
+                    refund = request.refund,
+                    viewerIsPayer = request.payment?.payerId == request.userId && !content.viewerIsRecycler,
+                )
+            }
 
             val payment = request.payment
             val amount = request.agreedAmount
@@ -250,7 +295,7 @@ private fun ActionBar(content: RecycleDetailUiState.Content, onAction: (RecycleA
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     row.forEach { (index, action) ->
                         val isPrimary = index == 0 && action != RecycleAction.CANCEL && action != RecycleAction.REJECT &&
-                            action != RecycleAction.CLOSE && action != RecycleAction.DECLINE_QUOTE
+                            action != RecycleAction.CLOSE && action != RecycleAction.DECLINE_QUOTE && action != RecycleAction.CANCEL_BY_VENDOR
                         if (isPrimary) {
                             PrimaryButton(text = action.label, onClick = { onAction(action) }, enabled = !content.isBusy, modifier = Modifier.weight(1f))
                         } else {

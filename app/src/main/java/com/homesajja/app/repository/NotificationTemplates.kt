@@ -1,5 +1,6 @@
 package com.homesajja.app.repository
 
+import com.homesajja.app.data.model.Cancellation
 import com.homesajja.app.data.model.Chat
 import com.homesajja.app.data.model.EntityType
 import com.homesajja.app.data.model.ExchangeRequest
@@ -13,6 +14,7 @@ import com.homesajja.app.data.model.Quote
 import com.homesajja.app.data.model.PurchaseRequest
 import com.homesajja.app.data.model.PurchaseStatus
 import com.homesajja.app.data.model.RecyclingRequest
+import com.homesajja.app.data.model.RefundStatus
 import com.homesajja.app.data.model.RecyclingStatus
 import com.homesajja.app.data.model.RepairRequest
 import com.homesajja.app.data.model.RepairStatus
@@ -275,6 +277,40 @@ object NotificationTemplates {
         type = NotificationType.PAYMENT_UPDATE,
         title = "Payment received",
         body = "$payeeName confirmed they received ${formatPrice(amount)} for $what.",
+        relatedType = relatedType,
+        relatedId = relatedId,
+    )
+
+    // ---- vendor cancellations ----
+
+    /**
+     * A vendor cancelled a request they had accepted: the other person is told the reason (and the note), and what happened to any
+     * money. [what] names the thing, e.g. "your repair of Sofa" or "your order for Teak sofa".
+     */
+    fun vendorCancelled(
+        recipientId: String,
+        vendorId: String,
+        vendorName: String,
+        what: String,
+        cancellation: Cancellation,
+        refundStatus: RefundStatus?,
+        refundAmount: Long?,
+        relatedType: EntityType,
+        relatedId: String,
+    ) = Notification(
+        recipientId = recipientId,
+        senderId = vendorId,
+        type = NotificationType.VENDOR_CANCELLED,
+        title = "$vendorName cancelled $what",
+        body = buildString {
+            append("Reason: ${cancellation.reason.displayName}.")
+            if (cancellation.note.isNotBlank()) append(" \"${cancellation.note.take(PREVIEW_LENGTH)}\"")
+            when (refundStatus) {
+                RefundStatus.DONE -> append(" Your payment of ${formatPrice(refundAmount ?: 0)} was marked as refunded.")
+                RefundStatus.UNCONFIRMED -> append(" If you had paid, check with $vendorName: the payment wasn't confirmed.")
+                RefundStatus.NOT_NEEDED, null -> Unit
+            }
+        },
         relatedType = relatedType,
         relatedId = relatedId,
     )

@@ -5,11 +5,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.homesajja.app.data.model.CancelContext
+import com.homesajja.app.data.model.CancelReason
+import com.homesajja.app.payment.buildCancellation
+import com.homesajja.app.payment.buildRefund
+import com.homesajja.app.payment.cancelError
+import com.homesajja.app.payment.refundRequired
+import com.homesajja.app.payment.refundStatusFor
 import com.homesajja.app.data.model.EntityType
 import com.homesajja.app.data.model.ListingStatus
-import com.homesajja.app.data.model.Payment
 import com.homesajja.app.data.model.PaymentMethod
-import com.homesajja.app.payment.isUntouched
 import com.homesajja.app.payment.paymentOpen
 import com.homesajja.app.data.model.PurchaseRequest
 import com.homesajja.app.data.model.PurchaseStatus
@@ -32,26 +37,26 @@ enum class SellerAction(val label: String, val resultingStatus: PurchaseStatus) 
     REJECT("Reject", PurchaseStatus.REJECTED),
     MARK_READY("Ready for pickup", PurchaseStatus.READY_FOR_PICKUP),
     COMPLETE("Mark completed", PurchaseStatus.COMPLETED),
-    CANCEL("Cancel", PurchaseStatus.CANCELLED),
+    /** The seller backs out after accepting: opens the reason form (and the refund step) first. */
+    CANCEL_ORDER("Cancel order", PurchaseStatus.CANCELLED_BY_VENDOR),
 }
 
 /** The actions offered to the seller for a request in [status]; the pipeline is
- * REQUESTED -> ACCEPTED -> READY_FOR_PICKUP -> COMPLETED, and the seller can back out
- * of a request they accepted, until a payment has been marked. Finished requests offer nothing.
+ * REQUESTED -> ACCEPTED -> READY_FOR_PICKUP -> COMPLETED, and the seller can back out of a request they accepted
+ * (with a reason, and a refund first if they had confirmed payment). Finished requests offer nothing.
  * Accepting is the agreement: the price (the asking price, or the accepted offer) becomes the agreed amount. */
-fun sellerActionsFor(status: PurchaseStatus, payment: Payment? = null): List<SellerAction> = when (status) {
+fun sellerActionsFor(status: PurchaseStatus): List<SellerAction> = when (status) {
     PurchaseStatus.REQUESTED -> listOf(SellerAction.ACCEPT, SellerAction.REJECT)
-    PurchaseStatus.ACCEPTED -> listOfNotNull(SellerAction.MARK_READY, SellerAction.CANCEL.takeIf { payment.isUntouched })
-    PurchaseStatus.READY_FOR_PICKUP -> listOfNotNull(SellerAction.COMPLETE, SellerAction.CANCEL.takeIf { payment.isUntouched })
-    PurchaseStatus.COMPLETED, PurchaseStatus.REJECTED, PurchaseStatus.CANCELLED -> emptyList()
+    PurchaseStatus.ACCEPTED -> listOf(SellerAction.MARK_READY, SellerAction.CANCEL_ORDER)
+    PurchaseStatus.READY_FOR_PICKUP -> listOf(SellerAction.COMPLETE, SellerAction.CANCEL_ORDER)
+    PurchaseStatus.COMPLETED, PurchaseStatus.REJECTED, PurchaseStatus.CANCELLED, PurchaseStatus.CANCELLED_BY_VENDOR -> emptyList()
 }
 
 /** The listing status each seller action should leave the item in, or null to leave it alone. */
 private fun SellerAction.listingStatus(): ListingStatus? = when (this) {
     SellerAction.ACCEPT -> ListingStatus.RESERVED
     SellerAction.COMPLETE -> ListingStatus.SOLD
-    SellerAction.CANCEL -> ListingStatus.ACTIVE
-    SellerAction.REJECT, SellerAction.MARK_READY -> null
+    SellerAction.REJECT, SellerAction.MARK_READY, SellerAction.CANCEL_ORDER -> null
 }
 
 sealed interface MyRequestsUiState {
@@ -132,6 +137,36 @@ class MyRequestsViewModel(
                 notificationSender.send(NotificationTemplates.purchaseStatus(request, action.resultingStatus, it))
             }
             _messages.tryEmit("Request marked as ${action.resultingStatus.displayName.lowercase()}.")
+        }
+
+    /**
+     * The seller cancels an order they had accepted. A [reason] from the purchase list is required, the [note] is optional, and if they had confirmed
+     * receiving payment they must say they refunded it ([refundDone]) first. The listing goes back on sale, and the buyer is told the reason.
+     */
+    fun cancelOrder(request: PurchaseRequest, reason: CancelReason, note: String, refundDone: Boolean) =
+        runAction(request, "Couldn't cancel the order.") {
+            val sellerId = authRepository.currentUserId ?: return@runAction
+            if (sellerId != request.sellerId || SellerAction.CANCEL_ORDER !in sellerActionsFor(request.status)) return@runAction
+            val problem = cancelError(reason, note, CancelContext.PURCHASE)
+            if (problem != null) {
+                _messages.tryEmit(problem)
+                return@runAction
+            }
+            val needsRefund = refundRequired(request.payment, sellerId)
+            if (needsRefund && !refundDone) {
+                _messages.tryEmit("Mark the refund as done before cancelling.")
+                return@runAction
+            }
+            val cancellation = buildCancellation(reason, note, sellerId)
+            val refund = if (needsRefund) buildRefund(request.agreedAmount ?: request.offeredPrice) else null
+            purchaseRequestRepository.cancelByVendor(request, cancellation, refund)
+            notificationSender.send(
+                NotificationTemplates.vendorCancelled(
+                    request.buyerId, sellerId, request.sellerName.ifBlank { "The seller" }, "your order for ${request.listingTitle}", cancellation,
+                    refundStatusFor(request.payment, refund), refund?.amount, EntityType.LISTING, request.listingId,
+                ),
+            )
+            _messages.tryEmit("Order cancelled and the item is back on sale. ${request.buyerName} has been told why.")
         }
 
     /** The buyer says they paid, by UPI or in cash (the payment itself happened in a UPI app or in person). */
