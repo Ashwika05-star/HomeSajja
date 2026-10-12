@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.screens.material
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -129,8 +130,9 @@ private fun DetailContent(
 @Composable
 private fun RequestSummary(request: MaterialRequest, onOpenVendor: (() -> Unit)?) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -213,8 +215,9 @@ private fun OwnerSection(
 @Composable
 private fun OfferCard(offer: MaterialOffer, busy: Boolean, showActions: Boolean, onAccept: () -> Unit, onDecline: () -> Unit) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -223,7 +226,7 @@ private fun OfferCard(offer: MaterialOffer, busy: Boolean, showActions: Boolean,
                 ItemThumbnail(
                     imageUrl = offer.listingImage,
                     description = offer.listingTitle,
-                    modifier = Modifier.width(88.dp).clip(RoundedCornerShape(10.dp)),
+                    modifier = Modifier.width(88.dp).clip(MaterialTheme.shapes.medium),
                 )
                 Column(modifier = Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(offer.listingTitle, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -284,8 +287,9 @@ private fun OfferChooserDialog(state: OfferChooserState, onPick: (com.homesajja.
                             state.listings.forEach { listing ->
                                 Card(
                                     onClick = { onPick(listing) },
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape = MaterialTheme.shapes.medium,
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
                                     Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.screens.vendor
 
+import androidx.compose.foundation.BorderStroke
 import android.content.ActivityNotFoundException
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -147,7 +148,7 @@ private fun ReportContent(content: ReportUiState.Content, onSelectMonth: (Long) 
 @Composable
 private fun SummaryCard(report: MonthlyReport, loading: Boolean) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -174,8 +175,9 @@ private fun SummaryCard(report: MonthlyReport, loading: Boolean) {
 private fun PaymentRow(item: EarnedItem) {
     val date = remember { SimpleDateFormat("d MMM", Locale.ENGLISH) }
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {

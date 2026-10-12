@@ -1,5 +1,7 @@
 package com.homesajja.app.ui.screens.mylistings
 
+import androidx.compose.foundation.BorderStroke
+import com.homesajja.app.ui.components.PillTabs
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -83,18 +85,14 @@ fun MyListingsScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
         val content = state as? MyListingsUiState.Content
-        TabRow(selectedTabIndex = selectedTab, containerColor = MaterialTheme.colorScheme.background) {
-            Tab(
-                selected = selectedTab == 0,
-                onClick = { selectedTab = 0 },
-                text = { Text("Active${content?.let { " (${it.active.size})" }.orEmpty()}") },
-            )
-            Tab(
-                selected = selectedTab == 1,
-                onClick = { selectedTab = 1 },
-                text = { Text("Sold & closed${content?.let { " (${it.closed.size})" }.orEmpty()}") },
-            )
-        }
+        PillTabs(
+            labels = listOf(
+                "Active${content?.let { " (${it.active.size})" }.orEmpty()}",
+                "Sold & closed${content?.let { " (${it.closed.size})" }.orEmpty()}",
+            ),
+            selectedIndex = selectedTab,
+            onSelect = { selectedTab = it },
+        )
 
         when (val current = state) {
             MyListingsUiState.Loading -> LoadingState()
@@ -175,8 +173,9 @@ private fun MyListingCard(
 
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -185,13 +184,13 @@ private fun MyListingCard(
                 Box(
                     modifier = Modifier
                         .size(88.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
+                        .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium),
                 ) {
                     AsyncImage(
                         model = optimizedImage(listing.images.firstOrNull(), ImageWidth.THUMBNAIL),
                         contentDescription = listing.title,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(88.dp).clip(RoundedCornerShape(12.dp)),
+                        modifier = Modifier.size(88.dp).clip(MaterialTheme.shapes.medium),
                     )
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {

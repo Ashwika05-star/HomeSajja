@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.screens.profile
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.CircularProgressIndicator
@@ -26,6 +27,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
 import com.homesajja.app.ui.components.AppTextField
+import com.homesajja.app.ui.components.AppearanceCard
 import com.homesajja.app.ui.components.CopyableValue
 import com.homesajja.app.ui.components.DeleteAccountSection
 import com.homesajja.app.ui.components.ErrorState
@@ -103,6 +105,7 @@ fun UserProfileScreen(
                 }
                 OutlinedButton(text = "Saved furniture", onClick = onOpenSaved, modifier = Modifier.fillMaxWidth())
                 OutlinedButton(text = "Blocked people", onClick = onOpenBlocked, modifier = Modifier.fillMaxWidth())
+                AppearanceCard()
             }
             ReviewsSection(current.reviews)
             if (current.isOwn) {
@@ -118,8 +121,9 @@ fun UserProfileScreen(
 private fun SummaryCards(state: SummaryState, onRetry: () -> Unit) {
     when (state) {
         SummaryState.Loading -> Card(
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.medium,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
@@ -127,8 +131,9 @@ private fun SummaryCards(state: SummaryState, onRetry: () -> Unit) {
             }
         }
         is SummaryState.Error -> Card(
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.medium,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -146,7 +151,7 @@ private fun SummaryCards(state: SummaryState, onRetry: () -> Unit) {
 @Composable
 private fun EarningsCard(summary: ProfileSummary) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -178,8 +183,9 @@ private fun EarningsCard(summary: ProfileSummary) {
 @Composable
 private fun SustainabilityCard(summary: ProfileSummary) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {

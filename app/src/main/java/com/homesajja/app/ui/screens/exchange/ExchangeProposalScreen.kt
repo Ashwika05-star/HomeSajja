@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.screens.exchange
 
+import androidx.compose.foundation.BorderStroke
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -260,8 +261,9 @@ private fun ReviewStep(viewModel: ExchangeProposalViewModel) {
 private fun FurnitureRow(listing: FurnitureListing, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -269,7 +271,7 @@ private fun FurnitureRow(listing: FurnitureListing, onClick: () -> Unit) {
             ItemThumbnail(
                 imageUrl = listing.images.firstOrNull(),
                 description = listing.title,
-                modifier = Modifier.size(width = 96.dp, height = 72.dp).clip(RoundedCornerShape(12.dp)),
+                modifier = Modifier.size(width = 96.dp, height = 72.dp).clip(MaterialTheme.shapes.medium),
             )
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(listing.title, style = MaterialTheme.typography.titleSmall, maxLines = 2)

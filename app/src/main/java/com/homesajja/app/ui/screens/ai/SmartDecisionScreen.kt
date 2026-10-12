@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.screens.ai
 
+import androidx.compose.foundation.BorderStroke
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -112,7 +113,7 @@ fun SmartDecisionScreen(onBackClick: () -> Unit, onOpenFlow: (Recommendation) ->
                 }
                 is SmartDecisionPhase.Failed -> {
                     Card(
-                        shape = RoundedCornerShape(16.dp),
+                        shape = MaterialTheme.shapes.medium,
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -143,7 +144,7 @@ fun SmartDecisionScreen(onBackClick: () -> Unit, onOpenFlow: (Recommendation) ->
 
 @Composable
 private fun PhotoBox(photo: android.net.Uri?, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = MaterialTheme.shapes.medium
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -168,8 +169,9 @@ private fun PhotoBox(photo: android.net.Uri?, onClick: () -> Unit) {
 @Composable
 private fun SuggestionCard(assessment: FurnitureAssessment, onContinue: () -> Unit) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {

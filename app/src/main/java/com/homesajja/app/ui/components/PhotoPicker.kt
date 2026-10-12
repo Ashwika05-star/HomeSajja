@@ -72,8 +72,8 @@ fun PhotoPicker(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(104.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
-                        .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), RoundedCornerShape(12.dp)),
+                        .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium)
+                        .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), MaterialTheme.shapes.medium),
                 )
                 // Standard 48dp touch target, with a smaller round backdrop drawn inside it.
                 IconButton(onClick = { onRemove(index) }, modifier = Modifier.align(Alignment.TopEnd)) {
@@ -90,7 +90,7 @@ fun PhotoPicker(
             Box(
                 modifier = Modifier
                     .size(104.dp)
-                    .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outline), RoundedCornerShape(12.dp))
+                    .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outline), MaterialTheme.shapes.medium)
                     .clickable(role = Role.Button, onClickLabel = "Add photos") {
                         picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     },

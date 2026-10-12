@@ -101,7 +101,7 @@ fun SavedScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Unit, bottom
 @Composable
 private fun UnavailableCard(item: SavedItem, onRemove: () -> Unit) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier.fillMaxWidth(),
     ) {

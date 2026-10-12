@@ -1,15 +1,18 @@
 package com.homesajja.app.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.IconButton
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -26,6 +29,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.homesajja.app.ui.theme.PriceMedium
 import com.homesajja.app.ui.util.ImageWidth
 import com.homesajja.app.ui.util.optimizedImage
 
@@ -46,18 +50,20 @@ fun FurnitureCard(
     isSaved: Boolean = false,
     onToggleSaved: (() -> Unit)? = null,
     badge: String? = null,
+    eyebrow: String? = null,
 ) {
-    val shape = RoundedCornerShape(16.dp)
-    val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    val elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    val content: @Composable () -> Unit = { FurnitureCardContent(title, price, imageUrl, subtitle, isSaved, onToggleSaved, badge) }
+    val shape = MaterialTheme.shapes.medium
+    val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    val elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    val border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    val content: @Composable () -> Unit = { FurnitureCardContent(title, price, imageUrl, subtitle, isSaved, onToggleSaved, badge, eyebrow) }
 
     if (onClick != null) {
-        Card(onClick = onClick, modifier = modifier, shape = shape, colors = colors, elevation = elevation) {
+        Card(onClick = onClick, modifier = modifier, shape = shape, colors = colors, elevation = elevation, border = border) {
             content()
         }
     } else {
-        Card(modifier = modifier, shape = shape, colors = colors, elevation = elevation) {
+        Card(modifier = modifier, shape = shape, colors = colors, elevation = elevation, border = border) {
             content()
         }
     }
@@ -72,13 +78,14 @@ private fun FurnitureCardContent(
     isSaved: Boolean,
     onToggleSaved: (() -> Unit)?,
     badge: String?,
+    eyebrow: String?,
 ) {
     Column {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(4f / 3f)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center,
         ) {
             if (imageUrl.isNullOrBlank()) {
@@ -113,13 +120,13 @@ private fun FurnitureCardContent(
                 // The button is the standard 48dp touch target; only the round backdrop drawn inside it is smaller.
                 IconButton(onClick = onToggleSaved, modifier = Modifier.align(Alignment.TopEnd)) {
                     Box(
-                        modifier = Modifier.size(34.dp).background(MaterialTheme.colorScheme.background.copy(alpha = 0.85f), CircleShape),
+                        modifier = Modifier.size(34.dp).background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.85f), CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = if (isSaved) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                             contentDescription = if (isSaved) "Remove from saved" else "Save",
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = if (isSaved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(20.dp),
                         )
                     }
@@ -127,6 +134,16 @@ private fun FurnitureCardContent(
             }
         }
         Column(modifier = Modifier.padding(12.dp)) {
+            // A small uppercase line above the title, for example the category.
+            if (eyebrow != null) {
+                Text(
+                    text = eyebrow.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
@@ -135,19 +152,27 @@ private fun FurnitureCardContent(
             )
             Text(
                 text = price,
-                style = MaterialTheme.typography.bodyMedium,
+                style = PriceMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 4.dp),
             )
             if (subtitle != null) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
+                Row(modifier = Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Outlined.LocationOn,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
             }
         }
     }

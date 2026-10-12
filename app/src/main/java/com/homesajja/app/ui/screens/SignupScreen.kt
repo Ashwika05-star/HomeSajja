@@ -73,11 +73,20 @@ fun SignupScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text("I am a...", style = MaterialTheme.typography.titleMedium)
+            val roleColors = SegmentedButtonDefaults.colors(
+                activeContainerColor = MaterialTheme.colorScheme.primary,
+                activeContentColor = MaterialTheme.colorScheme.onPrimary,
+                activeBorderColor = MaterialTheme.colorScheme.primary,
+                inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                inactiveContentColor = MaterialTheme.colorScheme.onSurface,
+                inactiveBorderColor = MaterialTheme.colorScheme.outline,
+            )
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 SegmentedButton(
                     selected = form.role == UserRole.USER,
                     onClick = { viewModel.onRoleChange(UserRole.USER) },
                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                    colors = roleColors,
                 ) {
                     Text("User")
                 }
@@ -85,6 +94,7 @@ fun SignupScreen(
                     selected = form.role == UserRole.VENDOR,
                     onClick = { viewModel.onRoleChange(UserRole.VENDOR) },
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                    colors = roleColors,
                 ) {
                     Text("Vendor")
                 }

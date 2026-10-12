@@ -71,7 +71,7 @@ private fun ComparisonColumn(
     modifier: Modifier = Modifier,
 ) {
     val listingId = item.listingId
-    val shape = RoundedCornerShape(16.dp)
+    val shape = MaterialTheme.shapes.medium
     val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     val elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     val content: @Composable () -> Unit = { ComparisonCardContent(item) }

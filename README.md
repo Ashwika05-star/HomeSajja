@@ -160,6 +160,14 @@ in the request's `cancellation`.
   these are in `firestore.indexes.json` (confirmed payments newest first for purchases, repairs and recycling, and `reviews` by `targetUserId` + `rating`); they take a minute or two to
   build after `firebase deploy --only firestore:indexes`, and until then the dashboard shows its Error state with Try again. The security rules did not change: every query names the signed-in person.
 
+### Appearance: light and dark themes
+
+The app follows the phone's light or dark setting by default. **Profile → Appearance** (users and vendors) lets someone force
+Light or Dark, or go back to System; the choice is remembered on the phone across restarts and is not cleared on sign-out. The
+palettes, type scale and shapes come from the Stitch design systems "Warm Artisanal Living" (light) and "Nocturnal Craft Atelier"
+(dark) and live in `ui/theme` (`Color.kt`, `Type.kt`, `Shape.kt`, `Theme.kt`, `ThemeMode.kt`). The font is Plus Jakarta Sans
+(SIL Open Font License, copy in `docs/licenses`). The UPI QR code always keeps a light background so phones can scan it.
+
 ### Firestore indexes (Explore and Exchange browsing)
 
 Browsing runs one Firestore query per page: `listings` where `city` and `status = ACTIVE` match, plus optionally `category`, `actionType`

@@ -25,6 +25,7 @@ import com.homesajja.app.data.model.VendorBusinessType
 import com.homesajja.app.data.model.VendorProfile
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
+import com.homesajja.app.ui.components.AppearanceCard
 import com.homesajja.app.ui.components.DeleteAccountSection
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.FurnitureCard
@@ -102,6 +103,7 @@ private fun ProfileContent(
             if (content.isOwner && onOpenBlocked != null) {
                 OutlinedButton(text = "Blocked people", onClick = onOpenBlocked, modifier = Modifier.fillMaxWidth())
             }
+            if (content.isOwner) AppearanceCard()
             if (content.isOwner && onAccountDeleted != null) DeleteAccountSection(onDeleted = onAccountDeleted)
 
             Section("About") {
@@ -116,7 +118,7 @@ private fun ProfileContent(
                 val lat = vendor.shopLatitude
                 val lng = vendor.shopLongitude
                 if (lat != null && lng != null) {
-                    ShopMap(lat, lng, Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(16.dp)))
+                    ShopMap(lat, lng, Modifier.fillMaxWidth().height(200.dp).clip(MaterialTheme.shapes.medium))
                 } else {
                     Text(
                         "Shop location not added yet.",

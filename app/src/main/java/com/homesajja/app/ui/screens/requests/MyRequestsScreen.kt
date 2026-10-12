@@ -1,5 +1,7 @@
 package com.homesajja.app.ui.screens.requests
 
+import androidx.compose.foundation.BorderStroke
+import com.homesajja.app.ui.components.PillTabs
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -94,18 +96,14 @@ fun MyRequestsScreen(
     Column(modifier = modifier.fillMaxSize()) {
         val content = state as? MyRequestsUiState.Content
         if (!receivedOnly) {
-            TabRow(selectedTabIndex = selectedTab, containerColor = MaterialTheme.colorScheme.background) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { chosenTab = 0 },
-                    text = { Text("Sent${content?.let { " (${it.sent.size})" }.orEmpty()}") },
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { chosenTab = 1 },
-                    text = { Text("Received${content?.let { " (${it.received.size})" }.orEmpty()}") },
-                )
-            }
+            PillTabs(
+                labels = listOf(
+                    "Sent${content?.let { " (${it.sent.size})" }.orEmpty()}",
+                    "Received${content?.let { " (${it.received.size})" }.orEmpty()}",
+                ),
+                selectedIndex = selectedTab,
+                onSelect = { chosenTab = it },
+            )
         }
 
         when (val current = state) {
@@ -168,8 +166,9 @@ private fun RequestCard(
     var askCancel by remember { mutableStateOf(false) }
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {

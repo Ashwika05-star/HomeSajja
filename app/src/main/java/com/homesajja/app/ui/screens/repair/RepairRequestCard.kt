@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.screens.repair
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,8 +32,9 @@ fun RepairRequestCard(
 ) {
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -40,7 +42,7 @@ fun RepairRequestCard(
             ItemThumbnail(
                 imageUrl = request.images.firstOrNull(),
                 description = request.furnitureTitle,
-                modifier = Modifier.width(104.dp).clip(RoundedCornerShape(12.dp)),
+                modifier = Modifier.width(104.dp).clip(MaterialTheme.shapes.medium),
             )
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(

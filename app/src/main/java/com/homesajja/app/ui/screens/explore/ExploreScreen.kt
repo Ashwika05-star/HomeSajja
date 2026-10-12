@@ -1,6 +1,7 @@
 package com.homesajja.app.ui.screens.explore
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -31,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -44,6 +46,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -60,6 +64,8 @@ import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.FurnitureCard
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.NoResultsState
+import com.homesajja.app.ui.components.SegmentedControl
+import com.homesajja.app.ui.components.appTextFieldColors
 import com.homesajja.app.ui.util.priceLabel
 import com.homesajja.app.viewmodel.BrowseUiState
 import com.homesajja.app.viewmodel.ExploreViewModel
@@ -129,6 +135,7 @@ fun ListingBrowser(
                 is BrowseUiState.Content -> ExploreContent(
                     content = current,
                     city = viewModel.city,
+                    sectionTitle = if (showSellerTypeFilter && viewModel.city.isNotBlank()) "Furniture in ${viewModel.city}" else null,
                     hasActiveNarrowing = viewModel.hasActiveNarrowing,
                     isRefreshing = viewModel.isRefreshing,
                     onRefresh = viewModel::refresh,
@@ -167,7 +174,8 @@ private fun SearchBar(
     onFiltersClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         OutlinedTextField(
@@ -184,11 +192,20 @@ private fun SearchBar(
                 }
             },
             singleLine = true,
-            shape = RoundedCornerShape(14.dp),
+            shape = MaterialTheme.shapes.medium,
+            colors = appTextFieldColors(),
         )
-        IconButton(onClick = onFiltersClick) {
-            BadgedBox(badge = { if (filtersActive) Badge() }) {
-                Icon(Icons.Filled.FilterList, contentDescription = "Filters")
+        // The filter button is a 48dp tile; a dot on it shows that filters are on.
+        Surface(
+            onClick = onFiltersClick,
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            modifier = Modifier.size(56.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                BadgedBox(badge = { if (filtersActive) Badge() }) {
+                    Icon(Icons.Filled.FilterList, contentDescription = "Filters")
+                }
             }
         }
     }
@@ -215,16 +232,13 @@ private fun CategoryRow(selected: FurnitureCategory?, onSelect: (FurnitureCatego
 /** All / Individual / Vendor: whose listings to show. Combines with search, category and the filter sheet. */
 @Composable
 private fun SellerTypeRow(selected: SellerType?, onSelect: (SellerType?) -> Unit) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(bottom = 8.dp),
-    ) {
-        item { CategoryChip(label = "All sellers", selected = selected == null, onClick = { onSelect(null) }) }
-        items(SellerType.entries) { type ->
-            CategoryChip(label = type.displayName, selected = selected == type, onClick = { onSelect(type) })
-        }
-    }
+    SegmentedControl(
+        options = listOf<SellerType?>(null) + SellerType.entries,
+        selected = selected,
+        label = { it?.displayName ?: "All sellers" },
+        onSelect = onSelect,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -232,6 +246,7 @@ private fun SellerTypeRow(selected: SellerType?, onSelect: (SellerType?) -> Unit
 private fun ExploreContent(
     content: BrowseUiState.Content,
     city: String,
+    sectionTitle: String?,
     hasActiveNarrowing: Boolean,
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
@@ -304,6 +319,15 @@ private fun ExploreContent(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
+            if (sectionTitle != null) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        sectionTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                }
+            }
             items(content.listings, key = { it.id }) { listing ->
                 val mine = isMine(listing)
                 FurnitureCard(
@@ -311,6 +335,7 @@ private fun ExploreContent(
                     price = listing.priceLabel(),
                     imageUrl = listing.images.firstOrNull(),
                     subtitle = cardSubtitle(listing),
+                    eyebrow = listing.category.displayName,
                     onClick = { onListingClick(listing) },
                     // Nobody saves their own item; it carries a badge instead.
                     isSaved = listing.id in savedIds,

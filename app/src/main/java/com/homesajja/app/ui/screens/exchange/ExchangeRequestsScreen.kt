@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.screens.exchange
 
+import com.homesajja.app.ui.components.PillTabs
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -54,18 +55,14 @@ fun ExchangeRequestsScreen(
     Column(modifier = modifier.fillMaxSize()) {
         val content = state as? ExchangeRequestsUiState.Content
         if (!incomingOnly) {
-            TabRow(selectedTabIndex = selectedTab, containerColor = MaterialTheme.colorScheme.background) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { chosenTab = 0 },
-                    text = { Text("Incoming${content?.let { " (${it.incoming.size})" }.orEmpty()}") },
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { chosenTab = 1 },
-                    text = { Text("Outgoing${content?.let { " (${it.outgoing.size})" }.orEmpty()}") },
-                )
-            }
+            PillTabs(
+                labels = listOf(
+                    "Incoming${content?.let { " (${it.incoming.size})" }.orEmpty()}",
+                    "Outgoing${content?.let { " (${it.outgoing.size})" }.orEmpty()}",
+                ),
+                selectedIndex = selectedTab,
+                onSelect = { chosenTab = it },
+            )
         }
 
         when (val current = state) {

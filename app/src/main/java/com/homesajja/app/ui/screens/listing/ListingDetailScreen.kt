@@ -1,6 +1,7 @@
 package com.homesajja.app.ui.screens.listing
 
 import android.content.Intent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -75,6 +75,7 @@ import com.homesajja.app.ui.components.StatusBadge
 import com.homesajja.app.ui.components.TrustMenu
 import com.homesajja.app.ui.components.VerifiedBadge
 import com.homesajja.app.data.model.RatingSummary
+import com.homesajja.app.ui.theme.PriceLarge
 import com.homesajja.app.ui.util.displayText
 import com.homesajja.app.ui.util.formatAge
 import com.homesajja.app.ui.util.formatPrice
@@ -165,10 +166,10 @@ private fun DetailContent(
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     listing.priceLabel(),
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = PriceLarge,
                     color = MaterialTheme.colorScheme.primary,
                 )
-                Text(listing.title, style = MaterialTheme.typography.titleLarge)
+                Text(listing.title, style = MaterialTheme.typography.headlineSmall)
                 Text(
                     listing.city,
                     style = MaterialTheme.typography.bodyMedium,
@@ -231,8 +232,9 @@ private fun DetailsTable(listing: FurnitureListing) {
             ?.let { "Est. value" to formatPrice(it) },
     )
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
             rows.forEachIndexed { index, (label, value) ->
@@ -260,8 +262,9 @@ private fun SellerCard(
     onOpenSeller: (() -> Unit)?,
 ) {
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth().then(if (onOpenSeller != null) Modifier.clickable(onClick = onOpenSeller) else Modifier),
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -292,8 +295,9 @@ private fun SellerCard(
 @Composable
 private fun MyRequestCard(request: PurchaseRequest) {
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -306,7 +310,7 @@ private fun MyRequestCard(request: PurchaseRequest) {
 @Composable
 private fun OwnerNotice() {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -330,7 +334,9 @@ private fun OwnerActionBar(
     var confirmDelete by remember { mutableStateOf(false) }
     val enabled = !content.isBusy
 
-    Surface(color = MaterialTheme.colorScheme.background, shadowElevation = 8.dp) {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Column(
             modifier = Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -344,6 +350,7 @@ private fun OwnerActionBar(
             TextButton(onClick = { confirmDelete = true }, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
                 Text("Delete listing", color = MaterialTheme.colorScheme.error)
             }
+        }
         }
     }
 
@@ -375,7 +382,9 @@ private fun ActionBar(
     var showOfferDialog by remember { mutableStateOf(false) }
     val enabled = !content.isBusy
 
-    Surface(color = MaterialTheme.colorScheme.background, shadowElevation = 8.dp) {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Column(
             modifier = Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -420,6 +429,7 @@ private fun ActionBar(
                     context.startActivity(Intent.createChooser(send, "Share listing"))
                 }
             }
+        }
         }
     }
 

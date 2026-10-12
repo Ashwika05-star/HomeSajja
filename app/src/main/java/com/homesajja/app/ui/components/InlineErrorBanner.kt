@@ -29,7 +29,7 @@ fun InlineErrorBanner(message: String, modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .semantics { liveRegion = LiveRegionMode.Polite } // screen readers announce it when it appears
-            .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.errorContainer, MaterialTheme.shapes.medium)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

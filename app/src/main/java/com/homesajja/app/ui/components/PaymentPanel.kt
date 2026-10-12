@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -79,7 +80,7 @@ fun UpiQrCode(content: String, description: String, modifier: Modifier = Modifie
     Box(
         modifier = modifier
             .size(size)
-            .background(Color.White, RoundedCornerShape(12.dp))
+            .background(Color.White, MaterialTheme.shapes.medium)
             .padding(14.dp)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
@@ -162,8 +163,9 @@ fun PaymentPanel(
     val methodText = payment.method?.let { if (it == PaymentMethod.CASH) cashLabel.lowercase() else "UPI" }.orEmpty()
 
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier.fillMaxWidth(),
     ) {

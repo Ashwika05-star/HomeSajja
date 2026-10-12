@@ -246,7 +246,7 @@ private fun PreviewStep(form: SellForm) {
                 is SellPhoto.Local -> it.uri
             }
         },
-        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp)),
+        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium),
     )
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
@@ -272,8 +272,9 @@ private fun PreviewStep(form: SellForm) {
         dimensions.displayText()?.let { "Dimensions" to it },
     )
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
             rows.forEachIndexed { index, (label, value) ->

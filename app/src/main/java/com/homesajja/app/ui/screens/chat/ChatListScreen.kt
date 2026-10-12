@@ -125,7 +125,7 @@ private fun ChatRow(chat: Chat, myId: String, onClick: () -> Unit) {
         ItemThumbnail(
             imageUrl = chat.contextImage,
             description = chat.contextTitle,
-            modifier = Modifier.size(width = 72.dp, height = 54.dp).clip(RoundedCornerShape(10.dp)),
+            modifier = Modifier.size(width = 72.dp, height = 54.dp).clip(MaterialTheme.shapes.medium),
         )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(

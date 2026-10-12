@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.screens
 
+import com.homesajja.app.ui.components.PillTabs
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -32,11 +33,11 @@ fun ServicesScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        TabRow(selectedTabIndex = section.ordinal, containerColor = MaterialTheme.colorScheme.background) {
-            ServicesSection.entries.forEach { entry ->
-                Tab(selected = section == entry, onClick = { onSectionChange(entry) }, text = { Text(entry.label) })
-            }
-        }
+        PillTabs(
+            labels = ServicesSection.entries.map { it.label },
+            selectedIndex = section.ordinal,
+            onSelect = { onSectionChange(ServicesSection.entries[it]) },
+        )
         when (section) {
             ServicesSection.REPAIR -> MyRepairsScreen(onOpenRequest = onOpenRepair, onRequestRepair = onRequestRepair)
             ServicesSection.RECYCLE -> MyRecyclingScreen(onOpenRequest = onOpenRecycling, onRecycle = onRecycle)

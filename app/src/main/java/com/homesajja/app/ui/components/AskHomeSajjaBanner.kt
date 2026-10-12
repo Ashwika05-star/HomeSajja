@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 fun AskHomeSajjaBanner(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         modifier = modifier.fillMaxWidth(),
     ) {

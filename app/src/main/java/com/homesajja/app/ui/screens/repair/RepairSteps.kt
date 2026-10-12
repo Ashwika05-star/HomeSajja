@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.screens.repair
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -101,9 +102,9 @@ private fun FurnitureStep(viewModel: RepairRequestViewModel) {
 
     Card(
         onClick = viewModel::chooseNotListed,
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = if (form.notListed) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        border = if (form.notListed) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -137,16 +138,16 @@ private fun FurnitureStep(viewModel: RepairRequestViewModel) {
 private fun ListingChoice(listing: FurnitureListing, selected: Boolean, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = if (selected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        border = if (selected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             ItemThumbnail(
                 imageUrl = listing.images.firstOrNull(),
                 description = listing.title,
-                modifier = Modifier.width(88.dp).clip(RoundedCornerShape(10.dp)),
+                modifier = Modifier.width(88.dp).clip(MaterialTheme.shapes.medium),
             )
             Column(modifier = Modifier.padding(start = 12.dp)) {
                 Text(listing.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -175,8 +176,9 @@ private fun ProblemStep(form: RepairForm, onSelect: (RepairProblemType) -> Unit)
 private fun LocationStep(form: RepairForm) {
     StepTitle("Confirm your location", "We'll look for repair providers in your city.")
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -145,7 +145,7 @@ fun CancellationCard(
     showMoney: Boolean = true,
 ) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
         modifier = modifier.fillMaxWidth(),
     ) {

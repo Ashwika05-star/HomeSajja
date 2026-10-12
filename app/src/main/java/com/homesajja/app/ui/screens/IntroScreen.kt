@@ -89,7 +89,7 @@ fun IntroScreen(
         if (onLast) {
             OutlinedButton(text = "Sign In", onClick = onSignIn, modifier = Modifier.fillMaxWidth())
         } else {
-            Spacer(Modifier.height(52.dp))
+            Spacer(Modifier.height(48.dp))
         }
         if (onPreviewComponentsClick != null && onLast) {
             TextButton(onClick = onPreviewComponentsClick, modifier = Modifier.align(Alignment.CenterHorizontally)) {

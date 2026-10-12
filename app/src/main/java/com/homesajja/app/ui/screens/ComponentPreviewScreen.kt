@@ -130,7 +130,7 @@ fun ComponentPreviewScreen() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(160.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp)),
+                        .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium),
                 ) {
                     LoadingState()
                 }
@@ -141,7 +141,7 @@ fun ComponentPreviewScreen() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(260.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp)),
+                        .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium),
                 ) {
                     EmptyState(
                         icon = Icons.Filled.Inventory2,
@@ -158,7 +158,7 @@ fun ComponentPreviewScreen() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(260.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp)),
+                        .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium),
                 ) {
                     ErrorState(
                         icon = Icons.Filled.ErrorOutline,
@@ -173,7 +173,7 @@ fun ComponentPreviewScreen() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(260.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp)),
+                        .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium),
                 ) {
                     NoResultsState(icon = Icons.Filled.SearchOff)
                 }

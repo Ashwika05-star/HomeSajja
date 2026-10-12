@@ -1,5 +1,7 @@
 package com.homesajja.app.ui.screens.vendor
 
+import androidx.compose.foundation.BorderStroke
+import com.homesajja.app.ui.components.PillTabs
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,15 +80,11 @@ fun VendorRequestsScreen(
             val sections = current.sections
             val section = RequestSection.entries[selected].takeIf { it in sections } ?: sections.first()
             Column(modifier = modifier.fillMaxSize()) {
-                ScrollableTabRow(
-                    selectedTabIndex = sections.indexOf(section),
-                    edgePadding = 8.dp,
-                    containerColor = MaterialTheme.colorScheme.background,
-                ) {
-                    sections.forEach { entry ->
-                        Tab(selected = entry == section, onClick = { selected = entry.ordinal }, text = { Text(entry.label) })
-                    }
-                }
+                PillTabs(
+                    labels = sections.map { it.label },
+                    selectedIndex = sections.indexOf(section),
+                    onSelect = { selected = sections[it].ordinal },
+                )
                 when (section) {
                     RequestSection.PURCHASES -> MyRequestsScreen(snackbarHostState, onOpenListing, receivedOnly = true)
                     RequestSection.EXCHANGES -> ExchangeRequestsScreen(onOpenExchange, onNewExchange = {}, incomingOnly = true)
@@ -175,8 +173,9 @@ private fun OpenPickups(snackbarHostState: SnackbarHostState) {
 @Composable
 private fun PickupCard(request: RecyclingRequest, busy: Boolean, onClaim: () -> Unit, onClaimWithQuote: () -> Unit) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {

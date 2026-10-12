@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.homesajja.app.di.AppContainer
 import com.homesajja.app.ui.components.BottomTabBar
+import com.homesajja.app.ui.theme.LocalDarkTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
@@ -84,14 +85,12 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
         }
     }
 
-    // Nearly every screen has the dark maroon top bar, so the status bar shows light icons; the splash and intro screens are
-    // light all the way up, so they get dark icons.
+    // Every screen's top bar sits on the page colour, so the status bar icons are dark on the light theme and light on the dark one.
     val view = LocalView.current
-    LaunchedEffect(currentEntry) {
-        val route = currentEntry?.destination?.route
-        val lightBackground = route == Routes.Splash.route || route == Routes.Welcome.route
+    val darkTheme = LocalDarkTheme.current
+    LaunchedEffect(currentEntry, darkTheme) {
         val window = (view.context as? android.app.Activity)?.window ?: return@LaunchedEffect
-        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = lightBackground
+        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
     }
 
     NavHost(navController = navController, startDestination = Routes.Splash.route) {

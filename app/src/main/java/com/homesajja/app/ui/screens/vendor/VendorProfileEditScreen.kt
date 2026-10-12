@@ -146,7 +146,7 @@ private fun EditForm(viewModel: VendorProfileEditViewModel) {
             longitude = viewModel.pinLongitude,
             hasPin = form.latitude != null,
             onCenterChanged = viewModel::onPinMoved,
-            modifier = Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(16.dp)),
+            modifier = Modifier.fillMaxWidth().height(260.dp).clip(MaterialTheme.shapes.medium),
         )
         OutlinedButton(text = "Set location to the pin", onClick = viewModel::setLocationToPin, modifier = Modifier.fillMaxWidth())
         Text(
