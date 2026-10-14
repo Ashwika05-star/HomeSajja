@@ -9,12 +9,14 @@ import com.homesajja.app.data.model.FurnitureCategory
 import com.homesajja.app.data.model.FurnitureListing
 import com.homesajja.app.data.model.ListingActionType
 import com.homesajja.app.data.model.ListingFilters
+import com.homesajja.app.data.model.ListingStatus
 import com.homesajja.app.data.model.SellerType
 import com.homesajja.app.data.model.visibleBrowseListings
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.FavouriteRepository
 import com.homesajja.app.repository.ListingRepository
 import com.homesajja.app.repository.UserRepository
+import com.homesajja.app.repository.VendorRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -61,6 +63,7 @@ abstract class ListingBrowseViewModel(
     favouriteRepository: FavouriteRepository,
     private val actionType: ListingActionType,
     private val includeOwnListings: Boolean = false,
+    private val vendorRepository: VendorRepository? = null,
 ) : ViewModel() {
 
     private val saved = SavedIds(authRepository, favouriteRepository, viewModelScope)
@@ -178,11 +181,20 @@ abstract class ListingBrowseViewModel(
         job = viewModelScope.launch {
             try {
                 if (city.isBlank()) {
-                    city = myId?.let { userRepository.getUserProfile(it)?.city }.orEmpty()
+                    city = myId?.let {
+                        userRepository.getUserProfile(it)?.city ?: vendorRepository?.getVendorProfile(it)?.city
+                    }.orEmpty()
                 }
                 if (city.isBlank()) {
                     _uiState.value = BrowseUiState.Error("We couldn't find your city. Please log in again.")
                 } else {
+                    if (includeOwnListings && myId != null) {
+                        val own = listingRepository.getListingsByOwner(myId).filter {
+                            it.status == ListingStatus.ACTIVE && it.actionType == actionType &&
+                                (it.city.isBlank() || it.city.equals(city, ignoreCase = true))
+                        }
+                        fetched = (own + fetched).distinctBy { it.id }
+                    }
                     fetchUntil(PAGE_SIZE)
                     publish()
                 }
@@ -225,8 +237,15 @@ abstract class ListingBrowseViewModel(
         }
     }
 
-    private fun visible(): List<FurnitureListing> =
-        visibleBrowseListings(fetched, myId, includeOwnListings, sellerType, filters, query)
+    private fun visible(): List<FurnitureListing> {
+        val list = visibleBrowseListings(fetched, myId, includeOwnListings, sellerType, filters, query)
+        return if (includeOwnListings && myId != null) {
+            val (mine, others) = list.partition { it.ownerId == myId }
+            mine + others
+        } else {
+            list
+        }
+    }
 
     private fun publish() {
         _uiState.value = BrowseUiState.Content(listings = visible(), endReached = endReached)

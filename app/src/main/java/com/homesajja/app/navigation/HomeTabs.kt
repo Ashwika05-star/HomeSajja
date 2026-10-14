@@ -26,7 +26,7 @@ enum class VendorTab(val label: String, val icon: ImageVector) {
     DASHBOARD("Dashboard", Icons.Filled.Dashboard),
     LISTINGS("Listings", Icons.Filled.Sell),
     REQUESTS("Requests", Icons.AutoMirrored.Filled.ReceiptLong),
-    MATERIALS("Materials", Icons.Filled.Inventory2),
+    EXPLORE("Explore", Icons.Filled.Explore),
     PROFILE("Profile", Icons.Filled.Person),
 }
 

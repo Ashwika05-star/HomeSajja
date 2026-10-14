@@ -87,6 +87,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
             ExploreViewModel::class.java -> ExploreViewModel(
                 container.authRepository,
                 container.userRepository,
+                container.vendorRepository,
                 container.listingRepository,
                 container.favouriteRepository,
             )

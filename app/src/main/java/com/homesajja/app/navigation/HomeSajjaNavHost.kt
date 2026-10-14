@@ -42,8 +42,6 @@ import com.homesajja.app.ui.screens.chat.NotificationsScreen
 import com.homesajja.app.ui.screens.exchange.ExchangeDetailScreen
 import com.homesajja.app.ui.screens.exchange.ExchangeProposalScreen
 import com.homesajja.app.ui.screens.listing.ListingDetailScreen
-import com.homesajja.app.ui.screens.material.MaterialRequestDetailScreen
-import com.homesajja.app.ui.screens.material.MaterialRequestFormScreen
 import com.homesajja.app.ui.screens.vendor.VendorProfileEditScreen
 import com.homesajja.app.ui.screens.vendor.VendorReportScreen
 import com.homesajja.app.ui.screens.vendor.VendorPublicProfileScreen
@@ -152,7 +150,6 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onOpenRepair = { navController.navigate(Routes.RepairDetail.createRoute(it)) },
                 onRecycle = { navController.navigate(Routes.RecycleNew.route) },
                 onOpenRecycling = { navController.navigate(Routes.RecycleDetail.createRoute(it)) },
-                onOpenMaterial = { navController.navigate(Routes.MaterialDetail.createRoute(it)) },
                 onOpenChats = { navController.navigate(Routes.ChatList.route) },
                 onOpenNotifications = { navController.navigate(Routes.Notifications.route) },
                 onOpenSajja = { navController.navigate(Routes.SajjaChat.route) },
@@ -284,8 +281,6 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onOpenExchange = { navController.navigate(Routes.ExchangeDetail.createRoute(it)) },
                 onOpenRepair = { navController.navigate(Routes.RepairDetail.createRoute(it)) },
                 onOpenRecycling = { navController.navigate(Routes.RecycleDetail.createRoute(it)) },
-                onNewMaterialRequest = { navController.navigate(Routes.MaterialForm.createRoute()) },
-                onOpenMaterialRequest = { navController.navigate(Routes.MaterialDetail.createRoute(it)) },
                 onEditProfile = { navController.navigate(Routes.VendorProfileEdit.route) },
                 onOpenReports = { navController.navigate(Routes.VendorReport.route) },
                 onOpenChats = { navController.navigate(Routes.ChatList.route) },
@@ -418,31 +413,6 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                     modifier = Modifier.padding(padding),
                 )
             }
-        }
-        composable(
-            route = Routes.MaterialForm.route,
-            arguments = listOf(
-                navArgument("requestId") {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                },
-            ),
-        ) {
-            MaterialRequestFormScreen(
-                onExit = { navController.popBackStack() },
-                onSaved = { navController.popBackStack() },
-            )
-        }
-        composable(
-            route = Routes.MaterialDetail.route,
-            arguments = listOf(navArgument("requestId") { type = NavType.StringType }),
-        ) {
-            MaterialRequestDetailScreen(
-                onBackClick = { navController.popBackStack() },
-                onEdit = { navController.navigate(Routes.MaterialForm.createRoute(it)) },
-                onOpenVendor = { navController.navigate(Routes.VendorProfile.createRoute(it)) },
-            )
         }
 
         if (BuildConfig.DEBUG) {

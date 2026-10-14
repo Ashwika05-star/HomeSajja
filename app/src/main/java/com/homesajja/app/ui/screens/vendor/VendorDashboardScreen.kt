@@ -13,7 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
@@ -114,7 +114,7 @@ private fun DashboardContent(
         Text("Go to", style = MaterialTheme.typography.titleMedium)
         Shortcut(Icons.Filled.Sell, "My listings", "${data.activeListings} on sale now") { onOpenTab(VendorTab.LISTINGS) }
         Shortcut(Icons.AutoMirrored.Filled.ReceiptLong, "Incoming requests", pendingText(summary.tasks.pending)) { onOpenTab(VendorTab.REQUESTS) }
-        Shortcut(Icons.Filled.Inventory2, "Material requests", "Ask people for wood, fabric and more") { onOpenTab(VendorTab.MATERIALS) }
+        Shortcut(Icons.Filled.Explore, "Explore marketplace", "Browse all furniture listings in your city") { onOpenTab(VendorTab.EXPLORE) }
         Shortcut(Icons.Filled.Assessment, "Monthly report", "Export a month as PDF or CSV", onOpenReports)
 
         if (data.profileIncomplete) {

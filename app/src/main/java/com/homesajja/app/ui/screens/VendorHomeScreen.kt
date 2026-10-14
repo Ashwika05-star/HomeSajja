@@ -39,14 +39,14 @@ import com.homesajja.app.ui.components.BottomTabBar
 import com.homesajja.app.ui.components.InboxActions
 import com.homesajja.app.ui.components.RequestNotificationPermission
 import com.homesajja.app.ui.components.ThemeToggleButton
-import com.homesajja.app.ui.screens.material.VendorMaterialsScreen
+import com.homesajja.app.ui.screens.explore.ExploreScreen
 import com.homesajja.app.ui.screens.mylistings.MyListingsScreen
 import com.homesajja.app.ui.screens.vendor.VendorDashboardScreen
 import com.homesajja.app.ui.screens.vendor.VendorPublicProfileScreen
 import com.homesajja.app.ui.screens.vendor.VendorRequestsScreen
 import com.homesajja.app.viewmodel.HomeViewModel
 
-/** The vendor's space: dashboard, listing management, incoming requests, material requests and shop profile. */
+/** The vendor's space: dashboard, listing management, incoming requests, marketplace explore and shop profile. */
 @Composable
 fun VendorHomeScreen(
     onOpenListing: (String) -> Unit,
@@ -55,8 +55,6 @@ fun VendorHomeScreen(
     onOpenExchange: (String) -> Unit,
     onOpenRepair: (String) -> Unit,
     onOpenRecycling: (String) -> Unit,
-    onNewMaterialRequest: () -> Unit,
-    onOpenMaterialRequest: (String) -> Unit,
     onEditProfile: () -> Unit,
     onOpenReports: () -> Unit,
     onOpenChats: () -> Unit,
@@ -94,8 +92,7 @@ fun VendorHomeScreen(
         },
         floatingActionButton = {
             when (selectedTab) {
-                VendorTab.LISTINGS -> AddFab("Add listing", "Add a listing", onAddListing)
-                VendorTab.MATERIALS -> AddFab("New request", "Post a material request", onNewMaterialRequest)
+                VendorTab.LISTINGS, VendorTab.EXPLORE -> AddFab("Add listing", "Add a listing", onAddListing)
                 else -> Unit
             }
         },
@@ -127,9 +124,9 @@ fun VendorHomeScreen(
                 onOpenRecycling = onOpenRecycling,
                 modifier = contentModifier,
             )
-            VendorTab.MATERIALS -> VendorMaterialsScreen(
-                onOpenRequest = onOpenMaterialRequest,
-                onNewRequest = onNewMaterialRequest,
+            VendorTab.EXPLORE -> ExploreScreen(
+                onOpenListing = onOpenListing,
+                onSell = onAddListing,
                 modifier = contentModifier,
             )
             VendorTab.PROFILE -> VendorPublicProfileScreen(
