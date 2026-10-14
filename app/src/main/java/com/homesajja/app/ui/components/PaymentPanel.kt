@@ -164,9 +164,9 @@ fun PaymentPanel(
 
     Card(
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -317,15 +317,13 @@ private fun MarkPaidDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("$payeeName will be asked to confirm they received it.")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PaymentMethod.entries.forEach { option ->
-                        FilterChip(
-                            selected = method == option,
-                            onClick = { method = option },
-                            label = { Text(if (option == PaymentMethod.CASH) cashLabel else option.displayName) },
-                        )
-                    }
-                }
+                SegmentedControl(
+                    options = PaymentMethod.entries,
+                    selected = method,
+                    label = { if (it == PaymentMethod.CASH) cashLabel else it.displayName },
+                    onSelect = { method = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 if (method == PaymentMethod.UPI) {
                     AppTextField(
                         value = reference,

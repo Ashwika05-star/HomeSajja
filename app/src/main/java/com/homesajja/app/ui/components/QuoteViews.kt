@@ -31,6 +31,7 @@ import com.homesajja.app.payment.MAX_QUOTE_NOTE_LENGTH
 import com.homesajja.app.payment.QuoteForm
 import com.homesajja.app.payment.UpiPayment
 import com.homesajja.app.payment.quoteError
+import com.homesajja.app.ui.theme.PriceLarge
 import com.homesajja.app.ui.util.formatPrice
 
 /**
@@ -41,9 +42,9 @@ import com.homesajja.app.ui.util.formatPrice
 fun QuoteCard(quote: Quote, repair: Boolean, agreedAmount: Long?, modifier: Modifier = Modifier) {
     Card(
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -59,7 +60,7 @@ fun QuoteCard(quote: Quote, repair: Boolean, agreedAmount: Long?, modifier: Modi
                 )
                 if (agreedAmount != null) StatusBadge(status = "Agreed")
             }
-            Text(formatPrice(agreedAmount ?: quote.amount), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+            Text(formatPrice(agreedAmount ?: quote.amount), style = PriceLarge, color = MaterialTheme.colorScheme.primary)
             if (repair && quote.estimatedDays != null) {
                 Text("About ${quote.estimatedDays} day${if (quote.estimatedDays == 1) "" else "s"}", style = MaterialTheme.typography.bodyMedium)
             }
@@ -128,18 +129,13 @@ fun QuoteDialog(
                     )
                 } else {
                     Text("Who pays?", style = MaterialTheme.typography.labelLarge)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
-                            selected = form.direction == PayDirection.USER_PAYS_VENDOR,
-                            onClick = { form = form.copy(direction = PayDirection.USER_PAYS_VENDOR); error = null },
-                            label = { Text("Customer pays me") },
-                        )
-                        FilterChip(
-                            selected = form.direction == PayDirection.VENDOR_PAYS_USER,
-                            onClick = { form = form.copy(direction = PayDirection.VENDOR_PAYS_USER); error = null },
-                            label = { Text("I pay the customer") },
-                        )
-                    }
+                    SegmentedControl(
+                        options = listOf(PayDirection.USER_PAYS_VENDOR, PayDirection.VENDOR_PAYS_USER),
+                        selected = form.direction ?: PayDirection.USER_PAYS_VENDOR,
+                        label = { if (it == PayDirection.USER_PAYS_VENDOR) "Customer pays me" else "I pay customer" },
+                        onSelect = { form = form.copy(direction = it); error = null },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
                 AppTextField(
                     value = form.note,

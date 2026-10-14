@@ -43,3 +43,6 @@ node_modules/
 # Release signing (never commit these)
 keystore.properties
 release/
+
+# Local environment secrets
+.env

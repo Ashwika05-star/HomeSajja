@@ -95,6 +95,7 @@ fun ComponentPreviewScreen() {
                 FurnitureCard(
                     title = "Teakwood Dining Table",
                     price = "₹8,500",
+                    eyebrow = "Dining Tables",
                     subtitle = "Mumbai · Good",
                     modifier = Modifier.width(180.dp),
                 )

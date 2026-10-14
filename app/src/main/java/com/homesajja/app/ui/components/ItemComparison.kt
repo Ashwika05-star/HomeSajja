@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +27,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.homesajja.app.ui.theme.PriceMedium
 import com.homesajja.app.ui.util.ImageWidth
 import com.homesajja.app.ui.util.optimizedImage
 
@@ -72,18 +74,19 @@ private fun ComparisonColumn(
 ) {
     val listingId = item.listingId
     val shape = MaterialTheme.shapes.medium
-    val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    val elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    val border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    val elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     val content: @Composable () -> Unit = { ComparisonCardContent(item) }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (onItemClick != null && listingId != null) {
-            Card(onClick = { onItemClick(listingId) }, shape = shape, colors = colors, elevation = elevation, modifier = Modifier.fillMaxWidth()) {
+            Card(onClick = { onItemClick(listingId) }, shape = shape, colors = colors, border = border, elevation = elevation, modifier = Modifier.fillMaxWidth()) {
                 content()
             }
         } else {
-            Card(shape = shape, colors = colors, elevation = elevation, modifier = Modifier.fillMaxWidth()) {
+            Card(shape = shape, colors = colors, border = border, elevation = elevation, modifier = Modifier.fillMaxWidth()) {
                 content()
             }
         }
@@ -97,7 +100,7 @@ private fun ComparisonCardContent(item: ComparisonItem) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(item.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
             item.priceLabel?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                Text(it, style = PriceMedium, color = MaterialTheme.colorScheme.primary)
             }
             item.facts.forEach { (name, value) ->
                 Column {

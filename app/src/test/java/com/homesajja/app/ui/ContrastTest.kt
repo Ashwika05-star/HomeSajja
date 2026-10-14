@@ -1,29 +1,48 @@
 package com.homesajja.app.ui
 
 import androidx.compose.ui.graphics.Color
-import com.homesajja.app.ui.theme.CabernetPrimary
-import com.homesajja.app.ui.theme.CabernetPrimaryContainer
-import com.homesajja.app.ui.theme.ErrorContainer
-import com.homesajja.app.ui.theme.ErrorRed
-import com.homesajja.app.ui.theme.OnCabernetPrimary
-import com.homesajja.app.ui.theme.OnCabernetPrimaryContainer
-import com.homesajja.app.ui.theme.OnErrorContainer
-import com.homesajja.app.ui.theme.OnPearlBackground
-import com.homesajja.app.ui.theme.OnPearlSurface
-import com.homesajja.app.ui.theme.OnPearlSurfaceVariant
-import com.homesajja.app.ui.theme.OnPoignantPinkSecondaryContainer
-import com.homesajja.app.ui.theme.OnSuccessContainer
-import com.homesajja.app.ui.theme.OutlineNeutral
-import com.homesajja.app.ui.theme.PearlBackground
-import com.homesajja.app.ui.theme.PearlSurface
-import com.homesajja.app.ui.theme.PearlSurfaceVariant
-import com.homesajja.app.ui.theme.PoignantPinkSecondaryContainer
-import com.homesajja.app.ui.theme.RoseTertiary
-import com.homesajja.app.ui.theme.SuccessContainer
+import com.homesajja.app.ui.theme.DarkBackground
+import com.homesajja.app.ui.theme.DarkError
+import com.homesajja.app.ui.theme.DarkOnBackground
+import com.homesajja.app.ui.theme.DarkOnError
+import com.homesajja.app.ui.theme.DarkOnPrimary
+import com.homesajja.app.ui.theme.DarkOnSurface
+import com.homesajja.app.ui.theme.DarkOnSurfaceVariant
+import com.homesajja.app.ui.theme.DarkOutline
+import com.homesajja.app.ui.theme.DarkPrimary
+import com.homesajja.app.ui.theme.DarkSurface
+import com.homesajja.app.ui.theme.LightBackground
+import com.homesajja.app.ui.theme.LightError
+import com.homesajja.app.ui.theme.LightErrorContainer
+import com.homesajja.app.ui.theme.LightOnBackground
+import com.homesajja.app.ui.theme.LightOnError
+import com.homesajja.app.ui.theme.LightOnErrorContainer
+import com.homesajja.app.ui.theme.LightOnPrimary
+import com.homesajja.app.ui.theme.LightOnSurface
+import com.homesajja.app.ui.theme.LightOnSurfaceVariant
+import com.homesajja.app.ui.theme.LightOutline
+import com.homesajja.app.ui.theme.LightPrimary
+import com.homesajja.app.ui.theme.LightSurface
+import com.homesajja.app.ui.theme.StatusAgreedDarkBg
+import com.homesajja.app.ui.theme.StatusAgreedDarkText
+import com.homesajja.app.ui.theme.StatusAgreedLightBg
+import com.homesajja.app.ui.theme.StatusAgreedLightText
+import com.homesajja.app.ui.theme.StatusInProgressDarkBg
+import com.homesajja.app.ui.theme.StatusInProgressDarkText
+import com.homesajja.app.ui.theme.StatusInProgressLightBg
+import com.homesajja.app.ui.theme.StatusInProgressLightText
+import com.homesajja.app.ui.theme.StatusQuotedDarkBg
+import com.homesajja.app.ui.theme.StatusQuotedDarkText
+import com.homesajja.app.ui.theme.StatusQuotedLightBg
+import com.homesajja.app.ui.theme.StatusQuotedLightText
+import com.homesajja.app.ui.theme.StatusReservedDarkBg
+import com.homesajja.app.ui.theme.StatusReservedDarkText
+import com.homesajja.app.ui.theme.StatusReservedLightBg
+import com.homesajja.app.ui.theme.StatusReservedLightText
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** WCAG contrast checks for the colour pairs the app actually puts on top of each other. Text needs 4.5:1, borders and icons 3:1. */
+/** WCAG contrast checks for the Stitch colour pairs the app actually puts on top of each other. Text needs 4.5:1, borders and icons 3:1. */
 class ContrastTest {
 
     private fun channel(value: Float): Double = value.toDouble().let { if (it <= 0.03928) it / 12.92 else Math.pow((it + 0.055) / 1.055, 2.4) }
@@ -42,35 +61,41 @@ class ContrastTest {
         assertTrue("$name is only %.1f:1 (needs 3:1)".format(ratio(foreground, background)), ratio(foreground, background) >= 3.0)
 
     @Test
-    fun bodyAndSecondaryText_areReadableOnTheWarmBackgrounds() {
-        assertText("body on background", OnPearlBackground, PearlBackground)
-        assertText("body on cards", OnPearlSurface, PearlSurface)
-        assertText("secondary on background", OnPearlSurfaceVariant, PearlBackground)
-        assertText("secondary on cards", OnPearlSurfaceVariant, PearlSurface)
-        assertText("secondary on variant surfaces", OnPearlSurfaceVariant, PearlSurfaceVariant)
+    fun lightTheme_textAndBrandContrast() {
+        assertText("body on background", LightOnBackground, LightBackground)
+        assertText("body on cards", LightOnSurface, LightSurface)
+        assertText("secondary on background", LightOnSurfaceVariant, LightBackground)
+        assertText("primary terracotta on background", LightPrimary, LightBackground)
+        assertText("button label on primary", LightOnPrimary, LightPrimary)
+        assertText("error text on error", LightOnError, LightError)
+        assertText("error text on error container", LightOnErrorContainer, LightErrorContainer)
     }
 
     @Test
-    fun brandColourText_isReadable() {
-        assertText("cabernet on background", CabernetPrimary, PearlBackground)
-        assertText("cabernet on cards", CabernetPrimary, PearlSurface)
-        assertText("cabernet on its container", CabernetPrimary, CabernetPrimaryContainer)
-        assertText("button label on cabernet", OnCabernetPrimary, CabernetPrimary)
-        assertText("text on primary container", OnCabernetPrimaryContainer, CabernetPrimaryContainer)
+    fun darkTheme_textAndBrandContrast() {
+        assertText("body on dark background", DarkOnBackground, DarkBackground)
+        assertText("body on dark surface", DarkOnSurface, DarkSurface)
+        assertText("secondary on dark background", DarkOnSurfaceVariant, DarkBackground)
+        assertText("dark text on ember primary", DarkOnPrimary, DarkPrimary)
+        assertText("error on dark error", DarkOnError, DarkError)
     }
 
     @Test
-    fun statusColours_areReadable() {
-        assertText("status badge", OnPoignantPinkSecondaryContainer, PoignantPinkSecondaryContainer)
-        assertText("success badge", OnSuccessContainer, SuccessContainer)
-        assertText("error text on background", ErrorRed, PearlBackground)
-        assertText("error banner", OnErrorContainer, ErrorContainer)
+    fun statusColours_areReadableAcrossBothThemes() {
+        assertText("status agreed light", StatusAgreedLightText, StatusAgreedLightBg)
+        assertText("status in-progress light", StatusInProgressLightText, StatusInProgressLightBg)
+        assertText("status quoted light", StatusQuotedLightText, StatusQuotedLightBg)
+        assertText("status reserved light", StatusReservedLightText, StatusReservedLightBg)
+
+        assertText("status agreed dark", StatusAgreedDarkText, StatusAgreedDarkBg)
+        assertText("status in-progress dark", StatusInProgressDarkText, StatusInProgressDarkBg)
+        assertText("status quoted dark", StatusQuotedDarkText, StatusQuotedDarkBg)
+        assertText("status reserved dark", StatusReservedDarkText, StatusReservedDarkBg)
     }
 
     @Test
-    fun bordersAndAccents_meetTheGraphicMinimum() {
-        assertGraphic("field borders on background", OutlineNeutral, PearlBackground)
-        assertGraphic("field borders on cards", OutlineNeutral, PearlSurface)
-        assertGraphic("accent on background", RoseTertiary, PearlBackground)
+    fun bordersAndOutlines_meetGraphicMinimum() {
+        assertGraphic("light outline on canvas", LightOutline, LightBackground)
+        assertGraphic("dark outline on dark canvas", DarkOutline, DarkBackground)
     }
 }
