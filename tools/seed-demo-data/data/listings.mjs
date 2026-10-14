@@ -1,51 +1,54 @@
-// A pool of realistic second-hand Indian furniture. Each city gets nine of them, from its own sellers, with small price differences.
+import { STITCH_PHOTOS } from '../lib/cloudinary.mjs';
+
+// A pool of realistic second-hand Indian furniture curated from the Google Stitch screens.
 // t(title, category, material, condition, ageYears, price, [length, width, height] cm, variant, description, options)
 const t = (title, category, material, condition, ageYears, price, dims, variant, description, options = {}) =>
   ({ title, category, material, condition, ageYears, price, dims, variant, description, ...options });
 
 export const POOL = [
-  t('Teak wood 3-seater sofa with cushions', 'SOFA', 'WOOD', 'GOOD', 6, 18500, [198, 82, 88], 0, 'Solid teak frame with thick foam cushions in maroon fabric. Comfortable, no sagging. Selling because we are moving to a smaller flat.'),
-  t('Sheesham 6-seater dining table with 6 chairs', 'TABLE', 'WOOD', 'GOOD', 4, 24000, [180, 90, 76], 1, 'Heavy sheesham dining set with six cushioned chairs. Minor water ring on one corner, otherwise in great condition.'),
-  t('King size bed with hydraulic storage', 'BED', 'WOOD', 'LIKE_NEW', 2, 16500, [210, 190, 95], 2, 'Engineered wood king bed with hydraulic storage box. Mattress not included. Assembled once, moved carefully.'),
-  t('Ergonomic office chair, mesh back', 'CHAIR', 'PLASTIC', 'GOOD', 2, 4200, [62, 62, 110], 0, 'Adjustable height and lumbar support. Used for work from home for two years. Wheels smooth, gas lift working.'),
-  t('Steel almirah, 3 door with locker', 'WARDROBE', 'METAL', 'GOOD', 8, 7800, [90, 50, 190], 0, 'Godrej-type steel almirah with internal locker and hanging rod. A little scratched at the base, no rust.'),
-  t('Study table with drawers and shelf', 'DESK', 'WOOD', 'GOOD', 3, 3200, [120, 60, 76], 1, 'Sturdy study desk with two drawers and a small bookshelf on top. Perfect for school or college students.'),
-  t('Five-shelf wooden bookshelf', 'BOOKSHELF', 'WOOD', 'FAIR', 7, 2400, [80, 30, 180], 2, 'Tall open bookshelf, holds a lot. Some old marks on the sides. Great value for the size.'),
-  t('Cane rocking chair', 'CHAIR', 'WOOD', 'GOOD', 5, 3600, [70, 90, 100], 1, 'Traditional cane and wood rocking chair. Cane seat re-woven last year. Very relaxing on a balcony.'),
-  t('TV unit, walnut finish, 5 ft', 'TV_UNIT', 'WOOD', 'LIKE_NEW', 1, 5400, [150, 40, 50], 2, 'Modern TV unit with cable management and three storage cabinets. Bought last year, barely used.'),
-  t('Single-seater recliner sofa', 'RECLINER', 'LEATHER', 'GOOD', 3, 9500, [90, 95, 100], 0, 'Manual recliner in brown faux leather. Smooth recline, no tears. Comfortable for long evenings.'),
-  t('Marble-top centre table', 'COFFEE_TABLE', 'GLASS', 'GOOD', 5, 6500, [100, 60, 45], 1, 'Round marble-top centre table on a carved wooden base. Heavy and elegant. Small chip on the underside.'),
-  t('Wrought iron shoe rack, 4 tier', 'STORAGE', 'METAL', 'GOOD', 2, 1200, [70, 30, 95], 0, 'Slim wrought iron shoe rack that holds about 12 pairs. Fits behind the door.'),
-  t('L-shaped fabric sofa, 5 seater', 'SOFA', 'FABRIC', 'LIKE_NEW', 2, 28000, [270, 170, 85], 2, 'Grey L-shaped sofa in washable fabric. Two years old, no stains. Original price was ₹52,000.'),
-  t('Wooden swing (jhula) with chains', 'OTHER', 'WOOD', 'GOOD', 9, 12000, [180, 60, 60], 0, 'Traditional teak jhula with brass chains, ideal for a balcony or living room. Buyer collects.'),
-  t('Solid wood single bed with box storage', 'BED', 'WOOD', 'GOOD', 4, 8500, [200, 95, 45], 1, 'Single bed with a large storage box below. Sturdy, no creaks. Mattress included on request.'),
-  t('Glass-top dining table, 4 seater', 'TABLE', 'GLASS', 'LIKE_NEW', 1, 9800, [120, 75, 76], 2, 'Tempered glass top with a powder-coated black base and four chairs. Very light and easy to clean.'),
-  t('Bar cabinet with wine rack', 'STORAGE', 'WOOD', 'GOOD', 4, 11500, [90, 40, 130], 2, 'Compact bar cabinet with glass holders and a wine rack. Dark polish, looks premium in a living room.'),
-  t('Kids study table and chair set', 'DESK', 'PLASTIC', 'GOOD', 2, 2200, [90, 55, 60], 0, 'Colourful study set for children aged 5 to 10. Height adjustable. Cleaned and sanitised.'),
-  t('Double door wooden wardrobe with mirror', 'WARDROBE', 'WOOD', 'GOOD', 6, 13500, [120, 55, 200], 1, 'Large wardrobe with full-length mirror and a drawer. Solid wood, heavy. Two people needed to move.'),
-  t('Wooden dressing table with mirror', 'OTHER', 'WOOD', 'GOOD', 5, 4800, [90, 45, 150], 2, 'Dressing table with a large mirror and two side drawers. Polish still shiny.'),
-  t('Cushioned bench with shoe storage', 'STORAGE', 'FABRIC', 'LIKE_NEW', 1, 3500, [100, 40, 45], 0, 'Entryway bench with hidden shoe storage and a comfortable seat. Neutral beige.'),
-  t('Steel frame bunk bed', 'BED', 'METAL', 'FAIR', 6, 9000, [200, 95, 165], 0, 'Sturdy bunk bed in black powder coat. Ladder included. A few paint chips, structure is solid.'),
-  t('Wall-mounted floating bookshelf set (3)', 'BOOKSHELF', 'WOOD', 'NEW', 0, 1900, [80, 20, 20], 2, 'Set of three floating shelves, brand new in the box. Bought extra by mistake.'),
-  t('Vintage teak writing desk', 'DESK', 'WOOD', 'GOOD', 25, 15500, [130, 65, 78], 0, 'Old teak writing desk with brass handles and a leather inlay. A lovely piece with character.'),
-  t('Two-seater sofa cum bed', 'SOFA', 'FABRIC', 'GOOD', 3, 11000, [180, 90, 80], 1, 'Converts into a bed in seconds. Blue fabric cover, recently dry cleaned. Ideal for guests.'),
-  t('Plastic outdoor chairs, set of 4 with table', 'TABLE', 'PLASTIC', 'GOOD', 2, 2800, [80, 80, 72], 0, 'Weatherproof balcony set. Light and stackable. Colours slightly faded.'),
-  t('Carved wooden temple (mandir) unit', 'OTHER', 'WOOD', 'GOOD', 7, 5200, [60, 35, 110], 1, 'Wall-mount wooden mandir with a small drawer and a bell holder. Clean and well kept.'),
-  t('Cot with cane weaving (charpai style)', 'BED', 'WOOD', 'FAIR', 8, 2600, [190, 90, 42], 0, 'Traditional charpai-style cot with fresh cane weaving. Lightweight and comfortable in summer.'),
-  t('Metal and wood shoe cabinet', 'STORAGE', 'WOOD', 'GOOD', 3, 2900, [80, 30, 100], 1, 'Two-door shoe cabinet with adjustable shelves. Fits about 20 pairs.'),
-  t('Bean bag chair, XXL', 'RECLINER', 'FABRIC', 'GOOD', 1, 1500, [90, 90, 70], 2, 'Extra-large bean bag with fresh beans. Cover is washable.'),
+  t('Teak wood 3-seater sofa with cushions', 'SOFA', 'WOOD', 'GOOD', 6, 18500, [198, 82, 88], 0, 'Solid teak frame with thick foam cushions in maroon fabric. Comfortable, no sagging. Selling because we are moving to a smaller flat.', { images: STITCH_PHOTOS.teakSofa }),
+  t('Sheesham 6-seater dining table with 6 chairs', 'TABLE', 'WOOD', 'GOOD', 4, 24000, [180, 90, 76], 1, 'Heavy sheesham dining set with six cushioned chairs. Minor water ring on one corner, otherwise in great condition.', { images: STITCH_PHOTOS.sheeshamDining }),
+  t('King size bed with hydraulic storage', 'BED', 'WOOD', 'LIKE_NEW', 2, 16500, [210, 190, 95], 2, 'Engineered wood king bed with hydraulic storage box. Mattress not included. Assembled once, moved carefully.', { images: STITCH_PHOTOS.sheeshamDining }),
+  t('Ergonomic office chair, mesh back', 'CHAIR', 'PLASTIC', 'GOOD', 2, 4200, [62, 62, 110], 0, 'Adjustable height and lumbar support. Used for work from home for two years. Wheels smooth, gas lift working.', { images: STITCH_PHOTOS.officeChair }),
+  t('Steel almirah, 3 door with locker', 'WARDROBE', 'METAL', 'GOOD', 8, 7800, [90, 50, 190], 0, 'Godrej-type steel almirah with internal locker and hanging rod. A little scratched at the base, no rust.', { images: STITCH_PHOTOS.wardrobe }),
+  t('Study table with drawers and shelf', 'DESK', 'WOOD', 'GOOD', 3, 3200, [120, 60, 76], 1, 'Sturdy study desk with two drawers and a small bookshelf on top. Perfect for school or college students.', { images: STITCH_PHOTOS.studyDesk }),
+  t('Five-shelf wooden bookshelf', 'BOOKSHELF', 'WOOD', 'FAIR', 7, 2400, [80, 30, 180], 2, 'Tall open bookshelf, holds a lot. Some old marks on the sides. Great value for the size.', { images: STITCH_PHOTOS.carvedShelf }),
+  t('Cane rocking chair', 'CHAIR', 'WOOD', 'GOOD', 5, 3600, [70, 90, 100], 1, 'Traditional cane and wood rocking chair. Cane seat re-woven last year. Very relaxing on a balcony.', { images: STITCH_PHOTOS.caneRockingChair }),
+  t('TV unit, walnut finish, 5 ft', 'TV_UNIT', 'WOOD', 'LIKE_NEW', 1, 5400, [150, 40, 50], 2, 'Modern TV unit with cable management and three storage cabinets. Bought last year, barely used.', { images: STITCH_PHOTOS.studyDesk }),
+  t('Single-seater recliner sofa', 'RECLINER', 'LEATHER', 'GOOD', 3, 9500, [90, 95, 100], 0, 'Manual recliner in brown faux leather. Smooth recline, no tears. Comfortable for long evenings.', { images: STITCH_PHOTOS.caneArmchair }),
+  t('Marble-top centre table', 'COFFEE_TABLE', 'GLASS', 'GOOD', 5, 6500, [100, 60, 45], 1, 'Round marble-top centre table on a carved wooden base. Heavy and elegant. Small chip on the underside.', { images: STITCH_PHOTOS.coffeeTable }),
+  t('Wrought iron shoe rack, 4 tier', 'STORAGE', 'METAL', 'GOOD', 2, 1200, [70, 30, 95], 0, 'Slim wrought iron shoe rack that holds about 12 pairs. Fits behind the door.', { images: STITCH_PHOTOS.rosewoodBedside }),
+  t('L-shaped fabric sofa, 5 seater', 'SOFA', 'FABRIC', 'LIKE_NEW', 2, 28000, [270, 170, 85], 2, 'Grey L-shaped sofa in washable fabric. Two years old, no stains. Original price was ₹52,000.', { images: STITCH_PHOTOS.lShapedSofa }),
+  t('Wooden swing (jhula) with chains', 'OTHER', 'WOOD', 'GOOD', 9, 12000, [180, 60, 60], 0, 'Traditional teak jhula with brass chains, ideal for a balcony or living room. Buyer collects.', { images: STITCH_PHOTOS.caneRockingChair }),
+  t('Solid wood single bed with box storage', 'BED', 'WOOD', 'GOOD', 4, 8500, [200, 95, 45], 1, 'Single bed with a large storage box below. Sturdy, no creaks. Mattress included on request.', { images: STITCH_PHOTOS.sheeshamDining }),
+  t('Glass-top dining table, 4 seater', 'TABLE', 'GLASS', 'LIKE_NEW', 1, 9800, [120, 75, 76], 2, 'Tempered glass top with a powder-coated black base and four chairs. Very light and easy to clean.', { images: STITCH_PHOTOS.sheeshamDining }),
+  t('Bar cabinet with wine rack', 'STORAGE', 'WOOD', 'GOOD', 4, 11500, [90, 40, 130], 2, 'Compact bar cabinet with glass holders and a wine rack. Dark polish, looks premium in a living room.', { images: STITCH_PHOTOS.wardrobe }),
+  t('Kids study table and chair set', 'DESK', 'PLASTIC', 'GOOD', 2, 2200, [90, 55, 60], 0, 'Colourful study set for children aged 5 to 10. Height adjustable. Cleaned and sanitised.', { images: STITCH_PHOTOS.studyStool }),
+  t('Double door wooden wardrobe with mirror', 'WARDROBE', 'WOOD', 'GOOD', 6, 13500, [120, 55, 200], 1, 'Large wardrobe with full-length mirror and a drawer. Solid wood, heavy. Two people needed to move.', { images: STITCH_PHOTOS.wardrobe }),
+  t('Wooden dressing table with mirror', 'OTHER', 'WOOD', 'GOOD', 5, 4800, [90, 45, 150], 2, 'Dressing table with a large mirror and two side drawers. Polish still shiny.', { images: STITCH_PHOTOS.rosewoodBedside }),
+  t('Cushioned bench with shoe storage', 'STORAGE', 'FABRIC', 'LIKE_NEW', 1, 3500, [100, 40, 45], 0, 'Entryway bench with hidden shoe storage and a comfortable seat. Neutral beige.', { images: STITCH_PHOTOS.pegStool }),
+  t('Steel frame bunk bed', 'BED', 'METAL', 'FAIR', 6, 9000, [200, 95, 165], 0, 'Sturdy bunk bed in black powder coat. Ladder included. A few paint chips, structure is solid.', { images: STITCH_PHOTOS.sheeshamDining }),
+  t('Wall-mounted floating bookshelf set (3)', 'BOOKSHELF', 'WOOD', 'NEW', 0, 1900, [80, 20, 20], 2, 'Set of three floating shelves, brand new in the box. Bought extra by mistake.', { images: STITCH_PHOTOS.carvedShelf }),
+  t('Vintage teak writing desk', 'DESK', 'WOOD', 'GOOD', 25, 15500, [130, 65, 78], 0, 'Old teak writing desk with brass handles and a leather inlay. A lovely piece with character.', { images: STITCH_PHOTOS.studyDesk }),
+  t('Two-seater sofa cum bed', 'SOFA', 'FABRIC', 'GOOD', 3, 11000, [180, 90, 80], 1, 'Converts into a bed in seconds. Blue fabric cover, recently dry cleaned. Ideal for guests.', { images: STITCH_PHOTOS.teakSofa }),
+  t('Plastic outdoor chairs, set of 4 with table', 'TABLE', 'PLASTIC', 'GOOD', 2, 2800, [80, 80, 72], 0, 'Weatherproof balcony set. Light and stackable. Colours slightly faded.', { images: STITCH_PHOTOS.sideTable }),
+  t('Carved wooden temple (mandir) unit', 'OTHER', 'WOOD', 'GOOD', 7, 5200, [60, 35, 110], 1, 'Wall-mount wooden mandir with a small drawer and a bell holder. Clean and well kept.', { images: STITCH_PHOTOS.carvedShelf }),
+  t('Cot with cane weaving (charpai style)', 'BED', 'WOOD', 'FAIR', 8, 2600, [190, 90, 42], 0, 'Traditional charpai-style cot with fresh cane weaving. Lightweight and comfortable in summer.', { images: STITCH_PHOTOS.caneArmchair }),
+  t('Metal and wood shoe cabinet', 'STORAGE', 'WOOD', 'GOOD', 3, 2900, [80, 30, 100], 1, 'Two-door shoe cabinet with adjustable shelves. Fits about 20 pairs.', { images: STITCH_PHOTOS.rosewoodBedside }),
+  t('Bean bag chair, XXL', 'RECLINER', 'FABRIC', 'GOOD', 1, 1500, [90, 90, 70], 2, 'Extra-large bean bag with fresh beans. Cover is washable.', { images: STITCH_PHOTOS.caneArmchair }),
 ];
 
 // Which pool items each city lists, and how much dearer or cheaper each city is.
+// Mumbai uses the exact Stitch pool picks ([0, 1, 3]) alongside the Stitch showcase listings in seed.mjs.
 export const CITY_PRICE_FACTOR = { Mumbai: 1.12, Pune: 0.97, Bengaluru: 1.05, Delhi: 1.0, Hyderabad: 0.95 };
 export const CITY_PICKS = {
-  Mumbai: [0, 1, 3, 4, 8, 12, 16, 22, 26],
+  Mumbai: [0, 1, 3],
   Pune: [2, 5, 7, 9, 13, 17, 19, 24, 28],
   Bengaluru: [3, 6, 10, 12, 15, 18, 20, 25, 29],
   Delhi: [1, 4, 8, 11, 14, 18, 21, 23, 27],
   Hyderabad: [0, 2, 5, 9, 13, 16, 19, 24, 26],
 };
-// Indexes (within a city's nine) that are offered for exchange instead of sale.
+// Indexes (within a city's picks) that are offered for exchange instead of sale.
 export const EXCHANGE_SLOTS = new Set([2, 6]);
 
 export const MATERIAL_REQUESTS = [

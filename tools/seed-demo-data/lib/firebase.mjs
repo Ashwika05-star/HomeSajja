@@ -6,13 +6,14 @@ import { dirname, join } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
-export function loadConfig({ emulator }) {
+export function loadConfig({ emulator, dryRun = false }) {
   const services = JSON.parse(readFileSync(join(root, 'app', 'google-services.json'), 'utf8'));
   const strings = readFileSync(join(root, 'app', 'src', 'main', 'res', 'values', 'strings.xml'), 'utf8');
   const stringValue = (name) => new RegExp(`name="${name}"[^>]*>([^<]+)<`).exec(strings)[1].trim();
   const projectId = services.project_info.project_id;
   return {
     emulator,
+    dryRun,
     projectId,
     apiKey: services.client[0].api_key[0].current_key,
     cloudName: stringValue('cloudinary_cloud_name'),
@@ -37,20 +38,28 @@ async function authCall(config, method, body) {
   return data;
 }
 
-/** Signs the demo account in, creating it first if it doesn't exist. Returns { uid, token }. */
+/** Signs the demo account in, creating it first if it doesn't exist (unless dryRun is set). Returns { uid, token }. */
 export async function ensureAccount(config, { email, password, name }) {
   let session;
-  try {
-    session = await authCall(config, 'accounts:signUp', { email, password, displayName: name, returnSecureToken: true });
-  } catch (e) {
-    if (!String(e.code).startsWith('EMAIL_EXISTS')) throw e;
+  if (config.dryRun) {
     session = await authCall(config, 'accounts:signInWithPassword', { email, password, returnSecureToken: true });
+  } else {
+    try {
+      session = await authCall(config, 'accounts:signUp', { email, password, displayName: name, returnSecureToken: true });
+    } catch (e) {
+      if (!String(e.code).startsWith('EMAIL_EXISTS')) throw e;
+      session = await authCall(config, 'accounts:signInWithPassword', { email, password, returnSecureToken: true });
+    }
   }
   await sleep(config.emulator ? 0 : 150);
   return { uid: session.localId, token: session.idToken };
 }
 
 export async function deleteAccount(config, token) {
+  if (config.dryRun) {
+    console.log('  [dry-run] would delete auth account');
+    return;
+  }
   await authCall(config, 'accounts:delete', { idToken: token });
 }
 
@@ -73,6 +82,7 @@ async function dbCall(config, token, method, path, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   if (response.status === 404 && method === 'GET') return null;
+  if (response.status === 403 && method === 'GET') return { _forbidden: true };
   const text = await response.text();
   if (!response.ok) throw new Error(`${method} ${path} -> ${response.status} ${text.slice(0, 300)}`);
   return text ? JSON.parse(text) : {};
@@ -83,19 +93,47 @@ export const docExists = async (config, token, path) => (await dbCall(config, to
 /** The document's `status` text, or null if it doesn't exist. */
 export async function docStatus(config, token, path) {
   const doc = await dbCall(config, token, 'GET', path);
-  return doc ? (doc.fields?.status?.stringValue ?? '') : null;
+  if (!doc) return null;
+  if (doc._forbidden) return 'FORBIDDEN';
+  return doc.fields?.status?.stringValue ?? '';
 }
 
-/** Creates or replaces the document. */
-export const setDoc = (config, token, path, data) => dbCall(config, token, 'PATCH', path, { fields: fieldsOf(data) });
+function summarizeUrls(arr) {
+  if (!Array.isArray(arr) || arr.length === 0) return '';
+  return ` [${arr.map((u) => String(u).replace(/^https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\//, 'cloudinary://')).join(', ')}]`;
+}
 
-/** Changes only the given fields. */
-export function updateDoc(config, token, path, changes) {
+/** Creates or replaces the document (or logs what would change when `config.dryRun` is true). */
+export async function setDoc(config, token, path, data) {
+  if (config.dryRun) {
+    const existing = await dbCall(config, token, 'GET', path);
+    const action = existing ? 'OVERWRITE' : 'CREATE';
+    const mediaInfo = summarizeUrls(data.images ?? data.brochureImages);
+    console.log(`  [dry-run] ${action} ${path}${data.title ? ` ("${data.title}")` : ''}${mediaInfo}`);
+    return {};
+  }
+  return dbCall(config, token, 'PATCH', path, { fields: fieldsOf(data) });
+}
+
+/** Changes only the given fields (or logs what would change when `config.dryRun` is true). */
+export async function updateDoc(config, token, path, changes) {
+  if (config.dryRun) {
+    const keys = Object.keys(changes).join(', ');
+    const mediaInfo = summarizeUrls(changes.images ?? changes.brochureImages);
+    console.log(`  [dry-run] UPDATE ${path} {${keys}}${mediaInfo}`);
+    return {};
+  }
   const mask = Object.keys(changes).map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
   return dbCall(config, token, 'PATCH', `${path}?${mask}`, { fields: fieldsOf(changes) });
 }
 
-export const deleteDoc = (config, token, path) => dbCall(config, token, 'DELETE', path);
+export async function deleteDoc(config, token, path) {
+  if (config.dryRun) {
+    console.log(`  [dry-run] DELETE ${path}`);
+    return {};
+  }
+  return dbCall(config, token, 'DELETE', path);
+}
 
 /** Structured query: documents of `collection` where `field == value`. Returns the document ids. */
 export async function idsWhere(config, token, collection, field, value) {

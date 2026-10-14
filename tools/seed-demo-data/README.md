@@ -16,6 +16,7 @@ Listing pictures are simple flat furniture illustrations drawn by the tool (no o
 node seed.mjs                # the project in app/google-services.json
 node seed.mjs --emulator     # the local Auth (9099) and Firestore (8080) emulators; start them with --project <the id in google-services.json>, or the rules they load are not the ones the tool is written against
 node seed.mjs --remove       # remove the demo accounts and what they own
+node seed.mjs --remove --keep=aarav,dadarwood   # the same, but keep those accounts (their listings are still deleted)
 ```
 
 Needs Node 18+ and nothing to install. **Firestore rules must already be deployed** (the tool writes as the demo users, so the
