@@ -54,7 +54,9 @@ import com.homesajja.app.ui.components.AppTextField
 import com.homesajja.app.ui.components.CategoryChip
 import com.homesajja.app.ui.components.ImageCarousel
 import com.homesajja.app.ui.components.PhotoPicker
+import com.homesajja.app.ui.components.SegmentedControl
 import com.homesajja.app.ui.components.StepTitle
+import com.homesajja.app.ui.theme.PriceLarge
 import com.homesajja.app.ui.util.displayText
 import com.homesajja.app.ui.util.formatAge
 import com.homesajja.app.ui.util.formatPrice
@@ -192,7 +194,6 @@ private fun ConditionStep(form: SellForm, update: FormUpdate) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PriceStep(form: SellForm, update: FormUpdate) {
     val isExchange = form.actionType == ListingActionType.EXCHANGE
@@ -204,17 +205,13 @@ private fun PriceStep(form: SellForm, update: FormUpdate) {
             "Whole rupees. Buyers can also make lower offers."
         },
     )
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        ListingActionType.entries.forEachIndexed { index, type ->
-            SegmentedButton(
-                selected = form.actionType == type,
-                onClick = { update { it.copy(actionType = type) } },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = ListingActionType.entries.size),
-            ) {
-                Text(type.displayName)
-            }
-        }
-    }
+    SegmentedControl(
+        options = ListingActionType.entries,
+        selected = form.actionType,
+        onSelect = { update { f -> f.copy(actionType = it) } },
+        label = { it.displayName },
+        modifier = Modifier.fillMaxWidth(),
+    )
     AppTextField(
         value = form.price,
         onValueChange = { v -> update { it.copy(price = v.filter(Char::isDigit)) } },
@@ -251,7 +248,7 @@ private fun PreviewStep(form: SellForm) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             if (form.actionType == ListingActionType.EXCHANGE) "For exchange" else formatPrice(form.price.trim().toLongOrNull() ?: 0),
-            style = MaterialTheme.typography.headlineSmall,
+            style = PriceLarge,
             color = MaterialTheme.colorScheme.primary,
         )
         Text(form.title.trim(), style = MaterialTheme.typography.titleLarge)
@@ -273,8 +270,9 @@ private fun PreviewStep(form: SellForm) {
     )
     Card(
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
             rows.forEachIndexed { index, (label, value) ->

@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.screens
 
+import com.homesajja.app.ui.components.ThemeToggleButton
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -79,6 +80,7 @@ fun UserHomeScreen(
                 actions = {
                     IconButton(onClick = onOpenSajja) { Icon(Icons.Filled.AutoAwesome, contentDescription = "Ask Sajja AI") }
                     InboxActions(onOpenChats, onOpenNotifications)
+                    ThemeToggleButton()
                     IconButton(onClick = onOpenProfile) { Icon(Icons.Filled.Person, contentDescription = "Profile") }
                 },
             )

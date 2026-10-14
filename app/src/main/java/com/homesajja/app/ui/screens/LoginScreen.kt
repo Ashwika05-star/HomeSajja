@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.screens
 
+import com.homesajja.app.ui.components.ThemeToggleButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,7 +52,7 @@ fun LoginScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        AppTopBar(title = "Log In", onBackClick = onBackClick)
+        AppTopBar(title = "Log In", onBackClick = onBackClick, actions = { ThemeToggleButton() })
 
         Column(
             modifier = Modifier

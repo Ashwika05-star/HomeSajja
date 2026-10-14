@@ -7,14 +7,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -109,22 +112,27 @@ private fun StepContainer(viewModel: SellViewModel, onAskAi: () -> Unit) {
             viewModel.stepError?.let { InlineErrorBanner(message = it) }
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (step != SellStep.CATEGORY) {
-                OutlinedButton(text = "Back", onClick = viewModel::back, modifier = Modifier.weight(1f))
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Column {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Row(
+                    modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    if (step != SellStep.CATEGORY) {
+                        OutlinedButton(text = "Back", onClick = viewModel::back, modifier = Modifier.weight(1f))
+                    }
+                    PrimaryButton(
+                        text = when {
+                            !isLast -> "Next"
+                            viewModel.isEditing -> "Save changes"
+                            else -> "Publish"
+                        },
+                        onClick = viewModel::next,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
-            PrimaryButton(
-                text = when {
-                    !isLast -> "Next"
-                    viewModel.isEditing -> "Save changes"
-                    else -> "Publish"
-                },
-                onClick = viewModel::next,
-                modifier = Modifier.weight(1f),
-            )
         }
     }
 }

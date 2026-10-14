@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -22,11 +23,14 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.homesajja.app.ui.theme.PriceMedium
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -246,12 +250,17 @@ private fun ReviewStep(viewModel: ExchangeProposalViewModel) {
                 InlineErrorBanner(message = (viewModel.sendState as SendState.Failed).message)
             }
         }
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            OutlinedButton(text = "Back", onClick = { viewModel.back() }, modifier = Modifier.weight(1f))
-            PrimaryButton(text = "Send Exchange Request", onClick = viewModel::send, modifier = Modifier.weight(2f))
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Column {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Row(
+                    modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    OutlinedButton(text = "Back", onClick = { viewModel.back() }, modifier = Modifier.weight(1f))
+                    PrimaryButton(text = "Send Exchange Request", onClick = viewModel::send, modifier = Modifier.weight(2f))
+                }
+            }
         }
     }
 }
@@ -262,9 +271,9 @@ private fun FurnitureRow(listing: FurnitureListing, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(modifier = Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -277,7 +286,7 @@ private fun FurnitureRow(listing: FurnitureListing, onClick: () -> Unit) {
                 Text(listing.title, style = MaterialTheme.typography.titleSmall, maxLines = 2)
                 Text(
                     listing.priceLabel(),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = PriceMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
                 Text(

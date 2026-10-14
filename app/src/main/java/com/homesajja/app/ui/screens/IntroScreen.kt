@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.screens
 
+import com.homesajja.app.ui.components.ThemeToggleButton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,6 +70,7 @@ fun IntroScreen(
 
     Column(modifier = modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 24.dp)) {
         Row(modifier = Modifier.fillMaxWidth().height(48.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+            ThemeToggleButton()
             if (!onLast) TextButton(onClick = { goTo(lastPage) }) { Text("Skip") }
         }
 

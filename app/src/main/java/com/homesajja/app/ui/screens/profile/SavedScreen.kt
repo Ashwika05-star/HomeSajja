@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.screens.profile
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -81,7 +82,8 @@ fun SavedScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Unit, bottom
                                         title = listing.title,
                                         price = listing.priceLabel(),
                                         imageUrl = listing.images.firstOrNull(),
-                                        subtitle = listing.city,
+                                        eyebrow = listing.category.displayName,
+                                        subtitle = "${listing.city} · ${if (listing.refurbished) "Refurbished" else listing.condition.displayName}",
                                         onClick = { onOpenListing(listing.id) },
                                         isSaved = true,
                                         onToggleSaved = { viewModel.remove(item.listingId) },
@@ -102,7 +104,9 @@ fun SavedScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Unit, bottom
 private fun UnavailableCard(item: SavedItem, onRemove: () -> Unit) {
     Card(
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(

@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.screens
 
+import com.homesajja.app.ui.components.ThemeToggleButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -60,7 +61,7 @@ fun SignupScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        AppTopBar(title = "Create Account", onBackClick = onBackClick)
+        AppTopBar(title = "Create Account", onBackClick = onBackClick, actions = { ThemeToggleButton() })
 
         Column(
             modifier = Modifier

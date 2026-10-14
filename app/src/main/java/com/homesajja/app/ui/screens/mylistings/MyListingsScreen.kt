@@ -54,6 +54,7 @@ import com.homesajja.app.ui.components.EmptyState
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.StatusBadge
+import com.homesajja.app.ui.theme.PriceMedium
 import com.homesajja.app.ui.util.priceLabel
 import com.homesajja.app.viewmodel.MyListingsUiState
 import com.homesajja.app.viewmodel.MyListingsViewModel
@@ -174,9 +175,9 @@ private fun MyListingCard(
     Card(
         onClick = onClick,
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -194,10 +195,15 @@ private fun MyListingCard(
                     )
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(listing.title, style = MaterialTheme.typography.titleSmall, maxLines = 2)
+                    Text(
+                        listing.category.displayName.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(listing.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
                     Text(
                         listing.priceLabel(),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = PriceMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
                     StatusBadge(status = listing.status.displayName)

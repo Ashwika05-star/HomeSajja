@@ -49,6 +49,7 @@ import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.OutlinedButton
 import com.homesajja.app.ui.components.PrimaryButton
 import com.homesajja.app.ui.components.AppTextField
+import com.homesajja.app.ui.theme.PriceMedium
 import com.homesajja.app.ui.util.formatPrice
 import com.homesajja.app.data.model.PaymentMethod
 import com.homesajja.app.payment.UpiPayment
@@ -167,9 +168,9 @@ private fun RequestCard(
     Card(
         onClick = onClick,
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -180,7 +181,7 @@ private fun RequestCard(
                         append(formatPrice(request.offeredPrice))
                         if (!isSent) append(" · from ${request.buyerName}")
                     },
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = PriceMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
             }

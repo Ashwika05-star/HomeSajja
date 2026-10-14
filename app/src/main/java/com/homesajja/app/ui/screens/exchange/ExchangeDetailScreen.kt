@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -135,8 +136,9 @@ private fun DetailContent(content: ExchangeDetailUiState.Content, onOpenListing:
     ) {
         Card(
             shape = MaterialTheme.shapes.medium,
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -195,26 +197,29 @@ private fun DetailContent(content: ExchangeDetailUiState.Content, onOpenListing:
 
 @Composable
 private fun ActionBar(content: ExchangeDetailUiState.Content, onAction: (ExchangeAction) -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.background, shadowElevation = 8.dp) {
-        Row(
-            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            content.actions.forEachIndexed { index, action ->
-                if (index == 0 && action != ExchangeAction.CANCEL && action != ExchangeAction.CANCEL_BY_VENDOR) {
-                    PrimaryButton(
-                        text = action.label,
-                        onClick = { onAction(action) },
-                        enabled = !content.isBusy,
-                        modifier = Modifier.weight(1f),
-                    )
-                } else {
-                    OutlinedButton(
-                        text = action.label,
-                        onClick = { onAction(action) },
-                        enabled = !content.isBusy,
-                        modifier = Modifier.weight(1f),
-                    )
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Row(
+                modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                content.actions.forEachIndexed { index, action ->
+                    if (index == 0 && action != ExchangeAction.CANCEL && action != ExchangeAction.CANCEL_BY_VENDOR) {
+                        PrimaryButton(
+                            text = action.label,
+                            onClick = { onAction(action) },
+                            enabled = !content.isBusy,
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        OutlinedButton(
+                            text = action.label,
+                            onClick = { onAction(action) },
+                            enabled = !content.isBusy,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
         }
