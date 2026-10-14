@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -198,9 +199,9 @@ private fun DetailContent(
 
             Card(
                 shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -281,11 +282,13 @@ private fun DetailRow(label: String, value: String) {
 
 @Composable
 private fun ActionBar(content: RepairDetailUiState.Content, onAction: (RepairAction) -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp) {
-        Column(
-            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Column(
+                modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
             // Two buttons to a row, so a long label never gets squeezed.
             content.actions.withIndex().chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -302,4 +305,5 @@ private fun ActionBar(content: RepairDetailUiState.Content, onAction: (RepairAct
             }
         }
     }
+}
 }

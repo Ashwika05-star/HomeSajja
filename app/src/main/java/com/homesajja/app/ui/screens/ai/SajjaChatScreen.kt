@@ -1,5 +1,6 @@
 package com.homesajja.app.ui.screens.ai
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +30,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.homesajja.app.ui.components.appTextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -80,22 +83,26 @@ fun SajjaChatScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Unit) {
                     }
                 }
             }
-            Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    OutlinedTextField(
-                        value = viewModel.draft,
-                        onValueChange = viewModel::onDraftChange,
-                        placeholder = { Text("Ask about furniture…") },
-                        maxLines = 4,
-                        shape = RoundedCornerShape(24.dp),
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(onClick = viewModel::send, enabled = viewModel.draft.isNotBlank() && !viewModel.thinking) {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
+            Surface(color = MaterialTheme.colorScheme.background) {
+                Column {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        OutlinedTextField(
+                            value = viewModel.draft,
+                            onValueChange = viewModel::onDraftChange,
+                            placeholder = { Text("Ask about furniture…") },
+                            maxLines = 4,
+                            shape = MaterialTheme.shapes.medium,
+                            colors = appTextFieldColors(),
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(onClick = viewModel::send, enabled = viewModel.draft.isNotBlank() && !viewModel.thinking) {
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
             }
@@ -135,7 +142,8 @@ private fun MessageBlock(message: SajjaMessage, onOpenListing: (String) -> Unit,
                 title = listing.title,
                 price = listing.priceLabel(),
                 imageUrl = listing.images.firstOrNull(),
-                subtitle = "${listing.category.displayName} · ${listing.city}",
+                eyebrow = listing.category.displayName,
+                subtitle = "${listing.city} · ${if (listing.refurbished) "Refurbished" else listing.condition.displayName}",
                 onClick = { onOpenListing(listing.id) },
                 modifier = Modifier.widthIn(max = 260.dp),
             )
@@ -152,7 +160,7 @@ private fun Bubble(message: SajjaMessage) {
             color = when {
                 mine -> scheme.primary
                 message.isError -> scheme.errorContainer
-                else -> scheme.surface
+                else -> scheme.surfaceContainerLow
             },
             contentColor = when {
                 mine -> scheme.onPrimary
@@ -160,7 +168,8 @@ private fun Bubble(message: SajjaMessage) {
                 else -> scheme.onSurface
             },
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (mine) 16.dp else 4.dp, bottomEnd = if (mine) 4.dp else 16.dp),
-            shadowElevation = 1.dp,
+            border = if (!mine && !message.isError) BorderStroke(1.dp, scheme.outlineVariant) else null,
+            shadowElevation = 0.dp,
             modifier = Modifier.widthIn(max = 300.dp),
         ) {
             Text(message.text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))

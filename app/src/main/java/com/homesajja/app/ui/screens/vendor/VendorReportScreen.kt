@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -78,19 +79,22 @@ fun VendorReportScreen(onBackClick: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             (state as? ReportUiState.Content)?.let { content ->
-                Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        val busy = content.isExporting || content.isMonthLoading
-                        PrimaryButton(
-                            text = if (content.isExporting) "Preparing…" else "Export PDF",
-                            onClick = { viewModel.export(ReportFormat.PDF) },
-                            enabled = !busy,
-                            modifier = Modifier.weight(1f),
-                        )
-                        OutlinedButton(text = "Export CSV", onClick = { viewModel.export(ReportFormat.CSV) }, enabled = !busy, modifier = Modifier.weight(1f))
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    Column {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            val busy = content.isExporting || content.isMonthLoading
+                            PrimaryButton(
+                                text = if (content.isExporting) "Preparing…" else "Export PDF",
+                                onClick = { viewModel.export(ReportFormat.PDF) },
+                                enabled = !busy,
+                                modifier = Modifier.weight(1f),
+                            )
+                            OutlinedButton(text = "Export CSV", onClick = { viewModel.export(ReportFormat.CSV) }, enabled = !busy, modifier = Modifier.weight(1f))
+                        }
                     }
                 }
             }
@@ -176,9 +180,9 @@ private fun PaymentRow(item: EarnedItem) {
     val date = remember { SimpleDateFormat("d MMM", Locale.ENGLISH) }
     Card(
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {

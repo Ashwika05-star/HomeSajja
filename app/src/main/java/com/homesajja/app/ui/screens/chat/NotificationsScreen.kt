@@ -27,10 +27,12 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Recycling
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,7 +50,7 @@ import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
 import com.homesajja.app.notification.NotificationRouting
 import com.homesajja.app.ui.components.AppTopBar
-import com.homesajja.app.ui.components.CategoryChip
+import com.homesajja.app.ui.components.PillTabs
 import com.homesajja.app.ui.components.EmptyState
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.LoadingState
@@ -104,14 +106,11 @@ fun NotificationsScreen(onBackClick: () -> Unit, onOpenRoute: (String) -> Unit, 
                             subtitle = "Messages, requests and updates about your items will show up here.",
                         )
                     } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            NotificationFilter.entries.forEach { option ->
-                                CategoryChip(label = option.label, selected = viewModel.filter == option, onClick = { viewModel.selectFilter(option) })
-                            }
-                        }
+                        PillTabs(
+                            labels = NotificationFilter.entries.map { it.label },
+                            selectedIndex = NotificationFilter.entries.indexOf(viewModel.filter),
+                            onSelect = { viewModel.selectFilter(NotificationFilter.entries[it]) },
+                        )
                         val visible = viewModel.filter.apply(current.notifications)
                         if (visible.isEmpty()) {
                             NoResultsState(
@@ -151,7 +150,16 @@ private fun NotificationRow(notification: Notification, onClick: () -> Unit) {
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(notification.type.icon(), contentDescription = notification.type.label, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 2.dp))
+        Surface(
+            shape = MaterialTheme.shapes.small,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            modifier = Modifier.size(36.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(notification.type.icon(), contentDescription = notification.type.label, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            }
+        }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(notification.title, style = MaterialTheme.typography.titleSmall, fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal)
             Text(notification.body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

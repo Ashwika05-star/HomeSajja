@@ -35,7 +35,7 @@ import com.homesajja.app.data.model.EntityType
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
 import com.homesajja.app.ui.components.AppTopBar
-import com.homesajja.app.ui.components.CategoryChip
+import com.homesajja.app.ui.components.PillTabs
 import com.homesajja.app.ui.components.EmptyState
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.ItemThumbnail
@@ -81,14 +81,11 @@ fun ChatListScreen(onBackClick: () -> Unit, onOpenChat: (String) -> Unit, bottom
                             subtitle = "Tap Chat on a listing, or open an accepted exchange or a repair, to start talking.",
                         )
                     } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            ChatFilter.entries.forEach { option ->
-                                CategoryChip(label = option.label, selected = viewModel.filter == option, onClick = { viewModel.selectFilter(option) })
-                            }
-                        }
+                        PillTabs(
+                            labels = ChatFilter.entries.map { it.label },
+                            selectedIndex = ChatFilter.entries.indexOf(viewModel.filter),
+                            onSelect = { viewModel.selectFilter(ChatFilter.entries[it]) },
+                        )
                         val visible = viewModel.filter.apply(current.chats, current.myId)
                         if (visible.isEmpty()) {
                             NoResultsState(

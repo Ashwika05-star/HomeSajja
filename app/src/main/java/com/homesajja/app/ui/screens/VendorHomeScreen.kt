@@ -38,6 +38,7 @@ import com.homesajja.app.ui.components.AppTopBar
 import com.homesajja.app.ui.components.BottomTabBar
 import com.homesajja.app.ui.components.InboxActions
 import com.homesajja.app.ui.components.RequestNotificationPermission
+import com.homesajja.app.ui.components.ThemeToggleButton
 import com.homesajja.app.ui.screens.material.VendorMaterialsScreen
 import com.homesajja.app.ui.screens.mylistings.MyListingsScreen
 import com.homesajja.app.ui.screens.vendor.VendorDashboardScreen
@@ -75,6 +76,7 @@ fun VendorHomeScreen(
                 title = selectedTab.label,
                 actions = {
                     InboxActions(onOpenChats, onOpenNotifications)
+                    ThemeToggleButton()
                     IconButton(onClick = { homeViewModel.logout(onLoggedOut) }) {
                         Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Log out")
                     }

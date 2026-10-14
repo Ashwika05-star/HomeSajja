@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +30,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import com.homesajja.app.ui.components.appTextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -142,29 +144,33 @@ private fun Thread(
             }
         }
 
-        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp) {
-            if (iBlockedThem) {
-                Text(
-                    "You've blocked ${content.chat.otherParticipantName(content.myId)}. Unblock them from the menu to send messages.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
-                )
-            } else Row(
-                modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                OutlinedTextField(
-                    value = draft,
-                    onValueChange = onDraftChange,
-                    placeholder = { Text("Message") },
-                    maxLines = 4,
-                    shape = RoundedCornerShape(24.dp),
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = onSend, enabled = draft.isNotBlank()) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Column {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                if (iBlockedThem) {
+                    Text(
+                        "You've blocked ${content.chat.otherParticipantName(content.myId)}. Unblock them from the menu to send messages.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
+                    )
+                } else Row(
+                    modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = onDraftChange,
+                        placeholder = { Text("Message") },
+                        maxLines = 4,
+                        shape = MaterialTheme.shapes.medium,
+                        colors = appTextFieldColors(),
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = onSend, enabled = draft.isNotBlank()) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
         }
@@ -177,9 +183,9 @@ private fun ContextCard(chat: Chat, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
         Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -202,10 +208,11 @@ private fun Bubble(message: Message, mine: Boolean) {
     val scheme = MaterialTheme.colorScheme
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start) {
         Surface(
-            color = if (mine) scheme.primary else scheme.surface,
+            color = if (mine) scheme.primary else scheme.surfaceContainerLow,
             contentColor = if (mine) scheme.onPrimary else scheme.onSurface,
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (mine) 16.dp else 4.dp, bottomEnd = if (mine) 4.dp else 16.dp),
-            shadowElevation = 1.dp,
+            border = if (mine) null else BorderStroke(1.dp, scheme.outlineVariant),
+            shadowElevation = 0.dp,
             modifier = Modifier.widthIn(max = 300.dp),
         ) {
             Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
