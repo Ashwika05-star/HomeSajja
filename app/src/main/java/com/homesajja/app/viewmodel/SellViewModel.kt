@@ -57,6 +57,7 @@ class SellViewModel(
 ) : ViewModel() {
 
     private val editingListingId: String? = savedStateHandle["listingId"]
+    private val initialActionTypeName: String? = savedStateHandle["actionType"]
     val isEditing: Boolean = editingListingId != null
 
     var screenState by mutableStateOf<SellScreenState>(SellScreenState.Loading)
@@ -93,7 +94,15 @@ class SellViewModel(
                     val user = userRepository.getUserProfile(uid)
                     val vendor = if (user == null) vendorRepository.getVendorProfile(uid) else null
                     vendorShopName = vendor?.businessName?.ifBlank { vendor.name }
-                    form = form.copy(city = user?.city ?: vendor?.city.orEmpty())
+                    val initialActionType = if (initialActionTypeName == com.homesajja.app.data.model.ListingActionType.EXCHANGE.name) {
+                        com.homesajja.app.data.model.ListingActionType.EXCHANGE
+                    } else {
+                        com.homesajja.app.data.model.ListingActionType.SELL
+                    }
+                    form = form.copy(
+                        city = user?.city ?: vendor?.city.orEmpty(),
+                        actionType = initialActionType,
+                    )
                     takePrefill()?.let { prefill ->
                         form = form.withPrefill(prefill)
                         // Land on the first step that still needs an answer.
@@ -214,7 +223,7 @@ class SellViewModel(
             title = form.title.trim(),
             description = form.description.trim(),
             images = imageUrls,
-            price = form.price.trim().toLongOrNull() ?: 0L,
+            price = if (form.actionType == com.homesajja.app.data.model.ListingActionType.EXCHANGE) 0L else (form.price.trim().toLongOrNull() ?: 0L),
             actionType = form.actionType,
             condition = checkNotNull(form.condition),
             refurbished = form.refurbished,

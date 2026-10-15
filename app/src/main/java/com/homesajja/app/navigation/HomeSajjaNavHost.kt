@@ -182,8 +182,14 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                     nullable = true
                     defaultValue = null
                 },
+                navArgument("offeredListingId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
             ),
-        ) {
+        ) { backStackEntry ->
+            val reqId = backStackEntry.arguments?.getString("requestedListingId")
             ExchangeProposalScreen(
                 onExit = { navController.popBackStack() },
                 onSent = { requestId ->
@@ -192,7 +198,15 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                         popUpTo(Routes.UserHome.route)
                     }
                 },
-                onSell = { navController.navigate(Routes.Sell.createRoute()) },
+                onSell = {
+                    navController.navigate(
+                        Routes.Sell.createRoute(
+                            actionType = com.homesajja.app.data.model.ListingActionType.EXCHANGE.name,
+                            returnToExchange = true,
+                            requestedListingId = reqId,
+                        )
+                    )
+                },
             )
         }
         composable(
@@ -258,14 +272,41 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                     nullable = true
                     defaultValue = null
                 },
+                navArgument("actionType") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("returnToExchange") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
+                navArgument("requestedListingId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
             ),
-        ) {
+        ) { backStackEntry ->
+            val returnToExchange = backStackEntry.arguments?.getBoolean("returnToExchange") ?: false
+            val requestedListingId = backStackEntry.arguments?.getString("requestedListingId")
             SellFlowScreen(
                 onExit = { navController.popBackStack() },
                 onPublished = { listingId ->
-                    // Replace the sell flow with the listing itself as confirmation.
-                    navController.navigate(Routes.ListingDetail.createRoute(listingId)) {
-                        popUpTo(Routes.Sell.route) { inclusive = true }
+                    if (returnToExchange) {
+                        navController.navigate(
+                            Routes.ExchangeNew.createRoute(
+                                requestedListingId = requestedListingId,
+                                offeredListingId = listingId,
+                            )
+                        ) {
+                            popUpTo(Routes.Sell.route) { inclusive = true }
+                        }
+                    } else {
+                        // Replace the sell flow with the listing itself as confirmation.
+                        navController.navigate(Routes.ListingDetail.createRoute(listingId)) {
+                            popUpTo(Routes.Sell.route) { inclusive = true }
+                        }
                     }
                 },
                 onAskAi = {
@@ -279,6 +320,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onAddListing = { navController.navigate(Routes.Sell.createRoute()) },
                 onEditListing = { navController.navigate(Routes.Sell.createRoute(it)) },
                 onOpenExchange = { navController.navigate(Routes.ExchangeDetail.createRoute(it)) },
+                onNewExchange = { navController.navigate(Routes.ExchangeNew.createRoute()) },
                 onOpenRepair = { navController.navigate(Routes.RepairDetail.createRoute(it)) },
                 onOpenRecycling = { navController.navigate(Routes.RecycleDetail.createRoute(it)) },
                 onEditProfile = { navController.navigate(Routes.VendorProfileEdit.route) },

@@ -64,6 +64,7 @@ class ExchangeProposalViewModel(
 ) : ViewModel() {
 
     private val preselectedId: String? = savedStateHandle["requestedListingId"]
+    private val preselectedOfferedId: String? = savedStateHandle["offeredListingId"]
 
     var step by mutableStateOf(ExchangeStep.OFFER)
         private set
@@ -87,6 +88,7 @@ class ExchangeProposalViewModel(
     init {
         loadMyFurniture()
         if (preselectedId != null) loadPreselected(preselectedId)
+        if (preselectedOfferedId != null) loadPreselectedOffered(preselectedOfferedId)
     }
 
     /** Called whenever the screen resumes (e.g. after listing a new item); reloads only if the data is old. */
@@ -104,8 +106,13 @@ class ExchangeProposalViewModel(
         refreshGate.markLoaded()
         viewModelScope.launch {
             try {
-                val active = listingRepository.getListingsByOwner(uid).filter { it.status == ListingStatus.ACTIVE }
+                val active = listingRepository.getListingsByOwner(uid).filter {
+                    it.status == ListingStatus.ACTIVE && it.actionType == ListingActionType.EXCHANGE
+                }
                 myFurniture = MyFurnitureState.Content(active)
+                if (offered == null && preselectedOfferedId != null) {
+                    active.firstOrNull { it.id == preselectedOfferedId }?.let { selectOffered(it) }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -115,6 +122,18 @@ class ExchangeProposalViewModel(
             } finally {
                 refreshGate.markLoaded()
             }
+        }
+    }
+
+    fun loadPreselectedOffered(listingId: String) {
+        viewModelScope.launch {
+            try {
+                val listing = listingRepository.getListing(listingId)
+                if (listing != null && listing.actionType == ListingActionType.EXCHANGE && listing.status == ListingStatus.ACTIVE) {
+                    offered = listing
+                    step = if (requested != null) ExchangeStep.REVIEW else ExchangeStep.WANT
+                }
+            } catch (_: Exception) {}
         }
     }
 
@@ -132,6 +151,7 @@ class ExchangeProposalViewModel(
                     else -> {
                         requested = listing
                         wantedItem = WantedItemState.Ready
+                        if (offered != null) step = ExchangeStep.REVIEW
                     }
                 }
             } catch (e: CancellationException) {

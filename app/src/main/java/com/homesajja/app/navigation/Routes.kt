@@ -13,10 +13,14 @@ sealed class Routes(val route: String) {
         fun createRoute(listingId: String) = "listing/$listingId"
     }
 
-    /** Propose an exchange; with a requestedListingId the wanted item is already chosen. */
-    data object ExchangeNew : Routes("exchange_new?requestedListingId={requestedListingId}") {
-        fun createRoute(requestedListingId: String? = null) =
-            if (requestedListingId == null) "exchange_new" else "exchange_new?requestedListingId=$requestedListingId"
+    /** Propose an exchange; with a requestedListingId the wanted item is already chosen; with offeredListingId the offered item is already chosen. */
+    data object ExchangeNew : Routes("exchange_new?requestedListingId={requestedListingId}&offeredListingId={offeredListingId}") {
+        fun createRoute(requestedListingId: String? = null, offeredListingId: String? = null): String {
+            val params = mutableListOf<String>()
+            requestedListingId?.let { params.add("requestedListingId=$it") }
+            offeredListingId?.let { params.add("offeredListingId=$it") }
+            return if (params.isEmpty()) "exchange_new" else "exchange_new?${params.joinToString("&")}"
+        }
     }
 
     data object ExchangeDetail : Routes("exchange/{requestId}") {
@@ -76,8 +80,20 @@ sealed class Routes(val route: String) {
         fun createRoute(requestId: String) = "material/$requestId"
     }
 
-    /** Sell flow; with a listingId it edits that listing instead. */
-    data object Sell : Routes("sell?listingId={listingId}") {
-        fun createRoute(listingId: String? = null) = if (listingId == null) "sell" else "sell?listingId=$listingId"
+    /** Sell flow; with a listingId it edits that listing instead; with actionType/returnToExchange it tailors the flow for exchange. */
+    data object Sell : Routes("sell?listingId={listingId}&actionType={actionType}&returnToExchange={returnToExchange}&requestedListingId={requestedListingId}") {
+        fun createRoute(
+            listingId: String? = null,
+            actionType: String? = null,
+            returnToExchange: Boolean = false,
+            requestedListingId: String? = null,
+        ): String {
+            val params = mutableListOf<String>()
+            listingId?.let { params.add("listingId=$it") }
+            actionType?.let { params.add("actionType=$it") }
+            if (returnToExchange) params.add("returnToExchange=true")
+            requestedListingId?.let { params.add("requestedListingId=$it") }
+            return if (params.isEmpty()) "sell" else "sell?${params.joinToString("&")}"
+        }
     }
 }

@@ -17,8 +17,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material3.Icon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -168,8 +172,8 @@ private fun MyFurnitureStep(viewModel: ExchangeProposalViewModel, onSell: () -> 
                 EmptyState(
                     icon = Icons.Filled.Inventory2,
                     title = "You have nothing to offer yet",
-                    subtitle = "List a piece of furniture first, then come back to propose a swap.",
-                    actionLabel = "List an item",
+                    subtitle = "List a piece of furniture for exchange first, then come back to propose a swap.",
+                    actionLabel = "List an item for exchange",
                     onActionClick = onSell,
                 )
             } else {

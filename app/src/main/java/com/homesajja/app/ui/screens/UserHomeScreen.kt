@@ -95,13 +95,21 @@ fun UserHomeScreen(
         },
         floatingActionButton = {
             when (selectedTab) {
-                UserTab.EXPLORE, UserTab.MY_LISTINGS -> ExtendedFloatingActionButton(
+                UserTab.EXPLORE -> ExtendedFloatingActionButton(
                     onClick = onSell,
                     modifier = Modifier.semantics { contentDescription = "Sell an item" },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     icon = { Icon(Icons.Filled.Add, contentDescription = null) },
                     text = { Text("Sell") },
+                )
+                UserTab.MY_LISTINGS -> ExtendedFloatingActionButton(
+                    onClick = onSell,
+                    modifier = Modifier.semantics { contentDescription = "Add listing" },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    text = { Text("Add listing") },
                 )
                 UserTab.EXCHANGE -> ExtendedFloatingActionButton(
                     onClick = onNewExchange,

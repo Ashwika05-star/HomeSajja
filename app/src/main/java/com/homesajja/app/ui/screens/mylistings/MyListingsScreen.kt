@@ -103,10 +103,10 @@ fun MyListingsScreen(
                 if (listings.isEmpty()) {
                     if (selectedTab == 0) {
                         EmptyState(
-                            icon = Icons.Filled.Sell,
+                            icon = Icons.Filled.Inventory2,
                             title = "No active listings",
-                            subtitle = "Items you put up for sale appear here.",
-                            actionLabel = "Sell an item",
+                            subtitle = "Items you put up for sale or exchange appear here.",
+                            actionLabel = "Add listing",
                             onActionClick = onSell,
                         )
                     } else {

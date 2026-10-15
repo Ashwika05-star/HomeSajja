@@ -59,12 +59,12 @@ data class SellForm(
         SellStep.PREVIEW -> null
     }
 
-    /** A sale needs a price; for an exchange the price is only an optional estimated value. */
+    /** A sale needs a price; an exchange needs no price. */
     private fun validatePrice(): String? {
+        if (actionType == ListingActionType.EXCHANGE) return null
         val text = price.trim()
         val value = text.toLongOrNull()
         return when {
-            actionType == ListingActionType.EXCHANGE && text.isEmpty() -> null
             value == null || value <= 0 -> "Enter a price greater than zero."
             else -> null
         }

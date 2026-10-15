@@ -10,8 +10,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,7 +28,6 @@ import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.viewmodel.ExchangeRequestsUiState
 import com.homesajja.app.viewmodel.ExchangeRequestsViewModel
-
 /** The Exchange tab: requests I received (Incoming) and requests I sent (Outgoing). */
 @Composable
 fun ExchangeRequestsScreen(
@@ -64,6 +61,7 @@ fun ExchangeRequestsScreen(
                 onSelect = { chosenTab = it },
             )
         }
+
 
         when (val current = state) {
             ExchangeRequestsUiState.Loading -> LoadingState()

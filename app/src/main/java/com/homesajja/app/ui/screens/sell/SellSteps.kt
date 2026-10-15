@@ -86,7 +86,8 @@ private typealias FormUpdate = ((SellForm) -> SellForm) -> Unit
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CategoryStep(form: SellForm, update: FormUpdate) {
-    StepTitle("What are you selling?", "Pick the closest category.")
+    val isExchange = form.actionType == ListingActionType.EXCHANGE
+    StepTitle(if (isExchange) "What are you exchanging?" else "What are you selling?", "Pick the closest category.")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         FurnitureCategory.entries.forEach { category ->
             CategoryChip(
@@ -200,7 +201,7 @@ private fun PriceStep(form: SellForm, update: FormUpdate) {
     StepTitle(
         title = if (isExchange) "List it for exchange" else "Set your price",
         hint = if (isExchange) {
-            "People will offer you a swap instead of buying it. An estimated value is optional."
+            "People will offer you a swap instead of buying it. No money is required."
         } else {
             "Whole rupees. Buyers can also make lower offers."
         },
@@ -208,17 +209,19 @@ private fun PriceStep(form: SellForm, update: FormUpdate) {
     SegmentedControl(
         options = ListingActionType.entries,
         selected = form.actionType,
-        onSelect = { update { f -> f.copy(actionType = it) } },
+        onSelect = { update { f -> f.copy(actionType = it, price = if (it == ListingActionType.EXCHANGE) "" else f.price) } },
         label = { it.displayName },
         modifier = Modifier.fillMaxWidth(),
     )
-    AppTextField(
-        value = form.price,
-        onValueChange = { v -> update { it.copy(price = v.filter(Char::isDigit)) } },
-        label = if (isExchange) "Estimated value (₹, optional)" else "Price (₹)",
-        keyboardType = KeyboardType.Number,
-        modifier = Modifier.fillMaxWidth(),
-    )
+    if (!isExchange) {
+        AppTextField(
+            value = form.price,
+            onValueChange = { v -> update { it.copy(price = v.filter(Char::isDigit)) } },
+            label = "Price (₹)",
+            keyboardType = KeyboardType.Number,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 @Composable

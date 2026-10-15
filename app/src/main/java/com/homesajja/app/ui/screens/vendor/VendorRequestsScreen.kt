@@ -64,6 +64,7 @@ fun VendorRequestsScreen(
     snackbarHostState: SnackbarHostState,
     onOpenListing: (String) -> Unit,
     onOpenExchange: (String) -> Unit,
+    onNewExchange: () -> Unit = {},
     onOpenRepair: (String) -> Unit,
     onOpenRecycling: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -92,7 +93,11 @@ fun VendorRequestsScreen(
                         receivedOnly = false,
                         initialTab = 1,
                     )
-                    RequestSection.EXCHANGES -> ExchangeRequestsScreen(onOpenExchange, onNewExchange = {}, incomingOnly = true)
+                    RequestSection.EXCHANGES -> ExchangeRequestsScreen(
+                        onOpenRequest = onOpenExchange,
+                        onNewExchange = onNewExchange,
+                        incomingOnly = false,
+                    )
                     RequestSection.REPAIRS -> VendorRepairsList(onOpenRequest = onOpenRepair)
                     RequestSection.RECYCLING -> RecyclingSection(snackbarHostState, onOpenRecycling)
                 }

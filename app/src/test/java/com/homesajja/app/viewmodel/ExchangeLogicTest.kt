@@ -60,11 +60,9 @@ class ExchangeLogicTest {
     )
 
     @Test
-    fun exchangeListing_priceIsOptional() {
+    fun exchangeListing_requiresNoPrice() {
         assertNull(exchangeForm.copy(price = "").validate(SellStep.PRICE))
-        assertNull(exchangeForm.copy(price = "3500").validate(SellStep.PRICE))
-        assertNotNull(exchangeForm.copy(price = "0").validate(SellStep.PRICE))
-        assertNotNull(exchangeForm.copy(price = "abc").validate(SellStep.PRICE))
+        assertNull(exchangeForm.copy(price = "0").validate(SellStep.PRICE))
     }
 
     @Test
@@ -72,5 +70,15 @@ class ExchangeLogicTest {
         val sale = exchangeForm.copy(actionType = ListingActionType.SELL)
         assertNotNull(sale.copy(price = "").validate(SellStep.PRICE))
         assertNull(sale.copy(price = "3500").validate(SellStep.PRICE))
+    }
+
+    @Test
+    fun exchangeOffering_qualifiesOnlyActiveExchangeListings() {
+        val exchangeActive = com.homesajja.app.data.model.FurnitureListing(id = "1", actionType = ListingActionType.EXCHANGE, status = com.homesajja.app.data.model.ListingStatus.ACTIVE)
+        val sellActive = com.homesajja.app.data.model.FurnitureListing(id = "2", actionType = ListingActionType.SELL, status = com.homesajja.app.data.model.ListingStatus.ACTIVE)
+        val exchangeSold = com.homesajja.app.data.model.FurnitureListing(id = "3", actionType = ListingActionType.EXCHANGE, status = com.homesajja.app.data.model.ListingStatus.SOLD)
+        val list = listOf(exchangeActive, sellActive, exchangeSold)
+        val eligible = list.filter { it.status == com.homesajja.app.data.model.ListingStatus.ACTIVE && it.actionType == ListingActionType.EXCHANGE }
+        assertEquals(listOf("1"), eligible.map { it.id })
     }
 }

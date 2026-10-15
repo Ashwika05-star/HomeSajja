@@ -61,7 +61,7 @@ fun SellFlowScreen(
     Scaffold(
         topBar = {
             AppTopBar(
-                title = if (viewModel.isEditing) "Edit listing" else "Sell an item",
+                title = if (viewModel.isEditing) "Edit listing" else if (viewModel.form.actionType == com.homesajja.app.data.model.ListingActionType.EXCHANGE) "List for exchange" else "Sell an item",
                 onBackClick = { if (canGoBack) viewModel.back() else onExit() },
             )
         },

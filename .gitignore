@@ -46,3 +46,6 @@ release/
 
 # Local environment secrets
 .env
+
+# Local helper scripts
+install-phone.sh
