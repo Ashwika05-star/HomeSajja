@@ -89,6 +89,16 @@ class BrowseFeedTest {
         // A null id must never match a listing's owner (and never hide anything for "own").
         assertEquals(4, ids(visibleBrowseListings(all, null, false, null, ListingFilters(), "")).size)
     }
+
+    @Test
+    fun nonActiveListings_likeSoldAndReserved_areHiddenFromBrowse() {
+        val sold = listing("s1", "me", title = "Sold sofa").copy(status = ListingStatus.SOLD)
+        val reserved = listing("r1", "me", title = "Reserved sofa").copy(status = ListingStatus.RESERVED)
+        val mixed = all + listOf(sold, reserved)
+        val visible = visibleBrowseListings(mixed, "me", includeOwn = true, null, ListingFilters(), "")
+        assertFalse(visible.any { it.status != ListingStatus.ACTIVE })
+        assertEquals(listOf("m1", "i1", "v1", "m2"), ids(visible))
+    }
 }
 
 class OwnerDetailTest {

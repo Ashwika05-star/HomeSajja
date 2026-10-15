@@ -83,4 +83,8 @@ class ListingRepository(firestore: FirebaseFirestore) {
         listings.document(id).delete().await()
         changeCount++
     }
+
+    fun notifyChanged() {
+        changeCount++
+    }
 }

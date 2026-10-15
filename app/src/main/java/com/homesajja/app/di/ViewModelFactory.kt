@@ -124,6 +124,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.notificationSender,
                 container.vendorRepository,
                 container.userRepository,
+                container.listingRepository,
             )
             ExchangeBrowseViewModel::class.java -> ExchangeBrowseViewModel(
                 container.authRepository,

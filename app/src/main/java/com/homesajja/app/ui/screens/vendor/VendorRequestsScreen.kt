@@ -86,7 +86,12 @@ fun VendorRequestsScreen(
                     onSelect = { selected = sections[it].ordinal },
                 )
                 when (section) {
-                    RequestSection.PURCHASES -> MyRequestsScreen(snackbarHostState, onOpenListing, receivedOnly = true)
+                    RequestSection.PURCHASES -> MyRequestsScreen(
+                        snackbarHostState = snackbarHostState,
+                        onOpenListing = onOpenListing,
+                        receivedOnly = false,
+                        initialTab = 1,
+                    )
                     RequestSection.EXCHANGES -> ExchangeRequestsScreen(onOpenExchange, onNewExchange = {}, incomingOnly = true)
                     RequestSection.REPAIRS -> VendorRepairsList(onOpenRequest = onOpenRepair)
                     RequestSection.RECYCLING -> RecyclingSection(snackbarHostState, onOpenRecycling)

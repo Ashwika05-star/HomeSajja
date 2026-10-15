@@ -19,6 +19,7 @@ import com.homesajja.app.payment.paymentOpen
 import com.homesajja.app.data.model.PurchaseRequest
 import com.homesajja.app.data.model.PurchaseStatus
 import com.homesajja.app.repository.AuthRepository
+import com.homesajja.app.repository.ListingRepository
 import com.homesajja.app.repository.NotificationSender
 import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.PurchaseRequestRepository
@@ -76,6 +77,7 @@ class MyRequestsViewModel(
     private val notificationSender: NotificationSender,
     private val vendorRepository: VendorRepository,
     private val userRepository: UserRepository,
+    private val listingRepository: ListingRepository? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<MyRequestsUiState>(MyRequestsUiState.Loading)
@@ -133,6 +135,7 @@ class MyRequestsViewModel(
                 listingStatus == null -> purchaseRequestRepository.updateStatus(request.id, action.resultingStatus)
                 else -> purchaseRequestRepository.updateStatusAndListing(request.id, action.resultingStatus, request.listingId, listingStatus)
             }
+            listingRepository?.notifyChanged()
             authRepository.currentUserId?.let {
                 notificationSender.send(NotificationTemplates.purchaseStatus(request, action.resultingStatus, it))
             }
@@ -160,6 +163,7 @@ class MyRequestsViewModel(
             val cancellation = buildCancellation(reason, note, sellerId)
             val refund = if (needsRefund) buildRefund(request.agreedAmount ?: request.offeredPrice) else null
             purchaseRequestRepository.cancelByVendor(request, cancellation, refund)
+            listingRepository?.notifyChanged()
             notificationSender.send(
                 NotificationTemplates.vendorCancelled(
                     request.buyerId, sellerId, request.sellerName.ifBlank { "The seller" }, "your order for ${request.listingTitle}", cancellation,

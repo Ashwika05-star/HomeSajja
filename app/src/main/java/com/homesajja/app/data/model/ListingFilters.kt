@@ -56,7 +56,8 @@ fun visibleBrowseListings(
     filters: ListingFilters,
     query: String,
 ): List<FurnitureListing> = fetched.filter {
-    (includeOwn || it.ownerId != myId) &&
+    it.status == ListingStatus.ACTIVE &&
+        (includeOwn || it.ownerId != myId) &&
         (sellerType == null || it.sellerType == sellerType) &&
         filters.matches(it) &&
         it.matchesSearch(query)

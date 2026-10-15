@@ -77,11 +77,11 @@ fun MyRequestsScreen(
     onOpenListing: (String) -> Unit,
     modifier: Modifier = Modifier,
     receivedOnly: Boolean = false,
+    initialTab: Int = 0,
 ) {
     val viewModel: MyRequestsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var chosenTab by rememberSaveable { mutableIntStateOf(0) }
-    // Vendors only ever receive purchase requests, so they get the Received list without the tabs.
+    var chosenTab by rememberSaveable { mutableIntStateOf(initialTab) }
     val selectedTab = if (receivedOnly) 1 else chosenTab
 
     LaunchedEffect(viewModel) {
