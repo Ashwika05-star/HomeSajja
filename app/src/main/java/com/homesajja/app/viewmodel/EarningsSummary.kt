@@ -3,6 +3,7 @@ package com.homesajja.app.viewmodel
 import com.homesajja.app.data.model.PaymentMethod
 import com.homesajja.app.data.model.PaymentStatus
 import com.homesajja.app.data.model.PurchaseRequest
+import com.homesajja.app.data.model.PurchaseStatus
 import com.homesajja.app.data.model.RecyclingRequest
 import com.homesajja.app.data.model.RepairRequest
 import java.text.SimpleDateFormat
@@ -31,6 +32,18 @@ data class EarnedItem(
     val confirmedAt: Long,
 )
 
+/**
+ * One purchase or expense someone has actually paid: [counterpart] is the seller/payee who received payment.
+ */
+data class ExpenditureItem(
+    val id: String,
+    val title: String,
+    val counterpart: String,
+    val amount: Long,
+    val method: PaymentMethod?,
+    val confirmedAt: Long,
+)
+
 private fun earnedAmount(payeeId: String, personId: String, status: PaymentStatus, refunded: Boolean, amount: Long?): Long? =
     if (payeeId == personId && status == PaymentStatus.CONFIRMED && !refunded) amount else null
 
@@ -39,6 +52,28 @@ fun PurchaseRequest.toEarnedItem(personId: String): EarnedItem? {
     val p = payment ?: return null
     val amount = earnedAmount(p.payeeId, personId, p.status, refund != null, agreedAmount) ?: return null
     return EarnedItem(id, EarnedKind.SALE, listingTitle, buyerName, amount, p.method, p.confirmedAt ?: updatedAt)
+}
+
+/** The expenditure on this purchase for [personId] (buyer), or null when they are not the buyer, it isn't confirmed yet, or was refunded. */
+fun PurchaseRequest.toExpenditureItem(personId: String): ExpenditureItem? {
+    val p = payment
+    val amount = if (p != null) {
+        if (p.payerId == personId && p.status == PaymentStatus.CONFIRMED && refund == null) agreedAmount ?: offeredPrice else null
+    } else if (buyerId == personId && status == PurchaseStatus.COMPLETED) {
+        agreedAmount ?: offeredPrice
+    } else null
+
+    return amount?.let {
+        val date = p?.confirmedAt ?: updatedAt
+        ExpenditureItem(
+            id = id,
+            title = listingTitle.ifBlank { "Purchased item" },
+            counterpart = sellerName.ifBlank { "Seller" },
+            amount = it,
+            method = p?.method,
+            confirmedAt = date,
+        )
+    }
 }
 
 fun RepairRequest.toEarnedItem(personId: String): EarnedItem? {
@@ -53,10 +88,27 @@ fun RecyclingRequest.toEarnedItem(personId: String): EarnedItem? {
     return EarnedItem(id, EarnedKind.RECYCLING, "${material.displayName} furniture", userName, amount, p.method, p.confirmedAt ?: updatedAt)
 }
 
+fun RecyclingRequest.toExpenditureItem(personId: String): ExpenditureItem? {
+    val p = payment ?: return null
+    if (p.payerId == personId && p.status == PaymentStatus.CONFIRMED && refund == null) {
+        return ExpenditureItem(
+            id = id,
+            title = "${material.displayName} furniture",
+            counterpart = userName.ifBlank { "Customer" },
+            amount = quote?.amount ?: 0L,
+            method = p.method,
+            confirmedAt = p.confirmedAt ?: updatedAt,
+        )
+    }
+    return null
+}
+
 /** One bar of the monthly earnings chart. [startMillis] is the first instant of the month in the device's time zone. */
 data class MonthTotal(val startMillis: Long, val label: String, val amount: Long, val count: Int)
 
 fun totalOf(items: List<EarnedItem>): Long = items.sumOf { it.amount }
+
+fun totalExpenditureOf(items: List<ExpenditureItem>): Long = items.sumOf { it.amount }
 
 /** The first instant of the month that [timestamp] falls in. */
 fun monthStart(timestamp: Long, zone: TimeZone = TimeZone.getDefault()): Long =
@@ -88,6 +140,12 @@ fun lastMonthStarts(now: Long, count: Int = 6, zone: TimeZone = TimeZone.getDefa
 
 /** The payments confirmed during the month that starts at [monthStart]. */
 fun earnedInMonth(items: List<EarnedItem>, monthStart: Long, zone: TimeZone = TimeZone.getDefault()): List<EarnedItem> {
+    val end = shiftMonth(monthStart, 1, zone)
+    return items.filter { it.confirmedAt in monthStart until end }
+}
+
+/** The purchases/expenditures during the month that starts at [monthStart]. */
+fun expendituresInMonth(items: List<ExpenditureItem>, monthStart: Long, zone: TimeZone = TimeZone.getDefault()): List<ExpenditureItem> {
     val end = shiftMonth(monthStart, 1, zone)
     return items.filter { it.confirmedAt in monthStart until end }
 }

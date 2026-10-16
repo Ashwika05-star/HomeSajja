@@ -261,6 +261,10 @@ object VendorStrings {
     }
     fun earnedThisMonth(isHindi: Boolean) = if (isHindi) "इस महीने की कमाई" else "earned this month"
     fun paymentsReceivedTitle(isHindi: Boolean) = if (isHindi) "प्राप्त हुए भुगतान" else "Payments received"
+    fun expenditure(isHindi: Boolean) = if (isHindi) "खर्च" else "Expenditure"
+    fun profit(isHindi: Boolean) = if (isHindi) "लाभ" else "Profit"
+    fun itemsSoldTitle(isHindi: Boolean) = if (isHindi) "बेची गई वस्तुएं (बिक्री)" else "Items sold"
+    fun itemsBoughtTitle(isHindi: Boolean) = if (isHindi) "खरीदी गई वस्तुएं (खर्च)" else "Items bought"
     fun reportNotice(isHindi: Boolean) = if (isHindi) {
         "केवल वही भुगतान गिने जाते हैं जिनकी पुष्टि हुई है। PDF और CSV इसी फोन पर तैयार होते हैं।"
     } else {
@@ -270,6 +274,16 @@ object VendorStrings {
         "$month में कोई पुष्ट भुगतान प्राप्त नहीं हुआ।"
     } else {
         "No payments were confirmed as received in $month."
+    }
+    fun noExpendituresInMonth(month: String, isHindi: Boolean) = if (isHindi) {
+        "$month में कोई खरीदारी दर्ज नहीं हुई।"
+    } else {
+        "No purchases were recorded in $month."
+    }
+    fun noActivityInMonth(month: String, isHindi: Boolean) = if (isHindi) {
+        "$month में कोई बिक्री या खरीदारी दर्ज नहीं हुई।"
+    } else {
+        "No sales or purchases were recorded in $month."
     }
 }
 

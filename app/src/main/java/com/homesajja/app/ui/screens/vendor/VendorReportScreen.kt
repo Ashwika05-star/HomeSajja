@@ -48,6 +48,10 @@ import com.homesajja.app.ui.i18n.VendorStrings
 import com.homesajja.app.ui.i18n.isAppHindi
 import com.homesajja.app.ui.util.formatPrice
 import com.homesajja.app.viewmodel.EarnedItem
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import com.homesajja.app.viewmodel.ExpenditureItem
 import com.homesajja.app.viewmodel.ReportUiState
 import com.homesajja.app.viewmodel.VendorReportViewModel
 import java.text.SimpleDateFormat
@@ -137,18 +141,36 @@ private fun ReportContent(content: ReportUiState.Content, onSelectMonth: (Long) 
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (report.payments.isEmpty()) {
+        if (report.payments.isEmpty() && report.expenditures.isEmpty()) {
             item {
                 Text(
-                    VendorStrings.noPaymentsInMonth(report.monthLabel, isHindi),
+                    VendorStrings.noActivityInMonth(report.monthLabel, isHindi),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 8.dp),
                 )
             }
         } else {
-            item { Text(VendorStrings.paymentsReceivedTitle(isHindi), style = MaterialTheme.typography.titleMedium) }
-            items(report.payments, key = { it.id }) { PaymentRow(it) }
+            if (report.payments.isNotEmpty()) {
+                item {
+                    Text(
+                        VendorStrings.itemsSoldTitle(isHindi),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                items(report.payments, key = { "payment_${it.id}" }) { PaymentRow(it) }
+            }
+            if (report.expenditures.isNotEmpty()) {
+                item {
+                    Text(
+                        VendorStrings.itemsBoughtTitle(isHindi),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                items(report.expenditures, key = { "exp_${it.id}" }) { ExpenditureRow(it) }
+            }
         }
     }
 }
@@ -161,21 +183,88 @@ private fun SummaryCard(report: MonthlyReport, loading: Boolean) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(report.monthLabel, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
-                if (loading) "…" else formatPrice(report.totalEarned) + if (report.isPartial) "+" else "",
-                style = MaterialTheme.typography.displaySmall,
+                report.monthLabel,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
-            Text(VendorStrings.earnedThisMonth(isHindi), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-            report.byKind.forEach {
-                Text(
-                    "${it.kind.plural}: ${it.count} · ${formatPrice(it.amount)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+
+            // 3 Numbers: Sales, Expenditure, Profit
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                MetricTile(
+                    title = VendorStrings.sales(isHindi),
+                    amount = if (loading) "…" else formatPrice(report.totalEarned) + if (report.isPartial) "+" else "",
+                    valueColor = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f),
+                )
+                MetricTile(
+                    title = VendorStrings.expenditure(isHindi),
+                    amount = if (loading) "…" else formatPrice(report.totalExpenditure),
+                    valueColor = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f),
+                )
+                MetricTile(
+                    title = VendorStrings.profit(isHindi),
+                    amount = if (loading) "…" else formatPrice(report.profit),
+                    valueColor = if (report.profit >= 0) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f),
                 )
             }
+
+            if (report.byKind.any { it.count > 0 }) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f))
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    report.byKind.filter { it.count > 0 }.forEach {
+                        Text(
+                            "${it.kind.plural}: ${it.count} · ${formatPrice(it.amount)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetricTile(
+    title: String,
+    amount: String,
+    valueColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surface,
+        modifier = modifier,
+        tonalElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = amount,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = valueColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -200,6 +289,30 @@ private fun PaymentRow(item: EarnedItem) {
                 )
             }
             Text(formatPrice(item.amount), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+@Composable
+private fun ExpenditureRow(item: ExpenditureItem) {
+    val date = remember { SimpleDateFormat("d MMM", Locale.ENGLISH) }
+    Card(
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(item.title, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "${item.counterpart} · ${date.format(item.confirmedAt)}${item.method?.let { " · ${it.displayName}" }.orEmpty()}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text("-${formatPrice(item.amount)}", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.error)
         }
     }
 }

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.homesajja.app.data.model.RatingSummary
 import com.homesajja.app.repository.AuthRepository
 import com.homesajja.app.repository.EarnedBatch
+import com.homesajja.app.repository.ExpenditureBatch
 import com.homesajja.app.repository.StatsRepository
 import com.homesajja.app.repository.VendorRepository
 import com.homesajja.app.report.MonthlyReport
@@ -62,6 +63,7 @@ class VendorReportViewModel(
     val shares: SharedFlow<ShareRequest> = _shares
 
     private val monthCache = mutableMapOf<Long, EarnedBatch>()
+    private val expenditureCache = mutableMapOf<Long, ExpenditureBatch>()
     private var businessName = ""
     private var city = ""
     private var tasks = VendorTaskCounts()
@@ -81,6 +83,8 @@ class VendorReportViewModel(
             return
         }
         _uiState.value = ReportUiState.Loading
+        monthCache.clear()
+        expenditureCache.clear()
         viewModelScope.launch {
             try {
                 val now = System.currentTimeMillis()
@@ -124,11 +128,22 @@ class VendorReportViewModel(
     }
 
     private suspend fun showMonth(uid: String, start: Long) {
-        val batch = monthCache[start] ?: statsRepository.vendorEarned(uid, from = start, until = shiftMonth(start, 1)).also { monthCache[start] = it }
+        val until = shiftMonth(start, 1)
+        val batch = monthCache[start] ?: statsRepository.vendorEarned(uid, from = start, until = until).also { monthCache[start] = it }
+        val expBatch = expenditureCache[start] ?: statsRepository.vendorExpenditures(uid, from = start, until = until).also { expenditureCache[start] = it }
         _uiState.value = ReportUiState.Content(
             months = months,
             selected = start,
-            report = buildMonthlyReport(businessName, city, start, batch.items, tasks, rating, batch.isPartial),
+            report = buildMonthlyReport(
+                businessName = businessName,
+                city = city,
+                monthStart = start,
+                earned = batch.items,
+                expenditures = expBatch.items,
+                tasks = tasks,
+                rating = rating,
+                isPartial = batch.isPartial || expBatch.isPartial,
+            ),
         )
     }
 

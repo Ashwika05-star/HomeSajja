@@ -14,6 +14,7 @@ import com.homesajja.app.data.model.VendorProfile
 import com.homesajja.app.report.CsvReport
 import com.homesajja.app.report.buildMonthlyReport
 import com.homesajja.app.report.reportFileName
+import com.homesajja.app.viewmodel.ExpenditureItem
 import com.homesajja.app.ui.util.formatCompactPrice
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -311,14 +312,53 @@ class MonthlyReportTest {
         assertTrue(lines.contains("Month,September 2026"))
         assertTrue(lines.contains("Generated,2026-10-04"))
         assertTrue(lines.contains("Total earned (INR),6400"))
+        assertTrue(lines.contains("Sales (INR),6400"))
+        assertTrue(lines.contains("Expenditure (INR),0"))
+        assertTrue(lines.contains("Profit (INR),6400"))
         assertTrue(lines.contains("Sales,1,4000"))
         assertTrue(lines.contains("Repairs,2,2400"))
+        assertTrue(lines.contains("Items sold"))
+        assertTrue(lines.contains("Items bought"))
         assertTrue(lines.contains("Date,Type,Item,Customer,Method,Amount (INR)"))
         assertTrue(lines.contains("2026-09-25,Repair,Desk,Ravi,UPI,900"))
         assertTrue(lines.contains("2026-09-12,Sale,Teak sofa,Aarav,UPI,4000"))
         assertTrue(lines.contains("Average rating,4.5,2"))
         assertFalse(csv.contains("Other month"))
         assertTrue(csv.endsWith("\r\n"))
+    }
+
+    @Test
+    fun reportWithExpendituresComputesTotalExpenditureAndProfit() {
+        val expenditures = listOf(
+            ExpenditureItem("e1", "Raw wood planks", "Timber Mart", 1200, PaymentMethod.UPI, at(2026, Calendar.SEPTEMBER, 15)),
+            ExpenditureItem("e2", "Varnish box", "Paint Hub", 300, PaymentMethod.CASH, at(2026, Calendar.SEPTEMBER, 22)),
+            ExpenditureItem("e3", "Tools", "Hardware Store", 500, PaymentMethod.UPI, at(2026, Calendar.AUGUST, 28)),
+        )
+        val r = buildMonthlyReport(
+            businessName = "Vic Repairs",
+            city = "Mumbai",
+            monthStart = september,
+            earned = payments,
+            expenditures = expenditures,
+            tasks = VendorTaskCounts(),
+            rating = RatingSummary(4.5, 2),
+            now = at(2026, Calendar.OCTOBER, 4),
+            zone = IST,
+        )
+        assertEquals(2, r.expenditures.size)
+        assertEquals(listOf("e2", "e1"), r.expenditures.map { it.id })
+        assertEquals(1500L, r.totalExpenditure)
+        assertEquals(6400L, r.totalEarned)
+        assertEquals(4900L, r.profit)
+
+        val csv = CsvReport.build(r, IST)
+        val lines = csv.trimEnd().split("\r\n")
+        assertTrue(lines.contains("Sales (INR),6400"))
+        assertTrue(lines.contains("Expenditure (INR),1500"))
+        assertTrue(lines.contains("Profit (INR),4900"))
+        assertTrue(lines.contains("2026-09-15,Raw wood planks,Timber Mart,UPI,1200"))
+        assertTrue(lines.contains("2026-09-22,Varnish box,Paint Hub,Cash,300"))
+        assertFalse(csv.contains("Hardware Store"))
     }
 
     @Test
@@ -357,6 +397,7 @@ class StatsIndexTest {
     @Test
     fun confirmedPaymentsAreIndexedForEachCollection() {
         assertTrue(indexes("purchaseRequests").contains(listOf("sellerId", "payment.status", "payment.confirmedAt")))
+        assertTrue(indexes("purchaseRequests").contains(listOf("buyerId", "payment.status", "payment.confirmedAt")))
         assertTrue(indexes("repairRequests").contains(listOf("vendorId", "payment.status", "payment.confirmedAt")))
         assertTrue(indexes("recyclingRequests").contains(listOf("vendorId", "payment.payeeId", "payment.status", "payment.confirmedAt")))
     }

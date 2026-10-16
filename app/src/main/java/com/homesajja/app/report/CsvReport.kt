@@ -31,13 +31,22 @@ object CsvReport {
             add("")
             add(row("Summary"))
             add(row("Total earned (INR)", report.totalEarned))
+            add(row("Sales (INR)", report.totalEarned))
+            add(row("Expenditure (INR)", report.totalExpenditure))
+            add(row("Profit (INR)", report.profit))
             add(row("Type", "Payments", "Amount (INR)"))
             report.byKind.forEach { add(row(it.kind.plural, it.count, it.amount)) }
             add("")
-            add(row("Payments received"))
+            add(row("Items sold"))
             add(row("Date", "Type", "Item", "Customer", "Method", "Amount (INR)"))
             report.payments.forEach {
                 add(row(date.format(it.confirmedAt), it.kind.label, it.title, it.counterpart, methodText(it.method), it.amount))
+            }
+            add("")
+            add(row("Items bought"))
+            add(row("Date", "Item", "Seller", "Method", "Amount (INR)"))
+            report.expenditures.forEach {
+                add(row(date.format(it.confirmedAt), it.title, it.counterpart, methodText(it.method), it.amount))
             }
             add("")
             add(row("Status today"))

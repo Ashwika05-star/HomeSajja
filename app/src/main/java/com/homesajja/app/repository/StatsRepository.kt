@@ -15,10 +15,12 @@ import com.homesajja.app.data.model.RecyclingStatus
 import com.homesajja.app.data.model.RepairRequest
 import com.homesajja.app.data.model.RepairStatus
 import com.homesajja.app.viewmodel.EarnedItem
+import com.homesajja.app.viewmodel.ExpenditureItem
 import com.homesajja.app.viewmodel.TaskCount
 import com.homesajja.app.viewmodel.UserTaskCounts
 import com.homesajja.app.viewmodel.VendorTaskCounts
 import com.homesajja.app.viewmodel.toEarnedItem
+import com.homesajja.app.viewmodel.toExpenditureItem
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
@@ -28,6 +30,9 @@ const val EARNED_FETCH_LIMIT = 300
 
 /** Confirmed payments read for one person, and whether some older ones were left out because of [EARNED_FETCH_LIMIT]. */
 data class EarnedBatch(val items: List<EarnedItem>, val isPartial: Boolean)
+
+/** Expenditures read for one person, and whether some older ones were left out because of [EARNED_FETCH_LIMIT]. */
+data class ExpenditureBatch(val items: List<ExpenditureItem>, val isPartial: Boolean)
 
 /**
  * Read-only numbers for the vendor dashboard, the monthly report and the profile summary. It is built to be cheap on Firestore's free plan:
@@ -110,6 +115,35 @@ class StatsRepository(private val firestore: FirebaseFirestore) {
             items = (s.mapNotNull { it.toEarnedItem(vendorId) } + r.mapNotNull { it.toEarnedItem(vendorId) } + c.mapNotNull { it.toEarnedItem(vendorId) })
                 .sortedByDescending { it.confirmedAt },
             isPartial = listOf(s.size, r.size, c.size).any { it >= EARNED_FETCH_LIMIT },
+        )
+    }
+
+    /** The money a vendor has spent on purchases. [from] and [until] limit it to a time window. */
+    suspend fun vendorExpenditures(vendorId: String, from: Long? = null, until: Long? = null): ExpenditureBatch = coroutineScope {
+        val purchasesList = async {
+            try {
+                confirmed(purchases.whereEqualTo("buyerId", vendorId), from, until).getAllAs<PurchaseRequest>()
+            } catch (e: Exception) {
+                val list = purchases.whereEqualTo("buyerId", vendorId).limit(EARNED_FETCH_LIMIT.toLong()).getAllAs<PurchaseRequest>()
+                list.filter { req ->
+                    val time = req.payment?.confirmedAt ?: req.updatedAt
+                    (from == null || time >= from) && (until == null || time < until)
+                }
+            }
+        }
+        val recyclingList = async {
+            try {
+                confirmed(recycling.whereEqualTo("vendorId", vendorId).whereEqualTo("payment.payerId", vendorId), from, until).getAllAs<RecyclingRequest>()
+            } catch (e: Exception) {
+                emptyList<RecyclingRequest>()
+            }
+        }
+        val p = purchasesList.await()
+        val r = recyclingList.await()
+        ExpenditureBatch(
+            items = (p.mapNotNull { it.toExpenditureItem(vendorId) } + r.mapNotNull { it.toExpenditureItem(vendorId) })
+                .sortedByDescending { it.confirmedAt },
+            isPartial = p.size >= EARNED_FETCH_LIMIT || r.size >= EARNED_FETCH_LIMIT,
         )
     }
 

@@ -29,6 +29,7 @@ object PdfReport {
     private val small = paint(9f, color = Color.DKGRAY)
     private val tableHead = paint(10f, bold = true)
     private val big = paint(26f, bold = true, color = BRAND)
+    private val metricValue = paint(18f, bold = true, color = BRAND)
     private val rule = Paint().apply { color = Color.LTGRAY; strokeWidth = 0.8f }
 
     private fun paint(size: Float, bold: Boolean = false, color: Int = Color.BLACK) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -37,15 +38,23 @@ object PdfReport {
         typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
     }
 
-    /** Columns of the payments table: x position and the width the text may use. */
+    /** Columns of the tables: x position and the width the text may use. */
     private data class Column(val label: String, val x: Float, val width: Float, val alignRight: Boolean = false)
 
-    private val columns = listOf(
+    private val soldColumns = listOf(
         Column("Date", MARGIN, 62f),
         Column("Type", MARGIN + 66f, 58f),
         Column("Item", MARGIN + 128f, 150f),
         Column("Customer", MARGIN + 282f, 110f),
         Column("Method", MARGIN + 396f, 44f),
+        Column("Amount", MARGIN + 444f, 71f, alignRight = true),
+    )
+
+    private val boughtColumns = listOf(
+        Column("Date", MARGIN, 70f),
+        Column("Item", MARGIN + 74f, 180f),
+        Column("Seller", MARGIN + 258f, 130f),
+        Column("Method", MARGIN + 392f, 50f),
         Column("Amount", MARGIN + 444f, 71f, alignRight = true),
     )
 
@@ -63,9 +72,17 @@ object PdfReport {
             y = MARGIN + 6f
         }
 
-        fun tableHeader() {
+        fun soldTableHeader() {
             val canvas = page!!.canvas
-            columns.forEach { drawCell(canvas, it.label, it, y, tableHead) }
+            soldColumns.forEach { drawCell(canvas, it.label, it, y, tableHead) }
+            y += 6f
+            canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, rule)
+            y += 14f
+        }
+
+        fun boughtTableHeader() {
+            val canvas = page!!.canvas
+            boughtColumns.forEach { drawCell(canvas, it.label, it, y, tableHead) }
             y += 6f
             canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, rule)
             y += 14f
@@ -79,12 +96,21 @@ object PdfReport {
             y += 22f
             drawText("${report.businessName} · ${report.city}", MARGIN, y + 4f, body)
             y += 14f
-            drawText("Generated ${date.format(report.generatedAt)}. Only payments confirmed as received are counted.", MARGIN, y + 4f, small)
-            y += 30f
-            drawText("Total earned", MARGIN, y, heading)
-            y += 32f
-            drawText(formatPrice(report.totalEarned), MARGIN, y, big)
+            drawText("Generated ${date.format(report.generatedAt)}. Only confirmed payments and purchases are counted.", MARGIN, y + 4f, small)
+            y += 28f
+
+            // 3 Key Financial Metrics: Sales, Expenditure, Profit
+            val colW = (PAGE_WIDTH - MARGIN * 2) / 3f
+            drawText("Sales", MARGIN, y, small)
+            drawText("Expenditure", MARGIN + colW, y, small)
+            drawText("Profit", MARGIN + colW * 2, y, small)
+            y += 20f
+
+            drawText(formatPrice(report.totalEarned), MARGIN, y, metricValue)
+            drawText(formatPrice(report.totalExpenditure), MARGIN + colW, y, metricValue)
+            drawText(formatPrice(report.profit), MARGIN + colW * 2, y, metricValue)
             y += 24f
+
             report.byKind.forEach {
                 drawText("${it.kind.plural}: ${it.count} payment${if (it.count == 1) "" else "s"}, ${formatPrice(it.amount)}", MARGIN, y, body)
                 y += 15f
@@ -101,31 +127,59 @@ object PdfReport {
                 MARGIN, y, small,
             )
             y += 26f
-            drawText("Payments received", MARGIN, y, heading)
+            drawText("Items sold", MARGIN, y, heading)
             y += 20f
         }
         if (report.isPartial) {
-            page!!.canvas.drawText("This month has more payments than were read, so only the newest are listed.", MARGIN, y, small)
+            page!!.canvas.drawText("This month has more records than were read, so only the newest are listed.", MARGIN, y, small)
             y += 16f
         }
 
-        tableHeader()
+        soldTableHeader()
         if (report.payments.isEmpty()) {
-            page!!.canvas.drawText("No payments were confirmed as received in this month.", MARGIN, y, body)
-        }
-        report.payments.forEach { item ->
-            if (y > BOTTOM) {
-                startPage()
-                tableHeader()
+            page!!.canvas.drawText("No items were sold in this month.", MARGIN, y, body)
+            y += 18f
+        } else {
+            report.payments.forEach { item ->
+                if (y > BOTTOM) {
+                    startPage()
+                    soldTableHeader()
+                }
+                val canvas = page!!.canvas
+                drawCell(canvas, date.format(item.confirmedAt), soldColumns[0], y, body)
+                drawCell(canvas, item.kind.label, soldColumns[1], y, body)
+                drawCell(canvas, item.title, soldColumns[2], y, body)
+                drawCell(canvas, item.counterpart, soldColumns[3], y, body)
+                drawCell(canvas, methodText(item.method), soldColumns[4], y, body)
+                drawCell(canvas, formatPrice(item.amount), soldColumns[5], y, body)
+                y += 16f
             }
-            val canvas = page!!.canvas
-            drawCell(canvas, date.format(item.confirmedAt), columns[0], y, body)
-            drawCell(canvas, item.kind.label, columns[1], y, body)
-            drawCell(canvas, item.title, columns[2], y, body)
-            drawCell(canvas, item.counterpart, columns[3], y, body)
-            drawCell(canvas, methodText(item.method), columns[4], y, body)
-            drawCell(canvas, formatPrice(item.amount), columns[5], y, body)
-            y += 16f
+        }
+
+        y += 16f
+        if (y > BOTTOM - 60f) {
+            startPage()
+        }
+        page!!.canvas.drawText("Items bought", MARGIN, y, heading)
+        y += 20f
+        boughtTableHeader()
+        if (report.expenditures.isEmpty()) {
+            page!!.canvas.drawText("No items were bought in this month.", MARGIN, y, body)
+            y += 18f
+        } else {
+            report.expenditures.forEach { item ->
+                if (y > BOTTOM) {
+                    startPage()
+                    boughtTableHeader()
+                }
+                val canvas = page!!.canvas
+                drawCell(canvas, date.format(item.confirmedAt), boughtColumns[0], y, body)
+                drawCell(canvas, item.title, boughtColumns[1], y, body)
+                drawCell(canvas, item.counterpart, boughtColumns[2], y, body)
+                drawCell(canvas, methodText(item.method), boughtColumns[3], y, body)
+                drawCell(canvas, formatPrice(item.amount), boughtColumns[4], y, body)
+                y += 16f
+            }
         }
 
         page?.let { finish(document, it, pageNumber) }

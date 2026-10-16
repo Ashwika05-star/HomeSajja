@@ -439,6 +439,24 @@
       ]
     },
     {
+      "collectionGroup": "purchaseRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "buyerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "payment.status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "payment.confirmedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "repairRequests",
       "queryScope": "COLLECTION",
       "fields": [
