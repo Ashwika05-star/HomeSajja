@@ -54,12 +54,18 @@ import com.homesajja.app.ui.screens.SignupScreen
 import com.homesajja.app.ui.screens.SplashScreen
 import com.homesajja.app.ui.screens.UserHomeScreen
 import com.homesajja.app.ui.screens.VendorHomeScreen
+import androidx.compose.runtime.CompositionLocalProvider
+import com.homesajja.app.ui.i18n.AppLanguage
+import com.homesajja.app.ui.i18n.LocalAppLanguage
+import com.homesajja.app.ui.i18n.isAppHindi
 import com.homesajja.app.ui.screens.IntroScreen
 import com.homesajja.app.viewmodel.SplashDestination
 
 @Composable
 fun HomeSajjaNavHost(navController: NavHostController = rememberNavController()) {
     val container = LocalAppContainer.current
+    val language by container.languagePreference.languageFlow.collectAsState(initial = AppLanguage.ENGLISH)
+
     fun navigateToRoleHome(role: UserRole) {
         val target = if (role == UserRole.USER) Routes.UserHome.route else Routes.VendorHome.route
         container.homeTabs.reset()
@@ -91,7 +97,8 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
         WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
     }
 
-    NavHost(navController = navController, startDestination = Routes.Splash.route) {
+    CompositionLocalProvider(LocalAppLanguage provides language) {
+        NavHost(navController = navController, startDestination = Routes.Splash.route) {
         composable(Routes.Splash.route) {
             SplashScreen(
                 onNavigate = { destination ->
@@ -461,6 +468,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
             composable(Routes.ComponentPreview.route) { ComponentPreviewScreen() }
         }
     }
+    }
 }
 
 /**
@@ -479,10 +487,11 @@ private fun HubBottomBar(navController: NavHostController, container: AppContain
     val homeRoute = if (isVendor) Routes.VendorHome.route else Routes.UserHome.route
     val backToHome = { navController.popBackStack(homeRoute, inclusive = false) }
     if (isVendor) {
+        val isHindi = isAppHindi
         BottomTabBar(
             tabs = VendorTab.entries,
             selected = null,
-            label = { it.label },
+            label = { it.localizedLabel(isHindi) },
             icon = { it.icon },
             onSelect = { tab ->
                 container.homeTabs.vendor.value = tab

@@ -26,6 +26,8 @@ import com.homesajja.app.di.ViewModelFactory
 import com.homesajja.app.ui.components.EmptyState
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.LoadingState
+import com.homesajja.app.ui.i18n.VendorStrings
+import com.homesajja.app.ui.i18n.isAppHindi
 import com.homesajja.app.viewmodel.ExchangeRequestsUiState
 import com.homesajja.app.viewmodel.ExchangeRequestsViewModel
 /** The Exchange tab: requests I received (Incoming) and requests I sent (Outgoing). */
@@ -36,6 +38,7 @@ fun ExchangeRequestsScreen(
     modifier: Modifier = Modifier,
     incomingOnly: Boolean = false,
 ) {
+    val isHindi = isAppHindi
     val viewModel: ExchangeRequestsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var chosenTab by rememberSaveable { mutableIntStateOf(0) }
@@ -54,8 +57,8 @@ fun ExchangeRequestsScreen(
         if (!incomingOnly) {
             PillTabs(
                 labels = listOf(
-                    "Incoming${content?.let { " (${it.incoming.size})" }.orEmpty()}",
-                    "Outgoing${content?.let { " (${it.outgoing.size})" }.orEmpty()}",
+                    "${VendorStrings.incoming(isHindi)}${content?.let { " (${it.incoming.size})" }.orEmpty()}",
+                    "${VendorStrings.outgoing(isHindi)}${content?.let { " (${it.outgoing.size})" }.orEmpty()}",
                 ),
                 selectedIndex = selectedTab,
                 onSelect = { chosenTab = it },
@@ -72,13 +75,13 @@ fun ExchangeRequestsScreen(
                 if (requests.isEmpty()) {
                     EmptyState(
                         icon = Icons.Filled.SwapHoriz,
-                        title = if (isIncoming) "No incoming requests" else "No requests sent",
+                        title = if (isIncoming) VendorStrings.noIncomingRequests(isHindi) else VendorStrings.noOutgoingRequests(isHindi),
                         subtitle = if (isIncoming) {
-                            "When someone offers a swap for one of your exchange items, it shows up here."
+                            VendorStrings.noIncomingRequestsSub(isHindi)
                         } else {
-                            "Propose an exchange and you can follow it here."
+                            VendorStrings.noOutgoingRequestsSub(isHindi)
                         },
-                        actionLabel = if (isIncoming) null else "New exchange",
+                        actionLabel = if (isIncoming) null else VendorStrings.newExchange(isHindi),
                         onActionClick = if (isIncoming) null else onNewExchange,
                     )
                 } else {

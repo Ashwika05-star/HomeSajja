@@ -42,6 +42,7 @@ import com.homesajja.app.repository.StatsRepository
 import com.homesajja.app.report.ReportExporter
 import com.homesajja.app.repository.VendorRepository
 import com.homesajja.app.ui.theme.ThemePreference
+import com.homesajja.app.ui.i18n.LanguagePreference
 
 /**
  * Manual dependency container for HomeSajja.
@@ -67,6 +68,7 @@ class AppContainer(private val appContext: Context) {
 
     val sessionRepository: SessionRepository by lazy { SessionRepository(appContext) }
     val themePreference: ThemePreference by lazy { ThemePreference(appContext) }
+    val languagePreference: LanguagePreference by lazy { LanguagePreference(appContext) }
     val authRepository: AuthRepository by lazy { AuthRepository(firebaseAuth) }
     val userRepository: UserRepository by lazy { UserRepository(firestore) }
     val vendorRepository: VendorRepository by lazy { VendorRepository(firestore) }

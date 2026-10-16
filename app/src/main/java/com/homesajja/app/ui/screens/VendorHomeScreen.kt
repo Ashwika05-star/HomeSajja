@@ -38,7 +38,12 @@ import com.homesajja.app.ui.components.AppTopBar
 import com.homesajja.app.ui.components.BottomTabBar
 import com.homesajja.app.ui.components.InboxActions
 import com.homesajja.app.ui.components.RequestNotificationPermission
+import androidx.compose.runtime.CompositionLocalProvider
 import com.homesajja.app.ui.components.ThemeToggleButton
+import com.homesajja.app.ui.components.LanguageToggleButton
+import com.homesajja.app.ui.i18n.AppLanguage
+import com.homesajja.app.ui.i18n.LocalAppLanguage
+import com.homesajja.app.ui.i18n.VendorStrings
 import com.homesajja.app.ui.screens.explore.ExploreScreen
 import com.homesajja.app.ui.screens.mylistings.MyListingsScreen
 import com.homesajja.app.ui.screens.vendor.VendorDashboardScreen
@@ -66,39 +71,47 @@ fun VendorHomeScreen(
     val homeViewModel: HomeViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val container = LocalAppContainer.current
     val selectedTab by container.homeTabs.vendor.collectAsState()
+    val currentLanguage by container.languagePreference.languageFlow.collectAsState(initial = AppLanguage.ENGLISH)
+    val isHindi = currentLanguage.isHindi
     val snackbarHostState = remember { SnackbarHostState() }
     RequestNotificationPermission()
 
-    Scaffold(
-        topBar = {
-            AppTopBar(
-                title = selectedTab.label,
-                actions = {
-                    InboxActions(onOpenChats, onOpenNotifications)
-                    ThemeToggleButton()
-                    IconButton(onClick = { homeViewModel.logout(onLoggedOut) }) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Log out")
-                    }
-                },
-            )
-        },
-        bottomBar = {
-            BottomTabBar(
-                tabs = VendorTab.entries,
-                selected = selectedTab,
-                label = { it.label },
-                icon = { it.icon },
-                onSelect = { container.homeTabs.vendor.value = it },
-            )
-        },
-        floatingActionButton = {
-            when (selectedTab) {
-                VendorTab.LISTINGS, VendorTab.EXPLORE -> AddFab("Add listing", "Add a listing", onAddListing)
-                else -> Unit
-            }
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background,
+    CompositionLocalProvider(LocalAppLanguage provides currentLanguage) {
+        Scaffold(
+            topBar = {
+                AppTopBar(
+                    title = selectedTab.localizedLabel(isHindi),
+                    actions = {
+                        LanguageToggleButton()
+                        InboxActions(onOpenChats, onOpenNotifications)
+                        ThemeToggleButton()
+                        IconButton(onClick = { homeViewModel.logout(onLoggedOut) }) {
+                            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = VendorStrings.logOut(isHindi))
+                        }
+                    },
+                )
+            },
+            bottomBar = {
+                BottomTabBar(
+                    tabs = VendorTab.entries,
+                    selected = selectedTab,
+                    label = { it.localizedLabel(isHindi) },
+                    icon = { it.icon },
+                    onSelect = { container.homeTabs.vendor.value = it },
+                )
+            },
+            floatingActionButton = {
+                when (selectedTab) {
+                    VendorTab.LISTINGS, VendorTab.EXPLORE -> AddFab(
+                        label = VendorStrings.addListingFab(isHindi),
+                        description = VendorStrings.addListing(isHindi),
+                        onClick = onAddListing,
+                    )
+                    else -> Unit
+                }
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         val contentModifier = Modifier.padding(padding)
         when (selectedTab) {
@@ -139,6 +152,7 @@ fun VendorHomeScreen(
                 modifier = contentModifier,
             )
         }
+    }
     }
 }
 

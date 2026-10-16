@@ -25,6 +25,8 @@ import com.homesajja.app.ui.components.EmptyState
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.NoResultsState
+import com.homesajja.app.ui.i18n.VendorStrings
+import com.homesajja.app.ui.i18n.isAppHindi
 import com.homesajja.app.viewmodel.MyRecyclingViewModel
 import com.homesajja.app.viewmodel.RecycleFilter
 import com.homesajja.app.viewmodel.RecycleListUiState
@@ -56,6 +58,7 @@ private fun RecycleList(
     onRecycle: (() -> Unit)?,
     modifier: Modifier,
 ) {
+    val isHindi = isAppHindi
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     // Coming back from a request or the flow: reload quietly if the data is old.
@@ -72,9 +75,9 @@ private fun RecycleList(
                 if (current.requests.isEmpty()) {
                     EmptyState(
                         icon = Icons.Filled.Recycling,
-                        title = "No recycling requests yet",
+                        title = VendorStrings.noRecyclingRequestsYet(isHindi),
                         subtitle = if (viewerIsRecycler) {
-                            "Recycling requests addressed to you will show up here."
+                            VendorStrings.noRecyclingRequestsVendorSub(isHindi)
                         } else {
                             "Furniture too far gone to sell or fix? Send it to a recycler instead of the bin."
                         },
@@ -87,8 +90,13 @@ private fun RecycleList(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         RecycleFilter.entries.forEach { option ->
+                            val label = when (option) {
+                                RecycleFilter.ALL -> VendorStrings.filterAll(isHindi)
+                                RecycleFilter.ACTIVE -> VendorStrings.filterActive(isHindi)
+                                RecycleFilter.CLOSED -> VendorStrings.filterClosed(isHindi)
+                            }
                             CategoryChip(
-                                label = option.label,
+                                label = label,
                                 selected = viewModel.filter == option,
                                 onClick = { viewModel.selectFilter(option) },
                             )
@@ -98,9 +106,9 @@ private fun RecycleList(
                     if (visible.isEmpty()) {
                         NoResultsState(
                             icon = Icons.Filled.Recycling,
-                            title = "No ${viewModel.filter.label.lowercase()} requests",
-                            subtitle = "Try a different filter.",
-                            actionLabel = "Show all",
+                            title = if (isHindi) "कोई अनुरोध नहीं मिला" else "No ${viewModel.filter.label.lowercase()} requests",
+                            subtitle = VendorStrings.tryDifferentFilter(isHindi),
+                            actionLabel = VendorStrings.showAll(isHindi),
                             onActionClick = { viewModel.selectFilter(RecycleFilter.ALL) },
                         )
                     } else {

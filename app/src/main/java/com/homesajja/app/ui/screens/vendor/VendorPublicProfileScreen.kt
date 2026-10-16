@@ -30,12 +30,15 @@ import com.homesajja.app.ui.components.DeleteAccountSection
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.FurnitureCard
 import com.homesajja.app.ui.components.ImageCarousel
+import com.homesajja.app.ui.components.LanguageCard
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.OutlinedButton
 import com.homesajja.app.ui.components.ReviewsSection
 import com.homesajja.app.ui.components.ShopMap
 import com.homesajja.app.ui.components.TrustMenu
 import com.homesajja.app.ui.components.VerifiedBadge
+import com.homesajja.app.ui.i18n.VendorStrings
+import com.homesajja.app.ui.i18n.isAppHindi
 import com.homesajja.app.ui.util.priceLabel
 import com.homesajja.app.viewmodel.VendorProfileUiState
 import com.homesajja.app.viewmodel.VendorPublicProfileViewModel
@@ -87,6 +90,7 @@ private fun ProfileContent(
     onToggleSaved: (String) -> Unit,
     modifier: Modifier,
 ) {
+    val isHindi = isAppHindi
     val vendor = content.vendor
     Column(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -98,22 +102,25 @@ private fun ProfileContent(
             Header(vendor, showTrustMenu = !content.isOwner)
 
             if (content.isOwner && onEditProfile != null) {
-                OutlinedButton(text = "Edit profile", onClick = onEditProfile, modifier = Modifier.fillMaxWidth())
+                OutlinedButton(text = VendorStrings.editProfile(isHindi), onClick = onEditProfile, modifier = Modifier.fillMaxWidth())
             }
             if (content.isOwner && onOpenBlocked != null) {
-                OutlinedButton(text = "Blocked people", onClick = onOpenBlocked, modifier = Modifier.fillMaxWidth())
+                OutlinedButton(text = VendorStrings.blockedPeople(isHindi), onClick = onOpenBlocked, modifier = Modifier.fillMaxWidth())
             }
-            if (content.isOwner) AppearanceCard()
+            if (content.isOwner) {
+                LanguageCard(modifier = Modifier.fillMaxWidth())
+                AppearanceCard()
+            }
             if (content.isOwner && onAccountDeleted != null) DeleteAccountSection(onDeleted = onAccountDeleted)
 
-            Section("About") {
+            Section(VendorStrings.about(isHindi)) {
                 Text(
-                    vendor.description.ifBlank { "This vendor hasn't added a description yet." },
+                    vendor.description.ifBlank { VendorStrings.noDescriptionYet(isHindi) },
                     style = MaterialTheme.typography.bodyLarge,
                 )
             }
 
-            Section("Location") {
+            Section(VendorStrings.location(isHindi)) {
                 if (vendor.shopAddress.isNotBlank()) Text(vendor.shopAddress, style = MaterialTheme.typography.bodyLarge)
                 val lat = vendor.shopLatitude
                 val lng = vendor.shopLongitude
@@ -121,7 +128,7 @@ private fun ProfileContent(
                     ShopMap(lat, lng, Modifier.fillMaxWidth().height(200.dp).clip(MaterialTheme.shapes.medium))
                 } else {
                     Text(
-                        "Shop location not added yet.",
+                        VendorStrings.noLocationYet(isHindi),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -130,10 +137,10 @@ private fun ProfileContent(
 
             ReviewsSection(content.reviews)
 
-            Section("Catalogue (${content.catalogue.size})") {
+            Section(VendorStrings.catalogue(content.catalogue.size, isHindi)) {
                 if (content.catalogue.isEmpty()) {
                     Text(
-                        "No items listed right now.",
+                        VendorStrings.noCatalogueItems(isHindi),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -163,13 +170,14 @@ private fun ProfileContent(
 
 @Composable
 private fun Header(vendor: VendorProfile, showTrustMenu: Boolean) {
+    val isHindi = isAppHindi
     Column(modifier = Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(vendor.businessName.ifBlank { vendor.name }, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
             if (showTrustMenu) TrustMenu(userId = vendor.uid, userName = vendor.businessName.ifBlank { vendor.name })
         }
         Text(
-            "${VendorBusinessType.fromNameOrNull(vendor.businessType)?.displayName ?: "Vendor"} · ${vendor.city}",
+            "${VendorStrings.businessType(vendor.businessType, isHindi)} · ${vendor.city}",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

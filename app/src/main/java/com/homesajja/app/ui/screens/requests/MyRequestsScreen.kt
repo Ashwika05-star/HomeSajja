@@ -49,6 +49,8 @@ import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.OutlinedButton
 import com.homesajja.app.ui.components.PrimaryButton
 import com.homesajja.app.ui.components.AppTextField
+import com.homesajja.app.ui.i18n.VendorStrings
+import com.homesajja.app.ui.i18n.isAppHindi
 import com.homesajja.app.ui.theme.PriceMedium
 import com.homesajja.app.ui.util.formatPrice
 import com.homesajja.app.data.model.PaymentMethod
@@ -64,7 +66,6 @@ import com.homesajja.app.ui.components.ReviewPrompt
 import com.homesajja.app.viewmodel.ReviewParams
 import com.homesajja.app.data.model.EntityType
 import com.homesajja.app.ui.components.PurchaseStatusTracker
-import com.homesajja.app.ui.util.formatPrice
 import com.homesajja.app.viewmodel.MyRequestsUiState
 import com.homesajja.app.viewmodel.MyRequestsViewModel
 import com.homesajja.app.viewmodel.SellerAction
@@ -79,6 +80,7 @@ fun MyRequestsScreen(
     receivedOnly: Boolean = false,
     initialTab: Int = 0,
 ) {
+    val isHindi = isAppHindi
     val viewModel: MyRequestsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var chosenTab by rememberSaveable { mutableIntStateOf(initialTab) }
@@ -99,8 +101,8 @@ fun MyRequestsScreen(
         if (!receivedOnly) {
             PillTabs(
                 labels = listOf(
-                    "Sent${content?.let { " (${it.sent.size})" }.orEmpty()}",
-                    "Received${content?.let { " (${it.received.size})" }.orEmpty()}",
+                    "${VendorStrings.sent(isHindi)}${content?.let { " (${it.sent.size})" }.orEmpty()}",
+                    "${VendorStrings.received(isHindi)}${content?.let { " (${it.received.size})" }.orEmpty()}",
                 ),
                 selectedIndex = selectedTab,
                 onSelect = { chosenTab = it },
@@ -116,11 +118,11 @@ fun MyRequestsScreen(
                 if (requests.isEmpty()) {
                     EmptyState(
                         icon = if (isSent) Icons.Filled.ShoppingBag else Icons.Filled.Inventory2,
-                        title = if (isSent) "No requests sent" else "No requests received",
+                        title = if (isSent) VendorStrings.noSentPurchases(isHindi) else VendorStrings.noReceivedPurchases(isHindi),
                         subtitle = if (isSent) {
-                            "When you tap Buy or Make offer on a listing, it shows up here."
+                            VendorStrings.noSentPurchasesSub(isHindi)
                         } else {
-                            "Buy requests and offers on your listings show up here."
+                            VendorStrings.noReceivedPurchasesSub(isHindi)
                         },
                     )
                 } else {

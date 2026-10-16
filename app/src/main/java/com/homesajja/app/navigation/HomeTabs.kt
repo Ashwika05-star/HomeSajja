@@ -28,6 +28,15 @@ enum class VendorTab(val label: String, val icon: ImageVector) {
     REQUESTS("Requests", Icons.AutoMirrored.Filled.ReceiptLong),
     EXPLORE("Explore", Icons.Filled.Explore),
     PROFILE("Profile", Icons.Filled.Person),
+    ;
+
+    fun localizedLabel(isHindi: Boolean): String = if (isHindi) when (this) {
+        DASHBOARD -> "डैशबोर्ड"
+        LISTINGS -> "लिस्टिंग्स"
+        REQUESTS -> "अनुरोध"
+        EXPLORE -> "मार्केट"
+        PROFILE -> "प्रोफाइल"
+    } else label
 }
 
 /**

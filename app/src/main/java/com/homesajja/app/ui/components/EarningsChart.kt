@@ -18,6 +18,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.homesajja.app.ui.i18n.LocalAppLanguage
+import com.homesajja.app.ui.i18n.VendorStrings
 import com.homesajja.app.ui.util.formatCompactPrice
 import com.homesajja.app.ui.util.formatPrice
 import com.homesajja.app.viewmodel.MonthTotal
@@ -30,6 +32,7 @@ private val CHART_BAR_AREA = 110.dp
  */
 @Composable
 fun EarningsChart(months: List<MonthTotal>, modifier: Modifier = Modifier) {
+    val isHindi = LocalAppLanguage.current.isHindi
     val highest = months.maxOfOrNull { it.amount }?.coerceAtLeast(1L) ?: 1L
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -65,7 +68,7 @@ fun EarningsChart(months: List<MonthTotal>, modifier: Modifier = Modifier) {
                     )
                 }
                 Text(
-                    month.label,
+                    VendorStrings.monthName(month.label, isHindi),
                     style = MaterialTheme.typography.labelMedium,
                     color = if (isLatest) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 6.dp),

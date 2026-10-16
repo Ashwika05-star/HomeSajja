@@ -25,6 +25,8 @@ import com.homesajja.app.ui.components.EmptyState
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.NoResultsState
+import com.homesajja.app.ui.i18n.VendorStrings
+import com.homesajja.app.ui.i18n.isAppHindi
 import com.homesajja.app.viewmodel.MyRepairsViewModel
 import com.homesajja.app.viewmodel.RepairFilter
 import com.homesajja.app.viewmodel.RepairListUiState
@@ -56,6 +58,7 @@ private fun RepairList(
     onRequestRepair: (() -> Unit)?,
     modifier: Modifier,
 ) {
+    val isHindi = isAppHindi
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     // Coming back from a request or the flow: reload quietly if the data is old.
@@ -72,9 +75,9 @@ private fun RepairList(
                 if (current.requests.isEmpty()) {
                     EmptyState(
                         icon = Icons.Filled.Build,
-                        title = "No repair requests yet",
+                        title = VendorStrings.noRepairRequestsYet(isHindi),
                         subtitle = if (viewerIsVendor) {
-                            "Repair requests from customers will show up here."
+                            VendorStrings.noRepairRequestsVendorSub(isHindi)
                         } else {
                             "Got a damaged chair or a wobbly table? Ask a repair professional in your city to fix it."
                         },
@@ -87,8 +90,13 @@ private fun RepairList(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         RepairFilter.entries.forEach { option ->
+                            val label = when (option) {
+                                RepairFilter.ALL -> VendorStrings.filterAll(isHindi)
+                                RepairFilter.ACTIVE -> VendorStrings.filterActive(isHindi)
+                                RepairFilter.CLOSED -> VendorStrings.filterClosed(isHindi)
+                            }
                             CategoryChip(
-                                label = option.label,
+                                label = label,
                                 selected = viewModel.filter == option,
                                 onClick = { viewModel.selectFilter(option) },
                             )
@@ -98,9 +106,9 @@ private fun RepairList(
                     if (visible.isEmpty()) {
                         NoResultsState(
                             icon = Icons.Filled.Build,
-                            title = "No ${viewModel.filter.label.lowercase()} requests",
-                            subtitle = "Try a different filter.",
-                            actionLabel = "Show all",
+                            title = if (isHindi) "कोई अनुरोध नहीं मिला" else "No ${viewModel.filter.label.lowercase()} requests",
+                            subtitle = VendorStrings.tryDifferentFilter(isHindi),
+                            actionLabel = VendorStrings.showAll(isHindi),
                             onActionClick = { viewModel.selectFilter(RepairFilter.ALL) },
                         )
                     } else {

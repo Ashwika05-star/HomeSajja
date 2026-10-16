@@ -37,6 +37,8 @@ import com.homesajja.app.navigation.VendorTab
 import com.homesajja.app.ui.components.EarningsChart
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.LoadingState
+import com.homesajja.app.ui.i18n.LocalAppLanguage
+import com.homesajja.app.ui.i18n.VendorStrings
 import com.homesajja.app.ui.components.OutlinedButton
 import com.homesajja.app.ui.components.PrimaryButton
 import com.homesajja.app.ui.components.VerifiedBadge
@@ -84,38 +86,39 @@ private fun DashboardContent(
     modifier: Modifier,
 ) {
     val summary = data.summary
+    val isHindi = LocalAppLanguage.current.isHindi
     Column(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Header(data)
+        Header(data, isHindi)
 
         if (data.isNew) {
-            WelcomeCard(hasListings = data.activeListings > 0, onAddListing = onAddListing)
+            WelcomeCard(hasListings = data.activeListings > 0, onAddListing = onAddListing, isHindi = isHindi)
         } else {
-            EarningsCard(summary)
-            ChartCard(summary)
-            RatingCard(summary)
-            Text("Your work", style = MaterialTheme.typography.titleMedium)
+            EarningsCard(summary, isHindi)
+            ChartCard(summary, isHindi)
+            RatingCard(summary, isHindi)
+            Text(VendorStrings.yourWork(isHindi), style = MaterialTheme.typography.titleMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                SummaryTile("Completed", summary.tasks.completed, Modifier.weight(1f))
-                SummaryTile("Pending", summary.tasks.pending, Modifier.weight(1f))
+                SummaryTile(VendorStrings.completed(isHindi), summary.tasks.completed, Modifier.weight(1f))
+                SummaryTile(VendorStrings.pending(isHindi), summary.tasks.pending, Modifier.weight(1f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                TypeTile("Sales", summary.tasks.sales, Modifier.weight(1f))
-                TypeTile("Repairs", summary.tasks.repairs, Modifier.weight(1f))
+                TypeTile(VendorStrings.sales(isHindi), summary.tasks.sales, isHindi, Modifier.weight(1f))
+                TypeTile(VendorStrings.repairs(isHindi), summary.tasks.repairs, isHindi, Modifier.weight(1f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                TypeTile("Exchanges", summary.tasks.exchanges, Modifier.weight(1f))
-                TypeTile("Recycling", summary.tasks.recycling, Modifier.weight(1f))
+                TypeTile(VendorStrings.exchanges(isHindi), summary.tasks.exchanges, isHindi, Modifier.weight(1f))
+                TypeTile(VendorStrings.recycling(isHindi), summary.tasks.recycling, isHindi, Modifier.weight(1f))
             }
         }
 
-        Text("Go to", style = MaterialTheme.typography.titleMedium)
-        Shortcut(Icons.Filled.Sell, "My listings", "${data.activeListings} on sale now") { onOpenTab(VendorTab.LISTINGS) }
-        Shortcut(Icons.AutoMirrored.Filled.ReceiptLong, "Incoming requests", pendingText(summary.tasks.pending)) { onOpenTab(VendorTab.REQUESTS) }
-        Shortcut(Icons.Filled.Explore, "Explore marketplace", "Browse all furniture listings in your city") { onOpenTab(VendorTab.EXPLORE) }
-        Shortcut(Icons.Filled.Assessment, "Monthly report", "Export a month as PDF or CSV", onOpenReports)
+        Text(VendorStrings.goTo(isHindi), style = MaterialTheme.typography.titleMedium)
+        Shortcut(Icons.Filled.Sell, VendorStrings.myListings(isHindi), VendorStrings.onSaleNow(data.activeListings, isHindi)) { onOpenTab(VendorTab.LISTINGS) }
+        Shortcut(Icons.AutoMirrored.Filled.ReceiptLong, VendorStrings.incomingRequests(isHindi), VendorStrings.pendingText(summary.tasks.pending, isHindi)) { onOpenTab(VendorTab.REQUESTS) }
+        Shortcut(Icons.Filled.Explore, VendorStrings.exploreMarketplace(isHindi), VendorStrings.browseAllListings(isHindi)) { onOpenTab(VendorTab.EXPLORE) }
+        Shortcut(Icons.Filled.Assessment, VendorStrings.monthlyReport(isHindi), VendorStrings.exportReportDesc(isHindi), onOpenReports)
 
         if (data.profileIncomplete) {
             Card(
@@ -124,9 +127,9 @@ private fun DashboardContent(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Finish your shop profile", style = MaterialTheme.typography.titleSmall)
-                    Text("Add a description and your shop location so customers can find you.", style = MaterialTheme.typography.bodyMedium)
-                    OutlinedButton(text = "Edit profile", onClick = onEditProfile)
+                    Text(VendorStrings.finishProfileTitle(isHindi), style = MaterialTheme.typography.titleSmall)
+                    Text(VendorStrings.finishProfileDesc(isHindi), style = MaterialTheme.typography.bodyMedium)
+                    OutlinedButton(text = VendorStrings.editProfile(isHindi), onClick = onEditProfile)
                 }
             }
         }
@@ -136,25 +139,25 @@ private fun DashboardContent(
 private fun pendingText(pending: Int) = if (pending == 0) "Nothing waiting" else "$pending waiting for you"
 
 @Composable
-private fun Header(data: DashboardData) {
+private fun Header(data: DashboardData, isHindi: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(data.vendor.businessName.ifBlank { data.vendor.name }, style = MaterialTheme.typography.headlineMedium)
         Text(
-            "${VendorBusinessType.fromNameOrNull(data.vendor.businessType)?.displayName ?: "Vendor"} · ${data.vendor.city}",
+            "${VendorStrings.businessType(data.vendor.businessType, isHindi)} · ${data.vendor.city}",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (data.vendor.verified) {
             VerifiedBadge()
         } else {
-            Text("Not verified yet", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(VendorStrings.notVerifiedYet(isHindi), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 /** What a vendor with nothing yet sees instead of a wall of zeros. */
 @Composable
-private fun WelcomeCard(hasListings: Boolean, onAddListing: () -> Unit) {
+private fun WelcomeCard(hasListings: Boolean, onAddListing: () -> Unit, isHindi: Boolean) {
     Card(
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -163,38 +166,37 @@ private fun WelcomeCard(hasListings: Boolean, onAddListing: () -> Unit) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Welcome to HomeSajja", style = MaterialTheme.typography.titleMedium)
+            Text(VendorStrings.welcomeTitle(isHindi), style = MaterialTheme.typography.titleMedium)
             Text(
-                if (hasListings) "Your listings are live. Once customers send requests and pay you, your earnings, finished work and rating show up on this page."
-                else "Nothing here yet. Once you list something, answer requests and customers pay you, your earnings, finished work and rating show up on this page.",
+                VendorStrings.welcomeDesc(hasListings, isHindi),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            PrimaryButton(text = if (hasListings) "Add another listing" else "Add your first listing", onClick = onAddListing, modifier = Modifier.fillMaxWidth())
+            PrimaryButton(text = VendorStrings.addFirstListing(hasListings, isHindi), onClick = onAddListing, modifier = Modifier.fillMaxWidth())
         }
     }
 }
 
 @Composable
-private fun EarningsCard(summary: DashboardSummary) {
+private fun EarningsCard(summary: DashboardSummary, isHindi: Boolean) {
     Card(
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Total earned", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text(VendorStrings.totalEarned(isHindi), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
             Text(
                 formatPrice(summary.totalEarned) + if (summary.earnedIsPartial) "+" else "",
                 style = MaterialTheme.typography.displaySmall,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("This month", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text(VendorStrings.thisMonth(isHindi), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 Text(formatPrice(summary.earnedThisMonth), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
             Text(
-                if (summary.earnedIsPartial) "Counts your most recent confirmed payments." else "Counts only payments you confirmed as received.",
+                VendorStrings.earnedNote(summary.earnedIsPartial, isHindi),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
@@ -203,7 +205,7 @@ private fun EarningsCard(summary: DashboardSummary) {
 }
 
 @Composable
-private fun ChartCard(summary: DashboardSummary) {
+private fun ChartCard(summary: DashboardSummary, isHindi: Boolean) {
     Card(
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -212,10 +214,10 @@ private fun ChartCard(summary: DashboardSummary) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Earned each month", style = MaterialTheme.typography.titleSmall)
+            Text(VendorStrings.earnedEachMonth(isHindi), style = MaterialTheme.typography.titleSmall)
             if (summary.months.all { it.amount == 0L }) {
                 Text(
-                    "No confirmed payments in the last 6 months yet. When someone pays you and you tap \"Payment received\", it appears here.",
+                    VendorStrings.noPaymentsYet(isHindi),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -227,7 +229,7 @@ private fun ChartCard(summary: DashboardSummary) {
 }
 
 @Composable
-private fun RatingCard(summary: DashboardSummary) {
+private fun RatingCard(summary: DashboardSummary, isHindi: Boolean) {
     Card(
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -240,12 +242,12 @@ private fun RatingCard(summary: DashboardSummary) {
             if (summary.rating.hasRatings) {
                 Text(String.format(java.util.Locale.US, "%.1f", summary.rating.average), style = MaterialTheme.typography.titleLarge)
                 Text(
-                    "average rating · ${summary.rating.count} review${if (summary.rating.count == 1) "" else "s"}",
+                    if (isHindi) "औसत रेटिंग · ${summary.rating.count} समीक्षाएं" else "average rating · ${summary.rating.count} review${if (summary.rating.count == 1) "" else "s"}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                Text("No reviews yet", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(VendorStrings.noReviewsYet(isHindi), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -268,7 +270,7 @@ private fun SummaryTile(label: String, value: Int, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun TypeTile(label: String, count: TaskCount, modifier: Modifier = Modifier) {
+private fun TypeTile(label: String, count: TaskCount, isHindi: Boolean, modifier: Modifier = Modifier) {
     Card(
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -278,8 +280,8 @@ private fun TypeTile(label: String, count: TaskCount, modifier: Modifier = Modif
     ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("${count.completed} done", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
-            Text("${count.pending} pending", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(if (isHindi) "${count.completed} पूर्ण" else "${count.completed} done", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+            Text(if (isHindi) "${count.pending} लंबित" else "${count.pending} pending", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

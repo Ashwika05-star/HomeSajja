@@ -45,6 +45,8 @@ import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.ItemThumbnail
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.PrimaryButton
+import com.homesajja.app.ui.i18n.VendorStrings
+import com.homesajja.app.ui.i18n.isAppHindi
 import com.homesajja.app.ui.screens.exchange.ExchangeRequestsScreen
 import com.homesajja.app.ui.screens.recycle.VendorRecyclingList
 import com.homesajja.app.ui.screens.repair.VendorRepairsList
@@ -54,6 +56,13 @@ import com.homesajja.app.viewmodel.OpenPickupsViewModel
 import com.homesajja.app.viewmodel.RequestSection
 import com.homesajja.app.viewmodel.VendorRequestsUiState
 import com.homesajja.app.viewmodel.VendorRequestsViewModel
+
+private fun RequestSection.localizedLabel(isHindi: Boolean): String = when (this) {
+    RequestSection.PURCHASES -> VendorStrings.purchases(isHindi)
+    RequestSection.EXCHANGES -> VendorStrings.exchangesTab(isHindi)
+    RequestSection.REPAIRS -> VendorStrings.repairsTab(isHindi)
+    RequestSection.RECYCLING -> VendorStrings.recyclingTab(isHindi)
+}
 
 /**
  * Everything addressed to the vendor in one place: purchase, exchange, repair and recycling requests,
@@ -70,6 +79,7 @@ fun VendorRequestsScreen(
     modifier: Modifier = Modifier,
     initialSection: RequestSection = RequestSection.PURCHASES,
 ) {
+    val isHindi = isAppHindi
     val viewModel: VendorRequestsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var selected by rememberSaveable { mutableIntStateOf(initialSection.ordinal) }
@@ -82,7 +92,7 @@ fun VendorRequestsScreen(
             val section = RequestSection.entries[selected].takeIf { it in sections } ?: sections.first()
             Column(modifier = modifier.fillMaxSize()) {
                 PillTabs(
-                    labels = sections.map { it.label },
+                    labels = sections.map { it.localizedLabel(isHindi) },
                     selectedIndex = sections.indexOf(section),
                     onSelect = { selected = sections[it].ordinal },
                 )
@@ -109,14 +119,15 @@ fun VendorRequestsScreen(
 /** Recyclers switch between the requests addressed to them and the unclaimed pickups in their city. */
 @Composable
 private fun RecyclingSection(snackbarHostState: SnackbarHostState, onOpenRecycling: (String) -> Unit) {
+    val isHindi = isAppHindi
     var showOpen by rememberSaveable { mutableIntStateOf(0) }
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            CategoryChip(label = "My requests", selected = showOpen == 0, onClick = { showOpen = 0 })
-            CategoryChip(label = "Open pickups", selected = showOpen == 1, onClick = { showOpen = 1 })
+            CategoryChip(label = VendorStrings.myPickups(isHindi), selected = showOpen == 0, onClick = { showOpen = 0 })
+            CategoryChip(label = VendorStrings.openPickups(isHindi), selected = showOpen == 1, onClick = { showOpen = 1 })
         }
         if (showOpen == 0) {
             VendorRecyclingList(onOpenRequest = onOpenRecycling)
@@ -128,6 +139,7 @@ private fun RecyclingSection(snackbarHostState: SnackbarHostState, onOpenRecycli
 
 @Composable
 private fun OpenPickups(snackbarHostState: SnackbarHostState) {
+    val isHindi = isAppHindi
     val viewModel: OpenPickupsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var quoteFor by remember { mutableStateOf<RecyclingRequest?>(null) }
@@ -157,8 +169,8 @@ private fun OpenPickups(snackbarHostState: SnackbarHostState) {
             if (current.pickups.isEmpty()) {
                 EmptyState(
                     icon = Icons.Filled.Recycling,
-                    title = "No open pickups in ${current.city}",
-                    subtitle = "Pickup requests nobody has claimed yet will show up here.",
+                    title = VendorStrings.noOpenPickupsInCity(current.city, isHindi),
+                    subtitle = VendorStrings.noOpenPickupsSubtitle(isHindi),
                 )
             } else {
                 LazyColumn(
@@ -182,6 +194,7 @@ private fun OpenPickups(snackbarHostState: SnackbarHostState) {
 
 @Composable
 private fun PickupCard(request: RecyclingRequest, busy: Boolean, onClaim: () -> Unit, onClaimWithQuote: () -> Unit) {
+    val isHindi = isAppHindi
     Card(
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -194,19 +207,19 @@ private fun PickupCard(request: RecyclingRequest, busy: Boolean, onClaim: () -> 
                 Box(modifier = Modifier.weight(0.4f)) {
                     ItemThumbnail(
                         imageUrl = request.images.firstOrNull(),
-                        description = "${request.material.displayName} furniture",
+                        description = VendorStrings.furnitureItem(request.material.displayName, isHindi),
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 Column(modifier = Modifier.weight(0.6f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("${request.material.displayName} furniture", style = MaterialTheme.typography.titleSmall)
+                    Text(VendorStrings.furnitureItem(request.material.displayName, isHindi), style = MaterialTheme.typography.titleSmall)
                     Text(request.condition.displayName, style = MaterialTheme.typography.bodyMedium)
-                    Text("From ${request.userName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(VendorStrings.fromCustomer(request.userName, isHindi), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PrimaryButton(text = "Claim (free)", onClick = onClaim, enabled = !busy, modifier = Modifier.weight(1f))
-                OutlinedButton(text = "Claim & quote", onClick = onClaimWithQuote, enabled = !busy, modifier = Modifier.weight(1f))
+                PrimaryButton(text = VendorStrings.claimFree(isHindi), onClick = onClaim, enabled = !busy, modifier = Modifier.weight(1f))
+                OutlinedButton(text = VendorStrings.claimWithQuote(isHindi), onClick = onClaimWithQuote, enabled = !busy, modifier = Modifier.weight(1f))
             }
         }
     }

@@ -44,6 +44,8 @@ import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.OutlinedButton
 import com.homesajja.app.ui.components.PrimaryButton
+import com.homesajja.app.ui.i18n.VendorStrings
+import com.homesajja.app.ui.i18n.isAppHindi
 import com.homesajja.app.ui.util.formatPrice
 import com.homesajja.app.viewmodel.EarnedItem
 import com.homesajja.app.viewmodel.ReportUiState
@@ -54,6 +56,7 @@ import java.util.Locale
 /** The monthly report: pick a month, read the summary, then export it as PDF or CSV and share it from the Android share sheet. */
 @Composable
 fun VendorReportScreen(onBackClick: () -> Unit) {
+    val isHindi = isAppHindi
     val container = LocalAppContainer.current
     val viewModel: VendorReportViewModel = viewModel(factory = ViewModelFactory(container))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -74,7 +77,7 @@ fun VendorReportScreen(onBackClick: () -> Unit) {
     }
 
     Scaffold(
-        topBar = { AppTopBar(title = "Monthly report", onBackClick = onBackClick) },
+        topBar = { AppTopBar(title = VendorStrings.monthlyReport(isHindi), onBackClick = onBackClick) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -88,12 +91,12 @@ fun VendorReportScreen(onBackClick: () -> Unit) {
                         ) {
                             val busy = content.isExporting || content.isMonthLoading
                             PrimaryButton(
-                                text = if (content.isExporting) "Preparing…" else "Export PDF",
+                                text = if (content.isExporting) VendorStrings.preparing(isHindi) else VendorStrings.exportPdf(isHindi),
                                 onClick = { viewModel.export(ReportFormat.PDF) },
                                 enabled = !busy,
                                 modifier = Modifier.weight(1f),
                             )
-                            OutlinedButton(text = "Export CSV", onClick = { viewModel.export(ReportFormat.CSV) }, enabled = !busy, modifier = Modifier.weight(1f))
+                            OutlinedButton(text = VendorStrings.exportCsv(isHindi), onClick = { viewModel.export(ReportFormat.CSV) }, enabled = !busy, modifier = Modifier.weight(1f))
                         }
                     }
                 }
@@ -112,6 +115,7 @@ fun VendorReportScreen(onBackClick: () -> Unit) {
 
 @Composable
 private fun ReportContent(content: ReportUiState.Content, onSelectMonth: (Long) -> Unit) {
+    val isHindi = isAppHindi
     val report = content.report
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -128,7 +132,7 @@ private fun ReportContent(content: ReportUiState.Content, onSelectMonth: (Long) 
         item { SummaryCard(report, loading = content.isMonthLoading) }
         item {
             Text(
-                "Only payments confirmed as received are counted. The PDF and CSV are made on this phone; you choose where to send them.",
+                VendorStrings.reportNotice(isHindi),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -136,14 +140,14 @@ private fun ReportContent(content: ReportUiState.Content, onSelectMonth: (Long) 
         if (report.payments.isEmpty()) {
             item {
                 Text(
-                    "No payments were confirmed as received in ${report.monthLabel}.",
+                    VendorStrings.noPaymentsInMonth(report.monthLabel, isHindi),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 8.dp),
                 )
             }
         } else {
-            item { Text("Payments received", style = MaterialTheme.typography.titleMedium) }
+            item { Text(VendorStrings.paymentsReceivedTitle(isHindi), style = MaterialTheme.typography.titleMedium) }
             items(report.payments, key = { it.id }) { PaymentRow(it) }
         }
     }
@@ -151,6 +155,7 @@ private fun ReportContent(content: ReportUiState.Content, onSelectMonth: (Long) 
 
 @Composable
 private fun SummaryCard(report: MonthlyReport, loading: Boolean) {
+    val isHindi = isAppHindi
     Card(
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
@@ -163,7 +168,7 @@ private fun SummaryCard(report: MonthlyReport, loading: Boolean) {
                 style = MaterialTheme.typography.displaySmall,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
-            Text("earned this month", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text(VendorStrings.earnedThisMonth(isHindi), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
             report.byKind.forEach {
                 Text(
                     "${it.kind.plural}: ${it.count} · ${formatPrice(it.amount)}",

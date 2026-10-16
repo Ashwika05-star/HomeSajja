@@ -54,6 +54,8 @@ import com.homesajja.app.ui.components.EmptyState
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.LoadingState
 import com.homesajja.app.ui.components.StatusBadge
+import com.homesajja.app.ui.i18n.VendorStrings
+import com.homesajja.app.ui.i18n.isAppHindi
 import com.homesajja.app.ui.theme.PriceMedium
 import com.homesajja.app.ui.util.priceLabel
 import com.homesajja.app.viewmodel.MyListingsUiState
@@ -69,6 +71,7 @@ fun MyListingsScreen(
     modifier: Modifier = Modifier,
     allowAvailabilityToggle: Boolean = false,
 ) {
+    val isHindi = isAppHindi
     val viewModel: MyListingsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
@@ -88,8 +91,8 @@ fun MyListingsScreen(
         val content = state as? MyListingsUiState.Content
         PillTabs(
             labels = listOf(
-                "Active${content?.let { " (${it.active.size})" }.orEmpty()}",
-                "Sold & closed${content?.let { " (${it.closed.size})" }.orEmpty()}",
+                content?.let { VendorStrings.activeTab(it.active.size, isHindi) } ?: if (isHindi) "सक्रिय" else "Active",
+                content?.let { VendorStrings.soldAndClosedTab(it.closed.size, isHindi) } ?: if (isHindi) "बिक चुके / बंद" else "Sold & closed",
             ),
             selectedIndex = selectedTab,
             onSelect = { selectedTab = it },
@@ -104,16 +107,16 @@ fun MyListingsScreen(
                     if (selectedTab == 0) {
                         EmptyState(
                             icon = Icons.Filled.Inventory2,
-                            title = "No active listings",
-                            subtitle = "Items you put up for sale or exchange appear here.",
-                            actionLabel = "Add listing",
+                            title = VendorStrings.noActiveListings(isHindi),
+                            subtitle = VendorStrings.itemsForSaleOrExchangeSub(isHindi),
+                            actionLabel = VendorStrings.addListingFab(isHindi),
                             onActionClick = onSell,
                         )
                     } else {
                         EmptyState(
                             icon = Icons.Filled.Inventory2,
-                            title = "Nothing sold yet",
-                            subtitle = "Sold and closed listings will show up here.",
+                            title = VendorStrings.nothingSoldYet(isHindi),
+                            subtitle = VendorStrings.nothingSoldYetSub(isHindi),
                         )
                     }
                 } else {
@@ -146,15 +149,15 @@ fun MyListingsScreen(
     pendingDelete?.let { listing ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { Text("Delete listing?") },
-            text = { Text("\"${listing.title}\" and its photos will be removed permanently.") },
+            title = { Text(VendorStrings.deleteListingTitle(isHindi)) },
+            text = { Text(VendorStrings.deleteListingConfirm(listing.title, isHindi)) },
             confirmButton = {
                 TextButton(onClick = {
                     pendingDelete = null
                     viewModel.delete(listing)
-                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                }) { Text(VendorStrings.delete(isHindi), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text(VendorStrings.cancel(isHindi)) } },
         )
     }
 }
@@ -169,6 +172,7 @@ private fun MyListingCard(
     onToggleAvailability: (() -> Unit)?,
     onDelete: () -> Unit,
 ) {
+    val isHindi = isAppHindi
     val isOpen = listing.status in setOf(ListingStatus.ACTIVE, ListingStatus.RESERVED, ListingStatus.UNAVAILABLE)
     val canToggle = onToggleAvailability != null && listing.status in setOf(ListingStatus.ACTIVE, ListingStatus.UNAVAILABLE)
 
@@ -215,18 +219,18 @@ private fun MyListingCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (isOpen) {
-                    TextButton(onClick = onEdit, enabled = !busy) { Text("Edit") }
+                    TextButton(onClick = onEdit, enabled = !busy) { Text(VendorStrings.edit(isHindi)) }
                     if (canToggle) {
                         TextButton(onClick = { onToggleAvailability?.invoke() }, enabled = !busy) {
-                            Text(if (listing.status == ListingStatus.ACTIVE) "Mark unavailable" else "Mark available")
+                            Text(if (listing.status == ListingStatus.ACTIVE) VendorStrings.markUnavailable(isHindi) else VendorStrings.markAvailable(isHindi))
                         }
                     }
                     if (listing.status != ListingStatus.UNAVAILABLE) {
-                        TextButton(onClick = onMarkSold, enabled = !busy) { Text("Mark as sold") }
+                        TextButton(onClick = onMarkSold, enabled = !busy) { Text(VendorStrings.markAsSold(isHindi)) }
                     }
                 }
                 TextButton(onClick = onDelete, enabled = !busy) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(VendorStrings.delete(isHindi), color = MaterialTheme.colorScheme.error)
                 }
             }
         }
