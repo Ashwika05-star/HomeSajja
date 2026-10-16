@@ -57,8 +57,6 @@ fun UserHomeScreen(
     onOpenExchange: (String) -> Unit,
     onRequestRepair: () -> Unit,
     onOpenRepair: (String) -> Unit,
-    onRecycle: () -> Unit,
-    onOpenRecycling: (String) -> Unit,
     onOpenChats: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenSajja: () -> Unit,
@@ -68,7 +66,6 @@ fun UserHomeScreen(
     val homeViewModel: HomeViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val container = LocalAppContainer.current
     val selectedTab by container.homeTabs.user.collectAsState()
-    var servicesSection by rememberSaveable { mutableStateOf(ServicesSection.REPAIR) }
     val snackbarHostState = remember { SnackbarHostState() }
     RequestNotificationPermission()
 
@@ -120,17 +117,14 @@ fun UserHomeScreen(
                     text = { Text("New exchange") },
                 )
                 UserTab.MY_REQUESTS -> Unit
-                UserTab.SERVICES -> {
-                    val isRepair = servicesSection == ServicesSection.REPAIR
-                    ExtendedFloatingActionButton(
-                        onClick = if (isRepair) onRequestRepair else onRecycle,
-                        modifier = Modifier.semantics { contentDescription = if (isRepair) "Request a repair" else "Recycle furniture" },
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                        text = { Text(if (isRepair) "Request repair" else "Recycle") },
-                    )
-                }
+                UserTab.REPAIR -> ExtendedFloatingActionButton(
+                    onClick = onRequestRepair,
+                    modifier = Modifier.semantics { contentDescription = "Request a repair" },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    text = { Text("Request repair") },
+                )
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -156,13 +150,9 @@ fun UserHomeScreen(
                 onOpenListing = onOpenListing,
                 modifier = contentModifier,
             )
-            UserTab.SERVICES -> ServicesScreen(
-                section = servicesSection,
-                onSectionChange = { servicesSection = it },
-                onOpenRepair = onOpenRepair,
+            UserTab.REPAIR -> com.homesajja.app.ui.screens.repair.MyRepairsScreen(
+                onOpenRequest = onOpenRepair,
                 onRequestRepair = onRequestRepair,
-                onOpenRecycling = onOpenRecycling,
-                onRecycle = onRecycle,
                 modifier = contentModifier,
             )
         }

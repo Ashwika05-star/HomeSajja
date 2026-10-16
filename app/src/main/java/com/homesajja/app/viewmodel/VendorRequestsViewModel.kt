@@ -29,18 +29,16 @@ enum class RequestSection(val label: String) {
     PURCHASES("Purchases"),
     EXCHANGES("Exchanges"),
     REPAIRS("Repairs"),
-    RECYCLING("Recycling"),
 }
 
 /**
  * Which sections apply to a vendor: everyone gets purchase and exchange requests (they list items like anyone);
- * repair requests only go to repair providers and recycling requests only to recyclers.
+ * repair requests only go to repair providers.
  */
 fun sectionsFor(businessType: VendorBusinessType?): List<RequestSection> = buildList {
     add(RequestSection.PURCHASES)
     add(RequestSection.EXCHANGES)
     if (businessType in VendorBusinessType.REPAIR_PROVIDERS) add(RequestSection.REPAIRS)
-    if (businessType in VendorBusinessType.RECYCLERS) add(RequestSection.RECYCLING)
 }
 
 sealed interface VendorRequestsUiState {

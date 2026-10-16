@@ -108,10 +108,7 @@ private fun DashboardContent(
                 TypeTile(VendorStrings.sales(isHindi), summary.tasks.sales, isHindi, Modifier.weight(1f))
                 TypeTile(VendorStrings.repairs(isHindi), summary.tasks.repairs, isHindi, Modifier.weight(1f))
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                TypeTile(VendorStrings.exchanges(isHindi), summary.tasks.exchanges, isHindi, Modifier.weight(1f))
-                TypeTile(VendorStrings.recycling(isHindi), summary.tasks.recycling, isHindi, Modifier.weight(1f))
-            }
+            TypeTile(VendorStrings.exchanges(isHindi), summary.tasks.exchanges, isHindi, Modifier.fillMaxWidth())
         }
 
         Text(VendorStrings.goTo(isHindi), style = MaterialTheme.typography.titleMedium)

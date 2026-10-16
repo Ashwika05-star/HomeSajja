@@ -82,7 +82,7 @@ class HomeTabStateTest {
     @Test
     fun reset_returnsBothSpacesToTheirFirstTab() {
         val tabs = HomeTabState()
-        tabs.user.value = UserTab.SERVICES
+        tabs.user.value = UserTab.REPAIR
         tabs.vendor.value = VendorTab.EXPLORE
         tabs.reset()
         assertEquals(UserTab.EXPLORE, tabs.user.value)
@@ -98,10 +98,10 @@ class HomeTabStateTest {
     }
 
     @Test
-    fun servicesSection_materialsScrapped() {
+    fun userTabs_servicesRenamedToRepair() {
         assertEquals(
-            listOf("Repair", "Recycle"),
-            com.homesajja.app.ui.screens.ServicesSection.entries.map { it.label },
+            listOf("Explore", "Exchange", "My listings", "Requests", "Repair"),
+            UserTab.entries.map { it.label },
         )
     }
 }

@@ -13,8 +13,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.ui.Alignment
+import com.homesajja.app.ui.components.DateFilter
+import com.homesajja.app.ui.components.DateFilterDropdown
+import com.homesajja.app.ui.components.NoResultsState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -85,6 +90,7 @@ fun MyRequestsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var chosenTab by rememberSaveable { mutableIntStateOf(initialTab) }
     val selectedTab = if (receivedOnly) 1 else chosenTab
+    var dateFilter by remember { mutableStateOf<DateFilter>(DateFilter.All) }
 
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
@@ -126,12 +132,29 @@ fun MyRequestsScreen(
                         },
                     )
                 } else {
-                    LazyColumn(
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize(),
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        items(requests, key = { it.id }) { request ->
+                        DateFilterDropdown(selected = dateFilter, onSelect = { dateFilter = it })
+                    }
+                    val visibleRequests = requests.filter { dateFilter.matches(it.createdAt) }
+                    if (visibleRequests.isEmpty()) {
+                        NoResultsState(
+                            icon = Icons.Filled.FilterList,
+                            title = if (isHindi) "इस अवधि में कोई अनुरोध नहीं मिला" else "No requests for this period",
+                            subtitle = if (isHindi) "कृपया कोई अन्य तारीख चुनें" else "Try selecting another time range or clear the filter.",
+                            actionLabel = if (isHindi) "सभी समय देखें" else "Show all time",
+                            onActionClick = { dateFilter = DateFilter.All },
+                        )
+                    } else {
+                        LazyColumn(
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            items(visibleRequests, key = { it.id }) { request ->
                             RequestCard(
                                 request = request,
                                 isSent = isSent,
@@ -150,6 +173,7 @@ fun MyRequestsScreen(
             }
         }
     }
+}
 }
 
 @Composable

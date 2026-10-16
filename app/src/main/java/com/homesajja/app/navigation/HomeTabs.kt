@@ -18,7 +18,7 @@ enum class UserTab(val label: String, val icon: ImageVector) {
     EXCHANGE("Exchange", Icons.Filled.SwapHoriz),
     MY_LISTINGS("My listings", Icons.Filled.Sell),
     MY_REQUESTS("Requests", Icons.AutoMirrored.Filled.ReceiptLong),
-    SERVICES("Services", Icons.Filled.Build),
+    REPAIR("Repair", Icons.Filled.Build),
 }
 
 /** The bottom-bar tabs of the vendor's space. */

@@ -32,12 +32,10 @@ class RequestSectionsTest {
     }
 
     @Test
-    fun repairProvidersAlsoGetRepairs_recyclersGetRecycling() {
+    fun repairProvidersAlsoGetRepairs() {
         assertTrue(RequestSection.REPAIRS in sectionsFor(VendorBusinessType.REPAIR_PROFESSIONAL))
         assertTrue(RequestSection.REPAIRS in sectionsFor(VendorBusinessType.CARPENTER))
-        assertFalse(RequestSection.RECYCLING in sectionsFor(VendorBusinessType.CARPENTER))
-        assertTrue(RequestSection.RECYCLING in sectionsFor(VendorBusinessType.RECYCLER))
-        assertFalse(RequestSection.REPAIRS in sectionsFor(VendorBusinessType.RECYCLER))
+        assertFalse(RequestSection.REPAIRS in sectionsFor(VendorBusinessType.SHOP))
     }
 
     @Test

@@ -67,13 +67,13 @@ class AppLanguageTest {
     fun vendorStrings_businessTypes_areLocalizedInHindi() {
         assertEquals("मरम्मत विशेषज्ञ", VendorStrings.businessType("REPAIR", true))
         assertEquals("मरम्मत विशेषज्ञ", VendorStrings.businessType("REPAIR_PROFESSIONAL", true))
-        assertEquals("रीसाइक्लिंग विशेषज्ञ", VendorStrings.businessType("RECYCLER", true))
         assertEquals("कारीगर / अपसाइक्लर", VendorStrings.businessType("ARTISAN", true))
         assertEquals("फर्नीचर विक्रेता", VendorStrings.businessType("VENDOR", true))
         assertEquals("विक्रेता", VendorStrings.businessType("OTHER", true))
         assertEquals("विक्रेता", VendorStrings.businessType(null, true))
 
-        assertEquals("Recycler", VendorStrings.businessType("RECYCLER", false))
+        assertEquals("Repair Professional", VendorStrings.businessType("REPAIR_PROFESSIONAL", false))
+        assertEquals("Shop", VendorStrings.businessType("SHOP", false))
         assertEquals("Vendor", VendorStrings.businessType(null, false))
     }
 

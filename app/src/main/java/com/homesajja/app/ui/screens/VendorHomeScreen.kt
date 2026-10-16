@@ -60,7 +60,6 @@ fun VendorHomeScreen(
     onOpenExchange: (String) -> Unit,
     onNewExchange: () -> Unit = {},
     onOpenRepair: (String) -> Unit,
-    onOpenRecycling: (String) -> Unit,
     onEditProfile: () -> Unit,
     onOpenReports: () -> Unit,
     onOpenChats: () -> Unit,
@@ -136,7 +135,6 @@ fun VendorHomeScreen(
                 onOpenExchange = onOpenExchange,
                 onNewExchange = onNewExchange,
                 onOpenRepair = onOpenRepair,
-                onOpenRecycling = onOpenRecycling,
                 modifier = contentModifier,
             )
             VendorTab.EXPLORE -> ExploreScreen(

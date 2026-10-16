@@ -147,6 +147,7 @@ class RepairRequestViewModel(
     fun chooseListing(listing: FurnitureListing) {
         form = form.copy(
             listing = listing,
+            name = listing.title,
             notListed = false,
             category = listing.category,
             photos = listing.images.take(MAX_PHOTOS).map { SellPhoto.Remote(it) },

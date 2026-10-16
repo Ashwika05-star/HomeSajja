@@ -13,8 +13,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.homesajja.app.ui.components.DateFilter
+import com.homesajja.app.ui.components.DateFilterDropdown
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -60,6 +66,7 @@ private fun RepairList(
 ) {
     val isHindi = isAppHindi
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var dateFilter by remember { mutableStateOf<DateFilter>(DateFilter.All) }
 
     // Coming back from a request or the flow: reload quietly if the data is old.
     LifecycleResumeEffect(viewModel) {
@@ -87,29 +94,36 @@ private fun RepairList(
                 } else {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        RepairFilter.entries.forEach { option ->
-                            val label = when (option) {
-                                RepairFilter.ALL -> VendorStrings.filterAll(isHindi)
-                                RepairFilter.ACTIVE -> VendorStrings.filterActive(isHindi)
-                                RepairFilter.CLOSED -> VendorStrings.filterClosed(isHindi)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            RepairFilter.entries.forEach { option ->
+                                val label = when (option) {
+                                    RepairFilter.ALL -> VendorStrings.filterAll(isHindi)
+                                    RepairFilter.ACTIVE -> VendorStrings.filterActive(isHindi)
+                                    RepairFilter.CLOSED -> VendorStrings.filterClosed(isHindi)
+                                }
+                                CategoryChip(
+                                    label = label,
+                                    selected = viewModel.filter == option,
+                                    onClick = { viewModel.selectFilter(option) },
+                                )
                             }
-                            CategoryChip(
-                                label = label,
-                                selected = viewModel.filter == option,
-                                onClick = { viewModel.selectFilter(option) },
-                            )
                         }
+                        DateFilterDropdown(selected = dateFilter, onSelect = { dateFilter = it })
                     }
-                    val visible = current.requests.filter { viewModel.filter.matches(it.status) }
+                    val visible = current.requests.filter { viewModel.filter.matches(it.status) && dateFilter.matches(it.createdAt) }
                     if (visible.isEmpty()) {
                         NoResultsState(
                             icon = Icons.Filled.Build,
-                            title = if (isHindi) "कोई अनुरोध नहीं मिला" else "No ${viewModel.filter.label.lowercase()} requests",
+                            title = if (isHindi) "कोई अनुरोध नहीं मिला" else "No matching requests",
                             subtitle = VendorStrings.tryDifferentFilter(isHindi),
                             actionLabel = VendorStrings.showAll(isHindi),
-                            onActionClick = { viewModel.selectFilter(RepairFilter.ALL) },
+                            onActionClick = {
+                                viewModel.selectFilter(RepairFilter.ALL)
+                                dateFilter = DateFilter.All
+                            },
                         )
                     } else {
                         LazyColumn(

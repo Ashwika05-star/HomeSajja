@@ -17,8 +17,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Sell
+import com.homesajja.app.ui.components.DateFilter
+import com.homesajja.app.ui.components.DateFilterDropdown
+import com.homesajja.app.ui.components.NoResultsState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -76,6 +80,7 @@ fun MyListingsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var pendingDelete by remember { mutableStateOf<FurnitureListing?>(null) }
+    var dateFilter by remember { mutableStateOf<DateFilter>(DateFilter.All) }
 
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
@@ -120,12 +125,29 @@ fun MyListingsScreen(
                         )
                     }
                 } else {
-                    LazyColumn(
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize(),
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        items(listings, key = { it.id }) { listing ->
+                        DateFilterDropdown(selected = dateFilter, onSelect = { dateFilter = it })
+                    }
+                    val visibleListings = listings.filter { dateFilter.matches(it.createdAt) }
+                    if (visibleListings.isEmpty()) {
+                        NoResultsState(
+                            icon = Icons.Filled.FilterList,
+                            title = if (isHindi) "इस अवधि में कोई लिस्टिंग नहीं मिली" else "No listings for this period",
+                            subtitle = if (isHindi) "कृपया कोई अन्य तारीख चुनें" else "Try selecting another time range or clear the filter.",
+                            actionLabel = if (isHindi) "सभी समय देखें" else "Show all time",
+                            onActionClick = { dateFilter = DateFilter.All },
+                        )
+                    } else {
+                        LazyColumn(
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            items(visibleListings, key = { it.id }) { listing ->
                             MyListingCard(
                                 listing = listing,
                                 busy = viewModel.busyListingId == listing.id,
@@ -145,6 +167,7 @@ fun MyListingsScreen(
             }
         }
     }
+}
 
     pendingDelete?.let { listing ->
         AlertDialog(

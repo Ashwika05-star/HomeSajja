@@ -104,9 +104,7 @@ class RecycleRequestViewModel(
         recyclers = LoadState.Loading
         viewModelScope.launch {
             recyclers = try {
-                LoadState.Loaded(vendorRepository.getVendorsByTypes(form.city, VendorBusinessType.RECYCLERS).also { found ->
-                    ratings = runCatching { reviewRepository.getRatingSummaries(found.map { it.uid }) }.getOrDefault(emptyMap())
-                })
+                LoadState.Loaded(emptyList<VendorProfile>())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

@@ -1,58 +1,26 @@
 package com.homesajja.app.ui.screens.vendor
 
-import androidx.compose.foundation.BorderStroke
 import com.homesajja.app.ui.components.PillTabs
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Recycling
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.homesajja.app.data.model.RecyclingRequest
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
-import com.homesajja.app.ui.components.CategoryChip
-import com.homesajja.app.ui.components.OutlinedButton
-import com.homesajja.app.ui.components.QuoteDialog
-import com.homesajja.app.ui.components.EmptyState
 import com.homesajja.app.ui.components.ErrorState
-import com.homesajja.app.ui.components.ItemThumbnail
 import com.homesajja.app.ui.components.LoadingState
-import com.homesajja.app.ui.components.PrimaryButton
 import com.homesajja.app.ui.i18n.VendorStrings
 import com.homesajja.app.ui.i18n.isAppHindi
 import com.homesajja.app.ui.screens.exchange.ExchangeRequestsScreen
-import com.homesajja.app.ui.screens.recycle.VendorRecyclingList
 import com.homesajja.app.ui.screens.repair.VendorRepairsList
 import com.homesajja.app.ui.screens.requests.MyRequestsScreen
-import com.homesajja.app.viewmodel.OpenPickupsUiState
-import com.homesajja.app.viewmodel.OpenPickupsViewModel
 import com.homesajja.app.viewmodel.RequestSection
 import com.homesajja.app.viewmodel.VendorRequestsUiState
 import com.homesajja.app.viewmodel.VendorRequestsViewModel
@@ -61,11 +29,10 @@ private fun RequestSection.localizedLabel(isHindi: Boolean): String = when (this
     RequestSection.PURCHASES -> VendorStrings.purchases(isHindi)
     RequestSection.EXCHANGES -> VendorStrings.exchangesTab(isHindi)
     RequestSection.REPAIRS -> VendorStrings.repairsTab(isHindi)
-    RequestSection.RECYCLING -> VendorStrings.recyclingTab(isHindi)
 }
 
 /**
- * Everything addressed to the vendor in one place: purchase, exchange, repair and recycling requests,
+ * Everything addressed to the vendor in one place: purchase, exchange, and repair requests,
  * each in its own section wired to that system's own screens and repository.
  */
 @Composable
@@ -75,7 +42,6 @@ fun VendorRequestsScreen(
     onOpenExchange: (String) -> Unit,
     onNewExchange: () -> Unit = {},
     onOpenRepair: (String) -> Unit,
-    onOpenRecycling: (String) -> Unit,
     modifier: Modifier = Modifier,
     initialSection: RequestSection = RequestSection.PURCHASES,
 ) {
@@ -109,117 +75,7 @@ fun VendorRequestsScreen(
                         incomingOnly = false,
                     )
                     RequestSection.REPAIRS -> VendorRepairsList(onOpenRequest = onOpenRepair)
-                    RequestSection.RECYCLING -> RecyclingSection(snackbarHostState, onOpenRecycling)
                 }
-            }
-        }
-    }
-}
-
-/** Recyclers switch between the requests addressed to them and the unclaimed pickups in their city. */
-@Composable
-private fun RecyclingSection(snackbarHostState: SnackbarHostState, onOpenRecycling: (String) -> Unit) {
-    val isHindi = isAppHindi
-    var showOpen by rememberSaveable { mutableIntStateOf(0) }
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            CategoryChip(label = VendorStrings.myPickups(isHindi), selected = showOpen == 0, onClick = { showOpen = 0 })
-            CategoryChip(label = VendorStrings.openPickups(isHindi), selected = showOpen == 1, onClick = { showOpen = 1 })
-        }
-        if (showOpen == 0) {
-            VendorRecyclingList(onOpenRequest = onOpenRecycling)
-        } else {
-            OpenPickups(snackbarHostState)
-        }
-    }
-}
-
-@Composable
-private fun OpenPickups(snackbarHostState: SnackbarHostState) {
-    val isHindi = isAppHindi
-    val viewModel: OpenPickupsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var quoteFor by remember { mutableStateOf<RecyclingRequest?>(null) }
-
-    LaunchedEffect(viewModel) {
-        viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
-    }
-
-    quoteFor?.let { request ->
-        QuoteDialog(
-            repair = false,
-            revised = false,
-            initial = null,
-            vendorUpiId = viewModel.upiId,
-            onSend = {
-                quoteFor = null
-                viewModel.claim(request, it)
-            },
-            onDismiss = { quoteFor = null },
-        )
-    }
-
-    when (val current = state) {
-        OpenPickupsUiState.Loading -> LoadingState()
-        is OpenPickupsUiState.Error -> ErrorState(message = current.message, onRetry = viewModel::retry)
-        is OpenPickupsUiState.Content -> {
-            if (current.pickups.isEmpty()) {
-                EmptyState(
-                    icon = Icons.Filled.Recycling,
-                    title = VendorStrings.noOpenPickupsInCity(current.city, isHindi),
-                    subtitle = VendorStrings.noOpenPickupsSubtitle(isHindi),
-                )
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    items(current.pickups, key = { it.id }) { request ->
-                        PickupCard(
-                            request,
-                            busy = viewModel.busyId == request.id,
-                            onClaim = { viewModel.claim(request) },
-                            onClaimWithQuote = { quoteFor = request },
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PickupCard(request: RecyclingRequest, busy: Boolean, onClaim: () -> Unit, onClaimWithQuote: () -> Unit) {
-    val isHindi = isAppHindi
-    Card(
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(modifier = Modifier.weight(0.4f)) {
-                    ItemThumbnail(
-                        imageUrl = request.images.firstOrNull(),
-                        description = VendorStrings.furnitureItem(request.material.displayName, isHindi),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                Column(modifier = Modifier.weight(0.6f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(VendorStrings.furnitureItem(request.material.displayName, isHindi), style = MaterialTheme.typography.titleSmall)
-                    Text(request.condition.displayName, style = MaterialTheme.typography.bodyMedium)
-                    Text(VendorStrings.fromCustomer(request.userName, isHindi), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PrimaryButton(text = VendorStrings.claimFree(isHindi), onClick = onClaim, enabled = !busy, modifier = Modifier.weight(1f))
-                OutlinedButton(text = VendorStrings.claimWithQuote(isHindi), onClick = onClaimWithQuote, enabled = !busy, modifier = Modifier.weight(1f))
             }
         }
     }

@@ -22,6 +22,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import com.homesajja.app.data.model.ListingActionType
+import com.homesajja.app.ui.util.formatPrice
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -81,7 +87,9 @@ internal fun RepairStepContent(viewModel: RepairRequestViewModel, onOpenVendor: 
 @Composable
 private fun FurnitureStep(viewModel: RepairRequestViewModel) {
     val form = viewModel.form
-    StepTitle("Which furniture needs repair?", "Pick one of your items, or add one that isn't listed.")
+    StepTitle("Which furniture needs repair?", "Pick one of your items listed for selling or exchange, or add one that isn't listed.")
+
+    var listingTypeFilter by rememberSaveable { mutableStateOf("ALL") }
 
     when (val listings = viewModel.listings) {
         LoadState.Loading -> CircularProgressIndicator(modifier = Modifier.padding(16.dp))
@@ -93,9 +101,53 @@ private fun FurnitureStep(viewModel: RepairRequestViewModel) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            }
-            listings.items.forEach { listing ->
-                ListingChoice(listing, selected = form.listing?.id == listing.id, onClick = { viewModel.chooseListing(listing) })
+            } else {
+                val sellCount = listings.items.count { it.actionType == ListingActionType.SELL }
+                val exchangeCount = listings.items.count { it.actionType == ListingActionType.EXCHANGE }
+
+                if (sellCount > 0 && exchangeCount > 0) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        CategoryChip(
+                            label = "All (${listings.items.size})",
+                            selected = listingTypeFilter == "ALL",
+                            onClick = { listingTypeFilter = "ALL" },
+                        )
+                        CategoryChip(
+                            label = "Selling ($sellCount)",
+                            selected = listingTypeFilter == "SELL",
+                            onClick = { listingTypeFilter = "SELL" },
+                        )
+                        CategoryChip(
+                            label = "Exchange ($exchangeCount)",
+                            selected = listingTypeFilter == "EXCHANGE",
+                            onClick = { listingTypeFilter = "EXCHANGE" },
+                        )
+                    }
+                }
+
+                val filteredListings = listings.items.filter {
+                    when (listingTypeFilter) {
+                        "SELL" -> it.actionType == ListingActionType.SELL
+                        "EXCHANGE" -> it.actionType == ListingActionType.EXCHANGE
+                        else -> true
+                    }
+                }
+
+                if (filteredListings.isEmpty()) {
+                    Text(
+                        "No items found for this filter.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 8.dp),
+                    )
+                } else {
+                    filteredListings.forEach { listing ->
+                        ListingChoice(listing, selected = form.listing?.id == listing.id, onClick = { viewModel.chooseListing(listing) })
+                    }
+                }
             }
         }
     }
@@ -151,13 +203,32 @@ private fun ListingChoice(listing: FurnitureListing, selected: Boolean, onClick:
                 description = listing.title,
                 modifier = Modifier.width(88.dp).clip(MaterialTheme.shapes.medium),
             )
-            Column(modifier = Modifier.padding(start = 12.dp)) {
+            Column(modifier = Modifier.padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(listing.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    listing.category.displayName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        listing.category.displayName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text("·", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (listing.actionType == ListingActionType.EXCHANGE) {
+                        Text(
+                            "For exchange",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                    } else {
+                        Text(
+                            formatPrice(listing.price),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
             }
         }
     }

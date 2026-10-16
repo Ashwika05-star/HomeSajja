@@ -45,8 +45,6 @@ import com.homesajja.app.ui.screens.listing.ListingDetailScreen
 import com.homesajja.app.ui.screens.vendor.VendorProfileEditScreen
 import com.homesajja.app.ui.screens.vendor.VendorReportScreen
 import com.homesajja.app.ui.screens.vendor.VendorPublicProfileScreen
-import com.homesajja.app.ui.screens.recycle.RecycleDetailScreen
-import com.homesajja.app.ui.screens.recycle.RecycleRequestScreen
 import com.homesajja.app.ui.screens.repair.RepairDetailScreen
 import com.homesajja.app.ui.screens.repair.RepairRequestScreen
 import com.homesajja.app.ui.screens.sell.SellFlowScreen
@@ -155,8 +153,6 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onOpenExchange = { navController.navigate(Routes.ExchangeDetail.createRoute(it)) },
                 onRequestRepair = { navController.navigate(Routes.RepairNew.route) },
                 onOpenRepair = { navController.navigate(Routes.RepairDetail.createRoute(it)) },
-                onRecycle = { navController.navigate(Routes.RecycleNew.route) },
-                onOpenRecycling = { navController.navigate(Routes.RecycleDetail.createRoute(it)) },
                 onOpenChats = { navController.navigate(Routes.ChatList.route) },
                 onOpenNotifications = { navController.navigate(Routes.Notifications.route) },
                 onOpenSajja = { navController.navigate(Routes.SajjaChat.route) },
@@ -250,27 +246,6 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onOpenChat = { navController.navigate(Routes.ChatThread.createRoute(it)) },
             )
         }
-        composable(Routes.RecycleNew.route) {
-            RecycleRequestScreen(
-                onExit = { navController.popBackStack() },
-                onSent = { requestId ->
-                    // Replace the flow with the request itself as confirmation.
-                    navController.navigate(Routes.RecycleDetail.createRoute(requestId)) {
-                        popUpTo(Routes.UserHome.route)
-                    }
-                },
-                onOpenVendor = { navController.navigate(Routes.VendorProfile.createRoute(it)) },
-                onAskAi = {
-                    navController.navigate(Routes.SmartDecision.route) { popUpTo(Routes.RecycleNew.route) { inclusive = true } }
-                },
-            )
-        }
-        composable(
-            route = Routes.RecycleDetail.route,
-            arguments = listOf(navArgument("requestId") { type = NavType.StringType }),
-        ) {
-            RecycleDetailScreen(onBackClick = { navController.popBackStack() })
-        }
         composable(
             route = Routes.Sell.route,
             arguments = listOf(
@@ -329,7 +304,6 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onOpenExchange = { navController.navigate(Routes.ExchangeDetail.createRoute(it)) },
                 onNewExchange = { navController.navigate(Routes.ExchangeNew.createRoute()) },
                 onOpenRepair = { navController.navigate(Routes.RepairDetail.createRoute(it)) },
-                onOpenRecycling = { navController.navigate(Routes.RecycleDetail.createRoute(it)) },
                 onEditProfile = { navController.navigate(Routes.VendorProfileEdit.route) },
                 onOpenReports = { navController.navigate(Routes.VendorReport.route) },
                 onOpenChats = { navController.navigate(Routes.ChatList.route) },
@@ -348,8 +322,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onOpenFlow = { target ->
                     val route = when (target) {
                         Recommendation.SELL, Recommendation.EXCHANGE -> Routes.Sell.createRoute()
-                        Recommendation.REPAIR -> Routes.RepairNew.route
-                        Recommendation.RECYCLE -> Routes.RecycleNew.route
+                        Recommendation.REPAIR, Recommendation.RECYCLE -> Routes.RepairNew.route
                     }
                     navController.navigate(route) { popUpTo(Routes.SmartDecision.route) { inclusive = true } }
                 },
