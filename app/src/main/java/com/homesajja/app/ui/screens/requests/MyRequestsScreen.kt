@@ -76,104 +76,164 @@ import com.homesajja.app.viewmodel.MyRequestsViewModel
 import com.homesajja.app.viewmodel.SellerAction
 import com.homesajja.app.viewmodel.sellerActionsFor
 
-/** Buy/Sell requests: Sent (I'm the buyer) and Received (someone wants my item). */
+import com.homesajja.app.viewmodel.ItemRequestsUiState
+import com.homesajja.app.viewmodel.ItemRequestsViewModel
+
+/** Buy/Sell requests and custom item requests. */
 @Composable
 fun MyRequestsScreen(
     snackbarHostState: SnackbarHostState,
     onOpenListing: (String) -> Unit,
+    onOpenChat: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     receivedOnly: Boolean = false,
+    includeItemRequests: Boolean = !receivedOnly,
     initialTab: Int = 0,
 ) {
     val isHindi = isAppHindi
-    val viewModel: MyRequestsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
+    val container = LocalAppContainer.current
+    val viewModel: MyRequestsViewModel = viewModel(factory = ViewModelFactory(container))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var chosenTab by rememberSaveable { mutableIntStateOf(initialTab) }
     val selectedTab = if (receivedOnly) 1 else chosenTab
     var dateFilter by remember { mutableStateOf<DateFilter>(DateFilter.All) }
 
+    val itemRequestsVm: ItemRequestsViewModel? = if (includeItemRequests) {
+        viewModel(factory = ViewModelFactory(container))
+    } else null
+    val itemState = itemRequestsVm?.uiState?.collectAsStateWithLifecycle()?.value
+    var showCreateDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
+    }
+    if (itemRequestsVm != null) {
+        LaunchedEffect(itemRequestsVm) {
+            itemRequestsVm.messages.collect { snackbarHostState.showSnackbar(it) }
+        }
+        LaunchedEffect(itemRequestsVm) {
+            itemRequestsVm.openChat.collect { onOpenChat(it) }
+        }
     }
 
     // Coming back from another screen (detail, sell, exchange...): reload if the data is old.
     LifecycleResumeEffect(viewModel) {
         viewModel.refreshIfStale()
+        itemRequestsVm?.refresh()
         onPauseOrDispose {}
     }
 
     Column(modifier = modifier.fillMaxSize()) {
         val content = state as? MyRequestsUiState.Content
         if (!receivedOnly) {
-            PillTabs(
-                labels = listOf(
+            val userReqsCount = (itemState as? ItemRequestsUiState.Content)?.userRequests?.size
+            val labels = if (includeItemRequests) {
+                listOf(
                     "${VendorStrings.sent(isHindi)}${content?.let { " (${it.sent.size})" }.orEmpty()}",
                     "${VendorStrings.received(isHindi)}${content?.let { " (${it.received.size})" }.orEmpty()}",
-                ),
+                    "${VendorStrings.itemRequests(isHindi)}${userReqsCount?.let { " ($it)" }.orEmpty()}",
+                )
+            } else {
+                listOf(
+                    "${VendorStrings.sent(isHindi)}${content?.let { " (${it.sent.size})" }.orEmpty()}",
+                    "${VendorStrings.received(isHindi)}${content?.let { " (${it.received.size})" }.orEmpty()}",
+                )
+            }
+            PillTabs(
+                labels = labels,
                 selectedIndex = selectedTab,
                 onSelect = { chosenTab = it },
             )
         }
 
-        when (val current = state) {
-            MyRequestsUiState.Loading -> LoadingState()
-            is MyRequestsUiState.Error -> ErrorState(message = current.message, onRetry = viewModel::retry)
-            is MyRequestsUiState.Content -> {
-                val isSent = selectedTab == 0
-                val requests = if (isSent) current.sent else current.received
-                if (requests.isEmpty()) {
-                    EmptyState(
-                        icon = if (isSent) Icons.Filled.ShoppingBag else Icons.Filled.Inventory2,
-                        title = if (isSent) VendorStrings.noSentPurchases(isHindi) else VendorStrings.noReceivedPurchases(isHindi),
-                        subtitle = if (isSent) {
-                            VendorStrings.noSentPurchasesSub(isHindi)
-                        } else {
-                            VendorStrings.noReceivedPurchasesSub(isHindi)
-                        },
+        if (includeItemRequests && selectedTab == 2 && itemRequestsVm != null) {
+            when (val itCurrent = itemState) {
+                ItemRequestsUiState.Loading, null -> LoadingState()
+                is ItemRequestsUiState.Error -> ErrorState(message = itCurrent.message, onRetry = itemRequestsVm::retry)
+                is ItemRequestsUiState.Content -> {
+                    UserItemRequestsList(
+                        requests = itCurrent.userRequests,
+                        busyRequestId = itemRequestsVm.busyRequestId,
+                        onRequestNew = { showCreateDialog = true },
+                        onCancelRequest = { req -> itemRequestsVm.cancelRequest(req) },
+                        onFulfillRequest = { req -> itemRequestsVm.fulfillRequest(req) },
+                        onChatWithVendor = { req -> itemRequestsVm.chatWithUser(req) },
                     )
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        DateFilterDropdown(selected = dateFilter, onSelect = { dateFilter = it })
-                    }
-                    val visibleRequests = requests.filter { dateFilter.matches(it.createdAt) }
-                    if (visibleRequests.isEmpty()) {
-                        NoResultsState(
-                            icon = Icons.Filled.FilterList,
-                            title = if (isHindi) "इस अवधि में कोई अनुरोध नहीं मिला" else "No requests for this period",
-                            subtitle = if (isHindi) "कृपया कोई अन्य तारीख चुनें" else "Try selecting another time range or clear the filter.",
-                            actionLabel = if (isHindi) "सभी समय देखें" else "Show all time",
-                            onActionClick = { dateFilter = DateFilter.All },
+                }
+            }
+        } else {
+            when (val current = state) {
+                MyRequestsUiState.Loading -> LoadingState()
+                is MyRequestsUiState.Error -> ErrorState(message = current.message, onRetry = viewModel::retry)
+                is MyRequestsUiState.Content -> {
+                    val isSent = selectedTab == 0
+                    val requests = if (isSent) current.sent else current.received
+                    if (requests.isEmpty()) {
+                        EmptyState(
+                            icon = if (isSent) Icons.Filled.ShoppingBag else Icons.Filled.Inventory2,
+                            title = if (isSent) VendorStrings.noSentPurchases(isHindi) else VendorStrings.noReceivedPurchases(isHindi),
+                            subtitle = if (isSent) {
+                                VendorStrings.noSentPurchasesSub(isHindi)
+                            } else {
+                                VendorStrings.noReceivedPurchasesSub(isHindi)
+                            },
                         )
                     } else {
-                        LazyColumn(
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.fillMaxSize(),
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            items(visibleRequests, key = { it.id }) { request ->
-                            RequestCard(
-                                request = request,
-                                isSent = isSent,
-                                busy = viewModel.busyRequestId == request.id,
-                                onClick = { onOpenListing(request.listingId) },
-                                onCancel = { viewModel.cancelRequest(request) },
-                                onSellerAction = { action, upiId -> viewModel.performSellerAction(request, action, upiId) },
-                                onCancelOrder = { reason, note, refundDone -> viewModel.cancelOrder(request, reason, note, refundDone) },
-                                myUpiId = viewModel.myUpiId,
-                                onMarkPaid = { method, ref -> viewModel.markPaid(request, method, ref) },
-                                onConfirmReceived = { viewModel.confirmPayment(request) },
+                            DateFilterDropdown(selected = dateFilter, onSelect = { dateFilter = it })
+                        }
+                        val visibleRequests = requests.filter { dateFilter.matches(it.createdAt) }
+                        if (visibleRequests.isEmpty()) {
+                            NoResultsState(
+                                icon = Icons.Filled.FilterList,
+                                title = if (isHindi) "इस अवधि में कोई अनुरोध नहीं मिला" else "No requests for this period",
+                                subtitle = if (isHindi) "कृपया कोई अन्य तारीख चुनें" else "Try selecting another time range or clear the filter.",
+                                actionLabel = if (isHindi) "सभी समय देखें" else "Show all time",
+                                onActionClick = { dateFilter = DateFilter.All },
                             )
+                        } else {
+                            LazyColumn(
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.fillMaxSize(),
+                            ) {
+                                items(visibleRequests, key = { it.id }) { request ->
+                                    RequestCard(
+                                        request = request,
+                                        isSent = isSent,
+                                        busy = viewModel.busyRequestId == request.id,
+                                        onClick = { onOpenListing(request.listingId) },
+                                        onCancel = { viewModel.cancelRequest(request) },
+                                        onSellerAction = { action, upiId -> viewModel.performSellerAction(request, action, upiId) },
+                                        onCancelOrder = { reason, note, refundDone -> viewModel.cancelOrder(request, reason, note, refundDone) },
+                                        myUpiId = viewModel.myUpiId,
+                                        onMarkPaid = { method, ref -> viewModel.markPaid(request, method, ref) },
+                                        onConfirmReceived = { viewModel.confirmPayment(request) },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     }
-}
+
+    if (showCreateDialog && itemRequestsVm != null) {
+        val initialCity = (itemState as? ItemRequestsUiState.Content)?.userCity.orEmpty()
+        ItemRequestCreateDialog(
+            initialCity = initialCity,
+            onDismiss = { showCreateDialog = false },
+            onSubmit = { title, category, budget, description, city ->
+                showCreateDialog = false
+                itemRequestsVm.createRequest(title, category, budget, description, city) {}
+            },
+        )
+    }
 }
 
 @Composable

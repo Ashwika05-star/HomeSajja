@@ -25,14 +25,20 @@ import com.homesajja.app.viewmodel.RequestSection
 import com.homesajja.app.viewmodel.VendorRequestsUiState
 import com.homesajja.app.viewmodel.VendorRequestsViewModel
 
+import androidx.compose.runtime.LaunchedEffect
+import com.homesajja.app.ui.screens.requests.VendorItemRequestsList
+import com.homesajja.app.viewmodel.ItemRequestsUiState
+import com.homesajja.app.viewmodel.ItemRequestsViewModel
+
 private fun RequestSection.localizedLabel(isHindi: Boolean): String = when (this) {
     RequestSection.PURCHASES -> VendorStrings.purchases(isHindi)
     RequestSection.EXCHANGES -> VendorStrings.exchangesTab(isHindi)
     RequestSection.REPAIRS -> VendorStrings.repairsTab(isHindi)
+    RequestSection.ITEM_REQUESTS -> VendorStrings.itemRequests(isHindi)
 }
 
 /**
- * Everything addressed to the vendor in one place: purchase, exchange, and repair requests,
+ * Everything addressed to the vendor in one place: purchase, exchange, repair, and customer item requests,
  * each in its own section wired to that system's own screens and repository.
  */
 @Composable
@@ -42,11 +48,13 @@ fun VendorRequestsScreen(
     onOpenExchange: (String) -> Unit,
     onNewExchange: () -> Unit = {},
     onOpenRepair: (String) -> Unit,
+    onOpenChat: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     initialSection: RequestSection = RequestSection.PURCHASES,
 ) {
     val isHindi = isAppHindi
-    val viewModel: VendorRequestsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
+    val container = LocalAppContainer.current
+    val viewModel: VendorRequestsViewModel = viewModel(factory = ViewModelFactory(container))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var selected by rememberSaveable { mutableIntStateOf(initialSection.ordinal) }
 
@@ -66,7 +74,9 @@ fun VendorRequestsScreen(
                     RequestSection.PURCHASES -> MyRequestsScreen(
                         snackbarHostState = snackbarHostState,
                         onOpenListing = onOpenListing,
+                        onOpenChat = onOpenChat,
                         receivedOnly = false,
+                        includeItemRequests = false,
                         initialTab = 1,
                     )
                     RequestSection.EXCHANGES -> ExchangeRequestsScreen(
@@ -75,6 +85,35 @@ fun VendorRequestsScreen(
                         incomingOnly = false,
                     )
                     RequestSection.REPAIRS -> VendorRepairsList(onOpenRequest = onOpenRepair)
+                    RequestSection.ITEM_REQUESTS -> {
+                        val itemRequestsVm: ItemRequestsViewModel = viewModel(factory = ViewModelFactory(container))
+                        val itemState by itemRequestsVm.uiState.collectAsStateWithLifecycle()
+                        val authRepo = container.authRepository
+
+                        LaunchedEffect(itemRequestsVm) {
+                            itemRequestsVm.messages.collect { snackbarHostState.showSnackbar(it) }
+                        }
+                        LaunchedEffect(itemRequestsVm) {
+                            itemRequestsVm.openChat.collect { onOpenChat(it) }
+                        }
+
+                        when (val itCurrent = itemState) {
+                            ItemRequestsUiState.Loading -> LoadingState()
+                            is ItemRequestsUiState.Error -> ErrorState(message = itCurrent.message, onRetry = itemRequestsVm::retry)
+                            is ItemRequestsUiState.Content -> {
+                                VendorItemRequestsList(
+                                    openRequests = itCurrent.openRequests,
+                                    myAcceptedRequests = itCurrent.myAcceptedRequests,
+                                    allRequests = itCurrent.allRequests,
+                                    currentVendorId = authRepo.currentUserId,
+                                    busyRequestId = itemRequestsVm.busyRequestId,
+                                    onAcceptRequest = { req, note -> itemRequestsVm.acceptRequest(req, note) },
+                                    onFulfillRequest = { req -> itemRequestsVm.fulfillRequest(req) },
+                                    onChatWithCustomer = { req -> itemRequestsVm.chatWithUser(req) },
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -18,7 +18,7 @@ object NotificationRouting {
         EntityType.RECYCLING_REQUEST -> Routes.RecycleDetail.createRoute(id)
         EntityType.MATERIAL_REQUEST -> Routes.MaterialDetail.createRoute(id)
         EntityType.CHAT -> Routes.ChatThread.createRoute(id)
-        EntityType.PURCHASE_REQUEST, EntityType.REVIEW -> null
+        EntityType.PURCHASE_REQUEST, EntityType.REVIEW, EntityType.ITEM_REQUEST -> null
     }.takeIf { id.isNotBlank() }
 
     /** Reads the destination a tapped system notification carries, or null if the intent has none. */

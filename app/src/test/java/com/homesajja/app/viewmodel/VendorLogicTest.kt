@@ -28,7 +28,7 @@ class RequestSectionsTest {
     @Test
     fun everyVendorGetsPurchasesAndExchanges() {
         val sections = sectionsFor(VendorBusinessType.SHOP)
-        assertEquals(listOf(RequestSection.PURCHASES, RequestSection.EXCHANGES), sections)
+        assertEquals(listOf(RequestSection.PURCHASES, RequestSection.EXCHANGES, RequestSection.ITEM_REQUESTS), sections)
     }
 
     @Test
@@ -40,7 +40,8 @@ class RequestSectionsTest {
 
     @Test
     fun unknownBusinessType_getsTheBasics() {
-        assertEquals(2, sectionsFor(null).size)
+        assertEquals(3, sectionsFor(null).size)
+        assertTrue(RequestSection.ITEM_REQUESTS in sectionsFor(null))
     }
 }
 

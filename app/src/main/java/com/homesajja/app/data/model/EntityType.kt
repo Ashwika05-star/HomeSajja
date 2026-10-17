@@ -10,6 +10,7 @@ enum class EntityType {
     REPAIR_REQUEST,
     RECYCLING_REQUEST,
     MATERIAL_REQUEST,
+    ITEM_REQUEST,
     CHAT,
     REVIEW,
 }

@@ -55,6 +55,7 @@ fun EntityType.chatContextLabel(): String = when (this) {
     EntityType.PURCHASE_REQUEST -> "Purchase"
     EntityType.RECYCLING_REQUEST -> "Recycling"
     EntityType.MATERIAL_REQUEST -> "Material request"
+    EntityType.ITEM_REQUEST -> "Item request"
     EntityType.CHAT, EntityType.REVIEW -> "Chat"
 }
 

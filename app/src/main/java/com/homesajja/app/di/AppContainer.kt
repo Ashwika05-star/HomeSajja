@@ -29,6 +29,7 @@ import com.homesajja.app.repository.ExchangeRepository
 import com.homesajja.app.repository.FavouriteRepository
 import com.homesajja.app.repository.GoogleSignInManager
 import com.homesajja.app.repository.ImageRepository
+import com.homesajja.app.repository.ItemRequestRepository
 import com.homesajja.app.repository.ListingRepository
 import com.homesajja.app.repository.MaterialRequestRepository
 import com.homesajja.app.repository.NotificationRepository
@@ -85,6 +86,7 @@ class AppContainer(private val appContext: Context) {
     val repairRepository: RepairRepository by lazy { RepairRepository(firestore) }
     val recyclingRepository: RecyclingRepository by lazy { RecyclingRepository(firestore) }
     val materialRequestRepository: MaterialRequestRepository by lazy { MaterialRequestRepository(firestore) }
+    val itemRequestRepository: ItemRequestRepository by lazy { ItemRequestRepository(firestore) }
     val chatRepository: ChatRepository by lazy { ChatRepository(firestore) }
     val notificationRepository: NotificationRepository by lazy { NotificationRepository(firestore) }
     val deviceTokenRepository: DeviceTokenRepository by lazy { DeviceTokenRepository(firestore, FirebaseMessaging.getInstance()) }

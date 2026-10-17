@@ -66,6 +66,7 @@ fun VendorHomeScreen(
     onOpenNotifications: () -> Unit,
     onOpenBlocked: () -> Unit,
     onLoggedOut: () -> Unit,
+    onOpenChat: (String) -> Unit = {},
 ) {
     val homeViewModel: HomeViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val container = LocalAppContainer.current
@@ -135,6 +136,7 @@ fun VendorHomeScreen(
                 onOpenExchange = onOpenExchange,
                 onNewExchange = onNewExchange,
                 onOpenRepair = onOpenRepair,
+                onOpenChat = onOpenChat,
                 modifier = contentModifier,
             )
             VendorTab.EXPLORE -> ExploreScreen(

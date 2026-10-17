@@ -5,6 +5,7 @@ import com.homesajja.app.data.model.Chat
 import com.homesajja.app.data.model.EntityType
 import com.homesajja.app.data.model.ExchangeRequest
 import com.homesajja.app.data.model.FurnitureListing
+import com.homesajja.app.data.model.ItemRequest
 import com.homesajja.app.data.model.MaterialOffer
 import com.homesajja.app.data.model.MaterialRequest
 import com.homesajja.app.data.model.Notification
@@ -313,5 +314,15 @@ object NotificationTemplates {
         },
         relatedType = relatedType,
         relatedId = relatedId,
+    )
+
+    fun itemRequestAccepted(request: ItemRequest, vendorName: String, vendorId: String) = Notification(
+        recipientId = request.userId,
+        senderId = vendorId,
+        type = NotificationType.VENDOR_RESPONSE,
+        title = "$vendorName accepted your request",
+        body = "$vendorName can fulfill your request for \"${request.title}\". Tap to chat and discuss details.",
+        relatedType = EntityType.ITEM_REQUEST,
+        relatedId = request.id,
     )
 }

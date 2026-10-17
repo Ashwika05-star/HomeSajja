@@ -285,5 +285,54 @@ object VendorStrings {
     } else {
         "No sales or purchases were recorded in $month."
     }
+
+    // --- Custom Item Requests
+    fun itemRequests(isHindi: Boolean) = if (isHindi) "आइटम अनुरोध" else "Item requests"
+    fun requestItem(isHindi: Boolean) = if (isHindi) "आइटम का अनुरोध करें" else "Request item"
+    fun requestItemTitle(isHindi: Boolean) = if (isHindi) "फर्नीचर का अनुरोध करें" else "Request furniture"
+    fun requestItemSubtitle(isHindi: Boolean) = if (isHindi) {
+        "बताएं कि आप क्या ढूंढ रहे हैं। स्थानीय विक्रेता आपकी मांग देखकर इसे स्वीकार कर सकते हैं।"
+    } else {
+        "Describe the furniture you are looking for. Local vendors will see your request and can accept it."
+    }
+    fun whatAreYouLookingFor(isHindi: Boolean) = if (isHindi) "आप क्या ढूंढ रहे हैं?" else "What are you looking for?"
+    fun itemTitleHint(isHindi: Boolean) = if (isHindi) "उदा. 4 सीटर डाइनिंग टेबल, स्टडी टेबल" else "e.g. 4-seater dining table, study desk"
+    fun targetBudget(isHindi: Boolean) = if (isHindi) "अपेक्षित बजट (₹)" else "Expected budget (₹)"
+    fun budgetHint(isHindi: Boolean) = if (isHindi) "उदा. 5000" else "e.g. 5000"
+    fun descriptionHint(isHindi: Boolean) = if (isHindi) "सामग्री, आकार, रंग या कोई विशेष आवश्यकता लिखें" else "Specify material, size, colour or any preferences"
+    fun noItemRequestsYet(isHindi: Boolean) = if (isHindi) "अभी कोई आइटम अनुरोध नहीं है" else "No item requests yet"
+    fun noItemRequestsUserSub(isHindi: Boolean) = if (isHindi) {
+        "किसी विशेष फर्नीचर की तलाश है? एक अनुरोध बनाएं और विक्रेता आपसे संपर्क करेंगे।"
+    } else {
+        "Looking for specific furniture? Create a request and local vendors will see it."
+    }
+    fun noItemRequestsVendorSub(isHindi: Boolean) = if (isHindi) {
+        "ग्राहकों द्वारा मांगे गए फर्नीचर के अनुरोध यहाँ दिखाई देंगे।"
+    } else {
+        "Furniture requests from customers will show up here."
+    }
+    fun acceptRequest(isHindi: Boolean) = if (isHindi) "अनुरोध स्वीकार करें" else "Accept request"
+    fun acceptedByVendor(vendorName: String, isHindi: Boolean) = if (isHindi) "$vendorName द्वारा स्वीकृत" else "Accepted by $vendorName"
+    fun acceptedByYou(isHindi: Boolean) = if (isHindi) "आपके द्वारा स्वीकृत" else "Accepted by you"
+    fun acceptedByOther(vendorName: String, isHindi: Boolean) = if (isHindi) "$vendorName द्वारा स्वीकृत" else "Accepted by $vendorName"
+    fun markFulfilled(isHindi: Boolean) = if (isHindi) "पूर्ण हुआ चिह्नित करें" else "Mark fulfilled"
+    fun chatWithBuyer(isHindi: Boolean) = if (isHindi) "ग्राहक से चैट करें" else "Chat with customer"
+    fun chatWithVendor(isHindi: Boolean) = if (isHindi) "विक्रेता से चैट करें" else "Chat with vendor"
+    fun cancelRequest(isHindi: Boolean) = if (isHindi) "अनुरोध रद्द करें" else "Cancel request"
+    fun cancelRequestConfirm(title: String, isHindi: Boolean) = if (isHindi) {
+        "क्या आप वाकई \"$title\" का अनुरोध रद्द करना चाहते हैं?"
+    } else {
+        "Are you sure you want to cancel your request for \"$title\"?"
+    }
+    fun acceptRequestConfirm(title: String, customerName: String, isHindi: Boolean) = if (isHindi) {
+        "क्या आप $customerName के लिए \"$title\" का अनुरोध स्वीकार करना चाहते हैं?"
+    } else {
+        "Do you want to accept $customerName's request for \"$title\"?"
+    }
+    fun vendorNoteLabel(isHindi: Boolean) = if (isHindi) "ग्राहक के लिए संदेश (वैकल्पिक)" else "Note for customer (optional)"
+    fun vendorNoteHint(isHindi: Boolean) = if (isHindi) "उदा. मेरे पास ऐसा टेबल उपलब्ध है" else "e.g. I have a similar table in stock"
+    fun waitingForVendor(isHindi: Boolean) = if (isHindi) "विक्रेता द्वारा स्वीकार किए जाने की प्रतीक्षा है..." else "Waiting for a local vendor to accept your request..."
+    fun customerBudget(budget: String, isHindi: Boolean) = if (isHindi) "ग्राहक का बजट: $budget" else "Customer budget: $budget"
+    fun yourBudget(budget: String, isHindi: Boolean) = if (isHindi) "आपका बजट: $budget" else "Your budget: $budget"
 }
 

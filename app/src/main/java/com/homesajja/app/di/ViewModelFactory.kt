@@ -9,6 +9,7 @@ import com.homesajja.app.viewmodel.ChatListViewModel
 import com.homesajja.app.viewmodel.ChatThreadViewModel
 import com.homesajja.app.viewmodel.ExchangeBrowseViewModel
 import com.homesajja.app.viewmodel.InboxBadgeViewModel
+import com.homesajja.app.viewmodel.ItemRequestsViewModel
 import com.homesajja.app.viewmodel.NotificationsViewModel
 import com.homesajja.app.viewmodel.ExchangeDetailViewModel
 import com.homesajja.app.viewmodel.ExchangeProposalViewModel
@@ -320,6 +321,14 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 checkNotNull(extras[ReviewParamsKey]) { "ReviewViewModel needs ReviewParams" },
                 container.authRepository,
                 container.reviewRepository,
+            )
+            ItemRequestsViewModel::class.java -> ItemRequestsViewModel(
+                container.authRepository,
+                container.userRepository,
+                container.vendorRepository,
+                container.itemRequestRepository,
+                container.chatRepository,
+                container.notificationSender,
             )
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }

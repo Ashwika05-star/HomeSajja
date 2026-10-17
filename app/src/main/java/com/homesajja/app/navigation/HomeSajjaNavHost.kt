@@ -162,6 +162,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                         popUpTo(0) { inclusive = true }
                     }
                 },
+                onOpenChat = { navController.navigate(Routes.ChatThread.createRoute(it)) },
             )
         }
         composable(
@@ -314,6 +315,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                         popUpTo(0) { inclusive = true }
                     }
                 },
+                onOpenChat = { navController.navigate(Routes.ChatThread.createRoute(it)) },
             )
         }
         composable(Routes.SmartDecision.route) {

@@ -641,5 +641,25 @@ service cloud.firestore {
         && favouriteId == incoming().userId + '_' + incoming().listingId;
       allow delete: if isSelf(existing().userId);
     }
+
+    // ---------- custom item requests ----------
+    // Users request specific furniture they are looking for; vendors can browse and accept.
+    match /itemRequests/{requestId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSelf(incoming().userId)
+        && incoming().status == 'OPEN'
+        && incoming().title is string && incoming().title.size() > 0;
+      allow update: if isSignedIn()
+        && (
+          // Creator cancels open request
+          (isSelf(existing().userId) && incoming().status == 'CANCELLED' && existing().status == 'OPEN')
+          // Creator or accepted vendor marks fulfilled
+          || ((isSelf(existing().userId) || (vendorExists(request.auth.uid) && existing().acceptedVendorId == request.auth.uid))
+              && incoming().status == 'FULFILLED' && existing().status == 'ACCEPTED')
+          // Any vendor accepts open request
+          || (vendorExists(request.auth.uid) && existing().status == 'OPEN' && incoming().status == 'ACCEPTED' && incoming().acceptedVendorId == request.auth.uid)
+        );
+      allow delete: if isSelf(existing().userId) && existing().status in ['OPEN', 'CANCELLED'];
+    }
   }
 }
