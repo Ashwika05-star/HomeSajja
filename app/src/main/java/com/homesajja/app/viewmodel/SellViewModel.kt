@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.homesajja.app.data.model.FurnitureDimensions
 import com.homesajja.app.data.model.FurnitureListing
+import com.homesajja.app.data.model.ListingStatus
 import com.homesajja.app.data.model.SellerType
 import com.homesajja.app.data.model.UserRole
 import com.homesajja.app.repository.AuthRepository
@@ -110,8 +111,8 @@ class SellViewModel(
                     }
                 } else {
                     val listing = listingRepository.getListing(editingListingId)
-                    if (listing == null || listing.ownerId != uid) {
-                        screenState = SellScreenState.Error("This listing can't be edited.")
+                    if (listing == null || listing.ownerId != uid || listing.status in setOf(ListingStatus.SOLD, ListingStatus.EXCHANGED, ListingStatus.REMOVED)) {
+                        screenState = SellScreenState.Error("This listing is sold or closed and can't be edited.")
                         return@launch
                     }
                     editingListing = listing

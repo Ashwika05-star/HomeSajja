@@ -236,12 +236,12 @@ private fun MyListingCard(
                     StatusBadge(status = listing.status.displayName)
                 }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (isOpen) {
+            if (isOpen) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     TextButton(onClick = onEdit, enabled = !busy) { Text(VendorStrings.edit(isHindi)) }
                     if (canToggle) {
                         TextButton(onClick = { onToggleAvailability?.invoke() }, enabled = !busy) {
@@ -251,9 +251,9 @@ private fun MyListingCard(
                     if (listing.status != ListingStatus.UNAVAILABLE) {
                         TextButton(onClick = onMarkSold, enabled = !busy) { Text(VendorStrings.markAsSold(isHindi)) }
                     }
-                }
-                TextButton(onClick = onDelete, enabled = !busy) {
-                    Text(VendorStrings.delete(isHindi), color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = onDelete, enabled = !busy) {
+                        Text(VendorStrings.delete(isHindi), color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
         }

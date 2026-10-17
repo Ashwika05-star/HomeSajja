@@ -51,6 +51,16 @@ sealed interface ListingDetailUiState {
             get() = !isOwner && !sellerBlocked && listing.actionType == ListingActionType.SELL && listing.status == ListingStatus.ACTIVE &&
                 (myRequest == null || myRequest.status in ENDED_STATUSES)
 
+        /** Whether the owner can modify (edit or delete) the listing. Sold and closed items cannot be modified. */
+        val canModify: Boolean
+            get() = isOwner && listing.status in setOf(ListingStatus.ACTIVE, ListingStatus.RESERVED, ListingStatus.UNAVAILABLE)
+
+        val canEdit: Boolean
+            get() = canModify
+
+        val canDelete: Boolean
+            get() = canModify
+
         /** Owner actions on a listing that is still open (the same rule as My listings). */
         val canMarkSold: Boolean
             get() = isOwner && listing.status in setOf(ListingStatus.ACTIVE, ListingStatus.RESERVED)
@@ -193,7 +203,7 @@ class ListingDetailViewModel(
 
     /** Owner only: deletes the listing for good, then tells the screen to close. */
     fun deleteListing() {
-        val content = content()?.takeIf { it.isOwner } ?: return
+        val content = content()?.takeIf { it.canDelete } ?: return
         runBusy(content, failure = "Couldn't delete the listing.") {
             listingRepository.deleteListing(content.listing.id)
             _deleted.tryEmit(Unit)

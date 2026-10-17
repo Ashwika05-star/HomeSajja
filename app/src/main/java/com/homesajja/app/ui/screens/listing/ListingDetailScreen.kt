@@ -62,6 +62,8 @@ import com.homesajja.app.data.model.SellerType
 import com.homesajja.app.data.model.itemState
 import com.homesajja.app.di.LocalAppContainer
 import com.homesajja.app.di.ViewModelFactory
+import com.homesajja.app.ui.i18n.VendorStrings
+import com.homesajja.app.ui.i18n.isAppHindi
 import com.homesajja.app.ui.components.AppTextField
 import com.homesajja.app.ui.components.AppTopBar
 import com.homesajja.app.ui.components.ErrorState
@@ -130,7 +132,9 @@ fun ListingDetailScreen(
             (state as? ListingDetailUiState.Content)?.let {
                 // Owners get edit / mark sold / delete instead of Buy, Make offer, Chat and Exchange.
                 if (it.isOwner) {
-                    OwnerActionBar(content = it, viewModel = viewModel, onEdit = { onEditListing(it.listing.id) })
+                    if (it.canEdit || it.canDelete || it.canMarkSold) {
+                        OwnerActionBar(content = it, viewModel = viewModel, onEdit = { onEditListing(it.listing.id) })
+                    }
                 } else {
                     ActionBar(content = it, viewModel = viewModel, onProposeExchange = onProposeExchange)
                 }
@@ -185,7 +189,7 @@ private fun DetailContent(
                 if (listing.status != ListingStatus.ACTIVE) StatusBadge(status = listing.status.displayName)
             }
 
-            if (content.isOwner) OwnerNotice()
+            if (content.isOwner) OwnerNotice(content)
 
             content.myRequest?.let { MyRequestCard(it) }
 
@@ -308,14 +312,22 @@ private fun MyRequestCard(request: PurchaseRequest) {
 }
 
 @Composable
-private fun OwnerNotice() {
+private fun OwnerNotice(content: ListingDetailUiState.Content) {
+    val isHindi = isAppHindi
+    val isClosed = !content.canModify
     Card(
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
-            "This is your listing. Buying, offers and chat are switched off for your own item; you can edit it, mark it sold or delete it below.",
+            if (isClosed) {
+                if (isHindi) "यह आपकी लिस्टिंग है। यह लिस्टिंग अब बंद है (${content.listing.status.displayName})।"
+                else "This is your listing (${content.listing.status.displayName.lowercase()}). This listing is closed, so editing and deleting are no longer available."
+            } else {
+                if (isHindi) "यह आपकी लिस्टिंग है। अपने सामान के लिए खरीद, ऑफ़र और चैट बंद हैं; आप नीचे इसे एडिट कर सकते हैं, बिका हुआ चिह्नित कर सकते हैं या हटा सकते हैं।"
+                else "This is your listing. Buying, offers and chat are switched off for your own item; you can edit it, mark it sold or delete it below."
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSecondaryContainer,
             modifier = Modifier.padding(16.dp),
@@ -330,7 +342,10 @@ private fun OwnerActionBar(
     viewModel: ListingDetailViewModel,
     onEdit: () -> Unit,
 ) {
+    if (!content.canEdit && !content.canDelete && !content.canMarkSold) return
+
     val listing = content.listing
+    val isHindi = isAppHindi
     var confirmDelete by remember { mutableStateOf(false) }
     val enabled = !content.isBusy
 
@@ -341,14 +356,33 @@ private fun OwnerActionBar(
             modifier = Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PrimaryButton(text = "Edit", onClick = onEdit, enabled = enabled, modifier = Modifier.weight(1f))
-                if (content.canMarkSold) {
-                    SecondaryButton(text = "Mark as sold", onClick = viewModel::markAsSold, enabled = enabled, modifier = Modifier.weight(1f))
+            if (content.canEdit || content.canMarkSold) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (content.canEdit) {
+                        PrimaryButton(
+                            text = if (isHindi) VendorStrings.edit(isHindi) else "Edit",
+                            onClick = onEdit,
+                            enabled = enabled,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if (content.canMarkSold) {
+                        SecondaryButton(
+                            text = if (isHindi) VendorStrings.markAsSold(isHindi) else "Mark as sold",
+                            onClick = viewModel::markAsSold,
+                            enabled = enabled,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
-            TextButton(onClick = { confirmDelete = true }, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
-                Text("Delete listing", color = MaterialTheme.colorScheme.error)
+            if (content.canDelete) {
+                TextButton(onClick = { confirmDelete = true }, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        if (isHindi) VendorStrings.deleteListingTitle(isHindi).removeSuffix("?") else "Delete listing",
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         }
         }
@@ -357,15 +391,15 @@ private fun OwnerActionBar(
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("Delete listing?") },
-            text = { Text("\"${listing.title}\" will be removed for good. This can't be undone.") },
+            title = { Text(VendorStrings.deleteListingTitle(isHindi)) },
+            text = { Text(VendorStrings.deleteListingConfirm(listing.title, isHindi)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = false
                     viewModel.deleteListing()
-                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                }) { Text(VendorStrings.delete(isHindi), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(VendorStrings.cancel(isHindi)) } },
         )
     }
 }

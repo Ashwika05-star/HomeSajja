@@ -75,6 +75,7 @@ class MyListingsViewModel(
     }
 
     fun delete(listing: FurnitureListing) = runAction(listing, "Couldn't delete the listing.") {
+        if (listing.status !in ACTIVE_STATUSES) return@runAction
         listingRepository.deleteListing(listing.id)
         _messages.tryEmit("Deleted \"${listing.title}\".")
     }

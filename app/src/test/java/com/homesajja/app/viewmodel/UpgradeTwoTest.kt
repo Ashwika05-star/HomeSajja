@@ -127,6 +127,25 @@ class OwnerDetailTest {
     @Test
     fun buyer_neverGetsOwnerActions() {
         assertFalse(detail(isOwner = false).canMarkSold)
+        assertFalse(detail(isOwner = false).canEdit)
+        assertFalse(detail(isOwner = false).canDelete)
+    }
+
+    @Test
+    fun owner_canEditOrDeleteOnlyWhileTheListingIsOpen() {
+        assertTrue(detail(isOwner = true, ListingStatus.ACTIVE).canEdit)
+        assertTrue(detail(isOwner = true, ListingStatus.ACTIVE).canDelete)
+        assertTrue(detail(isOwner = true, ListingStatus.RESERVED).canEdit)
+        assertTrue(detail(isOwner = true, ListingStatus.RESERVED).canDelete)
+        assertTrue(detail(isOwner = true, ListingStatus.UNAVAILABLE).canEdit)
+        assertTrue(detail(isOwner = true, ListingStatus.UNAVAILABLE).canDelete)
+
+        assertFalse(detail(isOwner = true, ListingStatus.SOLD).canEdit)
+        assertFalse(detail(isOwner = true, ListingStatus.SOLD).canDelete)
+        assertFalse(detail(isOwner = true, ListingStatus.EXCHANGED).canEdit)
+        assertFalse(detail(isOwner = true, ListingStatus.EXCHANGED).canDelete)
+        assertFalse(detail(isOwner = true, ListingStatus.REMOVED).canEdit)
+        assertFalse(detail(isOwner = true, ListingStatus.REMOVED).canDelete)
     }
 }
 
