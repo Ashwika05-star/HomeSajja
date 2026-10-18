@@ -1,11 +1,7 @@
 package com.homesajja.app.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -18,13 +14,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.homesajja.app.ui.theme.AmberDot
 
 /**
  * The app's bottom navigation, used by both spaces. [NavigationBar] pads itself for the system navigation bar or gesture area,
  * so it is never overlapped. [selected] is null on hub pages that aren't one of the tabs. The selected destination has a
- * primary-coloured icon and label and a small amber dot under the icon.
+ * primary-coloured icon and label.
  */
 @Composable
 fun <T> BottomTabBar(
@@ -45,18 +41,17 @@ fun <T> BottomTabBar(
                     icon = {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(icon(tab), contentDescription = null)
-                            if (isSelected) {
-                                Box(
-                                    Modifier
-                                        .align(Alignment.BottomCenter)
-                                        .offset(y = 7.dp)
-                                        .size(5.dp)
-                                        .background(AmberDot, CircleShape),
-                                )
-                            }
                         }
                     },
-                    label = { Text(label(tab)) },
+                    label = {
+                        Text(
+                            text = label(tab),
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = MaterialTheme.colorScheme.primary,
                         selectedTextColor = MaterialTheme.colorScheme.primary,

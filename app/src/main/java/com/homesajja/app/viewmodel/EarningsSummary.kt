@@ -1,5 +1,6 @@
 package com.homesajja.app.viewmodel
 
+import com.homesajja.app.data.model.ItemRequest
 import com.homesajja.app.data.model.PaymentMethod
 import com.homesajja.app.data.model.PaymentStatus
 import com.homesajja.app.data.model.PurchaseRequest
@@ -16,6 +17,7 @@ enum class EarnedKind(val label: String, val plural: String) {
     SALE("Sale", "Sales"),
     REPAIR("Repair", "Repairs"),
     RECYCLING("Recycling", "Recycling jobs"),
+    ITEM_REQUEST("Item Request", "Item Requests"),
 }
 
 /**
@@ -86,6 +88,12 @@ fun RecyclingRequest.toEarnedItem(personId: String): EarnedItem? {
     val p = payment ?: return null
     val amount = earnedAmount(p.payeeId, personId, p.status, refund != null, agreedAmount) ?: return null
     return EarnedItem(id, EarnedKind.RECYCLING, "${material.displayName} furniture", userName, amount, p.method, p.confirmedAt ?: updatedAt)
+}
+
+fun ItemRequest.toEarnedItem(personId: String): EarnedItem? {
+    val p = payment ?: return null
+    val amount = earnedAmount(p.payeeId, personId, p.status, false, agreedAmount ?: quote?.amount) ?: return null
+    return EarnedItem(id, EarnedKind.ITEM_REQUEST, title, userName, amount, p.method, p.confirmedAt ?: updatedAt)
 }
 
 fun RecyclingRequest.toExpenditureItem(personId: String): ExpenditureItem? {

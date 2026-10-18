@@ -23,6 +23,9 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+import com.homesajja.app.data.model.PaymentMethod
+import com.homesajja.app.data.model.Quote
+
 sealed interface ItemRequestsUiState {
     data object Loading : ItemRequestsUiState
     data class Error(val message: String) : ItemRequestsUiState
@@ -34,6 +37,8 @@ sealed interface ItemRequestsUiState {
         val isVendor: Boolean,
         val userCity: String,
         val userName: String,
+        val vendorUpiId: String? = null,
+        val vendorPhone: String? = null,
     ) : ItemRequestsUiState
 }
 
@@ -48,6 +53,8 @@ class ItemRequestsViewModel(
 
     private val _uiState = MutableStateFlow<ItemRequestsUiState>(ItemRequestsUiState.Loading)
     val uiState: StateFlow<ItemRequestsUiState> = _uiState
+
+    val currentUserId: String? get() = authRepository.currentUserId
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val messages: SharedFlow<String> = _messages
@@ -80,13 +87,18 @@ class ItemRequestsViewModel(
                 val isVendor = vendor != null
                 val cityName = vendor?.city ?: user?.city.orEmpty()
                 val profileName = vendor?.businessName?.ifBlank { vendor.name } ?: user?.name.orEmpty()
+                val profilePhone = vendor?.phone ?: user?.phone.orEmpty()
+                val profileUpiId = vendor?.upiId
 
                 val userRequests = itemRequestRepository.getRequestsByUser(uid)
                 val allRequests = itemRequestRepository.getAllRequests()
 
-                // Filter open requests by city for vendors so each vendor only sees requests in their city
+                // Filter open/quotable requests by city for vendors
                 val openRequests = if (isVendor && cityName.isNotBlank()) {
-                    allRequests.filter { it.status == ItemRequestStatus.OPEN && it.city.trim().equals(cityName.trim(), ignoreCase = true) }
+                    allRequests.filter {
+                        (it.status == ItemRequestStatus.OPEN || (it.status == ItemRequestStatus.QUOTED && it.acceptedVendorId != uid)) &&
+                            it.city.trim().equals(cityName.trim(), ignoreCase = true)
+                    }
                 } else {
                     allRequests.filter { it.status == ItemRequestStatus.OPEN }
                 }
@@ -107,6 +119,8 @@ class ItemRequestsViewModel(
                     isVendor = isVendor,
                     userCity = cityName,
                     userName = profileName,
+                    vendorUpiId = profileUpiId,
+                    vendorPhone = profilePhone,
                 )
             } catch (e: CancellationException) {
                 throw e
@@ -151,6 +165,98 @@ class ItemRequestsViewModel(
             } catch (e: Exception) {
                 _messages.tryEmit(mapError(e, "Couldn't create request."))
             }
+        }
+    }
+
+    /** Vendor sends a quote to the customer. */
+    fun sendQuote(request: ItemRequest, amount: Long, estimatedDays: Int?, note: String) {
+        val uid = authRepository.currentUserId ?: return
+        val currentContent = _uiState.value as? ItemRequestsUiState.Content ?: return
+        val vendorName = currentContent.userName.ifBlank { "Vendor" }
+        val vendorPhone = currentContent.vendorPhone.orEmpty()
+        val vendorUpiId = currentContent.vendorUpiId
+
+        val quote = Quote(
+            amount = amount,
+            estimatedDays = estimatedDays,
+            note = note.trim(),
+            payeeUpiId = vendorUpiId,
+            sentAt = System.currentTimeMillis(),
+        )
+
+        runBusy(request.id, failure = "Couldn't send quote.") {
+            itemRequestRepository.sendQuote(
+                id = request.id,
+                vendorId = uid,
+                vendorName = vendorName,
+                vendorPhone = vendorPhone,
+                quote = quote,
+            )
+            notificationSender.send(
+                NotificationTemplates.itemRequestAccepted(
+                    request = request,
+                    vendorName = vendorName,
+                    vendorId = uid,
+                )
+            )
+            _messages.tryEmit("Quote sent to ${request.userName}!")
+            load(showLoading = false)
+        }
+    }
+
+    /** Customer accepts the quote from the vendor. */
+    fun acceptQuote(request: ItemRequest) {
+        val uid = authRepository.currentUserId ?: return
+        val vendorId = request.acceptedVendorId ?: return
+        val quote = request.quote ?: return
+
+        runBusy(request.id, failure = "Couldn't accept quote.") {
+            itemRequestRepository.acceptQuote(
+                id = request.id,
+                userId = uid,
+                vendorId = vendorId,
+                agreedAmount = quote.amount,
+                vendorUpiId = quote.payeeUpiId,
+            )
+            _messages.tryEmit("Quote accepted! Work has been agreed.")
+            load(showLoading = false)
+        }
+    }
+
+    /** Customer declines the quote. */
+    fun declineQuote(request: ItemRequest) {
+        runBusy(request.id, failure = "Couldn't decline quote.") {
+            itemRequestRepository.declineQuote(request.id)
+            _messages.tryEmit("Quote declined.")
+            load(showLoading = false)
+        }
+    }
+
+    /** Vendor updates the work status (IN_PROGRESS, READY, COMPLETED). */
+    fun updateStatus(request: ItemRequest, status: ItemRequestStatus) {
+        runBusy(request.id, failure = "Couldn't update status.") {
+            itemRequestRepository.updateStatus(request.id, status)
+            val label = status.displayName.lowercase()
+            _messages.tryEmit("Request status updated to $label.")
+            load(showLoading = false)
+        }
+    }
+
+    /** Customer marks payment made. */
+    fun markPaid(request: ItemRequest, method: PaymentMethod, upiRef: String?) {
+        runBusy(request.id, failure = "Couldn't mark as paid.") {
+            itemRequestRepository.markPaid(request.id, method, upiRef)
+            _messages.tryEmit("Marked as paid.")
+            load(showLoading = false)
+        }
+    }
+
+    /** Vendor confirms receipt of payment. */
+    fun confirmPayment(request: ItemRequest) {
+        runBusy(request.id, failure = "Couldn't confirm payment.") {
+            itemRequestRepository.confirmPayment(request.id)
+            _messages.tryEmit("Payment confirmed!")
+            load(showLoading = false)
         }
     }
 

@@ -5,6 +5,7 @@ import com.google.firebase.firestore.AggregateSource
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.homesajja.app.data.model.ExchangeStatus
+import com.homesajja.app.data.model.ItemRequest
 import com.homesajja.app.data.model.ListingStatus
 import com.homesajja.app.data.model.PaymentStatus
 import com.homesajja.app.data.model.PurchaseRequest
@@ -52,6 +53,7 @@ class StatsRepository(private val firestore: FirebaseFirestore) {
     private val exchanges = firestore.collection("exchangeRequests")
     private val repairs = firestore.collection("repairRequests")
     private val recycling = firestore.collection("recyclingRequests")
+    private val itemRequests = firestore.collection("itemRequests")
     private val listings = firestore.collection("listings")
     private val reviews = firestore.collection("reviews")
 
@@ -100,7 +102,7 @@ class StatsRepository(private val firestore: FirebaseFirestore) {
         UserTaskCounts(sold.await(), bought.await(), sent.await() + received.await(), repaired.await(), recycled.await())
     }
 
-    /** The money a vendor has received (confirmed, not refunded) from sales, repairs and recycling jobs. [from] and [until] limit it to a time window. */
+    /** The money a vendor has received (confirmed, not refunded) from sales, repairs, recycling, and custom item requests. [from] and [until] limit it to a time window. */
     suspend fun vendorEarned(vendorId: String, from: Long? = null, until: Long? = null): EarnedBatch = coroutineScope {
         val sales = async { confirmed(purchases.whereEqualTo("sellerId", vendorId), from, until).getAllAs<PurchaseRequest>() }
         val repairList = async { confirmed(repairs.whereEqualTo("vendorId", vendorId), from, until).getAllAs<RepairRequest>() }
@@ -108,13 +110,32 @@ class StatsRepository(private val firestore: FirebaseFirestore) {
         val recyclingList = async {
             confirmed(recycling.whereEqualTo("vendorId", vendorId).whereEqualTo("payment.payeeId", vendorId), from, until).getAllAs<RecyclingRequest>()
         }
+        val itemRequestsList = async {
+            try {
+                confirmed(itemRequests.whereEqualTo("acceptedVendorId", vendorId).whereEqualTo("payment.payeeId", vendorId), from, until).getAllAs<ItemRequest>()
+            } catch (e: Exception) {
+                try {
+                    val list = itemRequests.whereEqualTo("acceptedVendorId", vendorId).limit(EARNED_FETCH_LIMIT.toLong()).getAllAs<ItemRequest>()
+                    list.filter { req ->
+                        val p = req.payment
+                        p != null && p.status == PaymentStatus.CONFIRMED && p.payeeId == vendorId &&
+                            (from == null || (p.confirmedAt ?: req.updatedAt) >= from) &&
+                            (until == null || (p.confirmedAt ?: req.updatedAt) < until)
+                    }
+                } catch (e2: Exception) {
+                    emptyList<ItemRequest>()
+                }
+            }
+        }
         val s = sales.await()
         val r = repairList.await()
         val c = recyclingList.await()
+        val i = itemRequestsList.await()
         EarnedBatch(
-            items = (s.mapNotNull { it.toEarnedItem(vendorId) } + r.mapNotNull { it.toEarnedItem(vendorId) } + c.mapNotNull { it.toEarnedItem(vendorId) })
+            items = (s.mapNotNull { it.toEarnedItem(vendorId) } + r.mapNotNull { it.toEarnedItem(vendorId) } +
+                    c.mapNotNull { it.toEarnedItem(vendorId) } + i.mapNotNull { it.toEarnedItem(vendorId) })
                 .sortedByDescending { it.confirmedAt },
-            isPartial = listOf(s.size, r.size, c.size).any { it >= EARNED_FETCH_LIMIT },
+            isPartial = listOf(s.size, r.size, c.size, i.size).any { it >= EARNED_FETCH_LIMIT },
         )
     }
 

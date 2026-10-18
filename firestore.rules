@@ -643,7 +643,8 @@ service cloud.firestore {
     }
 
     // ---------- custom item requests ----------
-    // Users request specific furniture they are looking for; vendors can browse and accept.
+    // Users request specific furniture they are looking for; vendors can browse, send quotes, agree on price,
+    // update production status, and receive payments.
     match /itemRequests/{requestId} {
       allow read: if isSignedIn();
       allow create: if isSelf(incoming().userId)
@@ -653,11 +654,30 @@ service cloud.firestore {
         && (
           // Creator cancels open request
           (isSelf(existing().userId) && incoming().status == 'CANCELLED')
-          // Creator or accepted vendor marks fulfilled
-          || ((isSelf(existing().userId) || existing().acceptedVendorId == request.auth.uid)
-              && incoming().status == 'FULFILLED')
-          // Any vendor accepts open request
+          // Vendor sends quote on open or quoted request
+          || (vendorExists(request.auth.uid)
+              && (existing().status == 'OPEN' || existing().status == 'QUOTED')
+              && incoming().status == 'QUOTED'
+              && incoming().acceptedVendorId == request.auth.uid)
+          // User accepts quote
+          || (isSelf(existing().userId)
+              && existing().status == 'QUOTED'
+              && (incoming().status == 'AGREED' || incoming().status == 'ACCEPTED'))
+          // User declines quote (returns request to OPEN)
+          || (isSelf(existing().userId)
+              && existing().status == 'QUOTED'
+              && incoming().status == 'OPEN')
+          // Vendor updates progress: IN_PROGRESS -> READY -> COMPLETED
+          || (existing().acceptedVendorId == request.auth.uid
+              && incoming().status in ['IN_PROGRESS', 'READY', 'COMPLETED', 'FULFILLED'])
+          // Legacy direct acceptance
           || (existing().status == 'OPEN' && incoming().status == 'ACCEPTED' && incoming().acceptedVendorId == request.auth.uid)
+          // Legacy fulfilled by creator
+          || (isSelf(existing().userId) && incoming().status in ['COMPLETED', 'FULFILLED'])
+          // Payer marks paid
+          || payerMarksPaid(['AGREED', 'ACCEPTED', 'IN_PROGRESS', 'READY', 'COMPLETED', 'FULFILLED'])
+          // Payee confirms payment received
+          || payeeConfirms(['AGREED', 'ACCEPTED', 'IN_PROGRESS', 'READY', 'COMPLETED', 'FULFILLED'])
         );
       allow delete: if isSelf(existing().userId);
     }

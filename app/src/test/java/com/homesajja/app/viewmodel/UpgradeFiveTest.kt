@@ -300,7 +300,7 @@ class MonthlyReportTest {
         val r = buildMonthlyReport("Vic", "Mumbai", at(2026, Calendar.JANUARY, 1, 0), payments, VendorTaskCounts(), RatingSummary(), zone = IST)
         assertTrue(r.payments.isEmpty())
         assertEquals(0L, r.totalEarned)
-        assertEquals(3, r.byKind.size)
+        assertEquals(EarnedKind.entries.size, r.byKind.size)
     }
 
     @Test

@@ -1,7 +1,9 @@
 package com.homesajja.app.ui.screens.requests
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,16 +12,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,24 +35,31 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.homesajja.app.data.model.ItemRequest
 import com.homesajja.app.data.model.ItemRequestStatus
+import com.homesajja.app.data.model.PaymentMethod
 import com.homesajja.app.ui.components.DateFilter
 import com.homesajja.app.ui.components.DateFilterDropdown
 import com.homesajja.app.ui.components.EmptyState
 import com.homesajja.app.ui.components.NoResultsState
 import com.homesajja.app.ui.components.OutlinedButton
+import com.homesajja.app.ui.components.PaymentPanel
 import com.homesajja.app.ui.components.PrimaryButton
 import com.homesajja.app.ui.components.SecondaryButton
 import com.homesajja.app.ui.components.StatusBadge
 import com.homesajja.app.ui.i18n.VendorStrings
 import com.homesajja.app.ui.i18n.isAppHindi
+import com.homesajja.app.ui.theme.PriceLarge
 import com.homesajja.app.ui.theme.PriceMedium
 import com.homesajja.app.ui.util.formatPrice
 
 @Composable
 fun UserItemRequestsList(
     requests: List<ItemRequest>,
+    currentUserId: String? = null,
     busyRequestId: String?,
     onRequestNew: () -> Unit,
+    onAcceptQuote: (ItemRequest) -> Unit = {},
+    onDeclineQuote: (ItemRequest) -> Unit = {},
+    onMarkPaid: (ItemRequest, PaymentMethod, String?) -> Unit = { _, _, _ -> },
     onCancelRequest: (ItemRequest) -> Unit,
     onFulfillRequest: (ItemRequest) -> Unit,
     onChatWithVendor: (ItemRequest) -> Unit,
@@ -61,6 +69,7 @@ fun UserItemRequestsList(
     var dateFilter by remember { mutableStateOf<DateFilter>(DateFilter.All) }
     var pendingCancel by remember { mutableStateOf<ItemRequest?>(null) }
     var pendingFulfill by remember { mutableStateOf<ItemRequest?>(null) }
+    var pendingDecline by remember { mutableStateOf<ItemRequest?>(null) }
 
     if (requests.isEmpty()) {
         EmptyState(
@@ -104,13 +113,17 @@ fun UserItemRequestsList(
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 88.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     items(visibleRequests, key = { it.id }) { req ->
                         UserItemRequestCard(
                             request = req,
+                            currentUserId = currentUserId,
                             isBusy = busyRequestId == req.id,
+                            onAcceptQuote = { onAcceptQuote(req) },
+                            onDeclineQuote = { pendingDecline = req },
+                            onMarkPaid = { method, ref -> onMarkPaid(req, method, ref) },
                             onCancel = { pendingCancel = req },
                             onFulfill = { pendingFulfill = req },
                             onChat = { onChatWithVendor(req) },
@@ -121,7 +134,7 @@ fun UserItemRequestsList(
         }
 
         // Request Item FAB - strictly inside Item Requested tab
-        androidx.compose.material3.ExtendedFloatingActionButton(
+        ExtendedFloatingActionButton(
             onClick = onRequestNew,
             icon = { Icon(Icons.Filled.Add, contentDescription = null) },
             text = { Text(VendorStrings.requestItem(isHindi)) },
@@ -130,6 +143,34 @@ fun UserItemRequestsList(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),
+        )
+    }
+
+    pendingDecline?.let { req ->
+        AlertDialog(
+            onDismissRequest = { pendingDecline = null },
+            title = { Text(if (isHindi) "कोटेशन अस्वीकार करें?" else "Decline quote?") },
+            text = {
+                Text(
+                    if (isHindi) "क्या आप वाकई ${req.acceptedVendorName.orEmpty()} का कोटेशन अस्वीकार करना चाहते हैं? अनुरोध अन्य विक्रेताओं के लिए खुला रहेगा।"
+                    else "Decline this quote from ${req.acceptedVendorName.orEmpty()}? Your request will return to open status for other vendors."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingDecline = null
+                        onDeclineQuote(req)
+                    },
+                ) {
+                    Text(VendorStrings.declineQuote(isHindi), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDecline = null }) {
+                    Text(VendorStrings.cancel(isHindi))
+                }
+            },
         )
     }
 
@@ -188,7 +229,11 @@ fun UserItemRequestsList(
 @Composable
 private fun UserItemRequestCard(
     request: ItemRequest,
+    currentUserId: String?,
     isBusy: Boolean,
+    onAcceptQuote: () -> Unit,
+    onDeclineQuote: () -> Unit,
+    onMarkPaid: (PaymentMethod, String?) -> Unit,
     onCancel: () -> Unit,
     onFulfill: () -> Unit,
     onChat: () -> Unit,
@@ -271,55 +316,173 @@ private fun UserItemRequestCard(
                         }
                     }
                 }
-                ItemRequestStatus.ACCEPTED -> {
+
+                ItemRequestStatus.QUOTED -> {
+                    // Quote review card
+                    val quote = request.quote
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
                         shape = MaterialTheme.shapes.small,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                text = "✓ ${VendorStrings.acceptedByVendor(request.acceptedVendorName.orEmpty(), isHindi)}",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            )
-                            if (!request.vendorNote.isNullOrBlank()) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
                                 Text(
-                                    text = "\"${request.vendorNote}\"",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    text = VendorStrings.quoteReceived(isHindi),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                                Text(
+                                    text = "From: ${request.acceptedVendorName.orEmpty().ifBlank { "Vendor" }}",
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 )
                             }
+                            if (quote != null) {
+                                Text(
+                                    text = formatPrice(quote.amount),
+                                    style = PriceLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                                quote.estimatedDays?.let { days ->
+                                    Text(
+                                        text = VendorStrings.estimatedDays(days, isHindi),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    )
+                                }
+                                if (quote.note.isNotBlank()) {
+                                    Text(
+                                        text = "\"${quote.note}\"",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    )
+                                }
+                            }
                         }
                     }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         PrimaryButton(
+                            text = VendorStrings.acceptQuote(isHindi),
+                            onClick = onAcceptQuote,
+                            enabled = !isBusy,
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedButton(
+                            text = VendorStrings.declineQuote(isHindi),
+                            onClick = onDeclineQuote,
+                            enabled = !isBusy,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+
+                    OutlinedButton(
+                        text = VendorStrings.chatWithVendor(isHindi),
+                        onClick = onChat,
+                        enabled = !isBusy,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                ItemRequestStatus.AGREED, ItemRequestStatus.ACCEPTED,
+                ItemRequestStatus.IN_PROGRESS, ItemRequestStatus.READY,
+                ItemRequestStatus.COMPLETED, ItemRequestStatus.FULFILLED -> {
+                    // Production & order tracking card
+                    val finalAmount = request.agreedAmount ?: request.quote?.amount ?: request.targetBudget
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = "${VendorStrings.agreedPrice(isHindi)}: ${formatPrice(finalAmount)}",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                                Text(
+                                    text = request.acceptedVendorName.orEmpty().ifBlank { "Vendor" },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            val progressMessage = when (request.status) {
+                                ItemRequestStatus.AGREED, ItemRequestStatus.ACCEPTED ->
+                                    if (isHindi) "मूल्य तय हो गया है। विक्रेता द्वारा काम शुरू करने की प्रतीक्षा है।"
+                                    else "Price agreed. Waiting for vendor to start work."
+                                ItemRequestStatus.IN_PROGRESS ->
+                                    if (isHindi) "विक्रेता आपके फर्नीचर पर कार्य कर रहा है।"
+                                    else "Vendor is currently preparing/building your item."
+                                ItemRequestStatus.READY ->
+                                    if (isHindi) "सामान तैयार है! वितरण या पिकअप की पुष्टि करें।"
+                                    else "Item is ready! Ready for delivery or pickup."
+                                else ->
+                                    if (isHindi) "ऑर्डर सफलतापूर्वक पूरा हुआ।"
+                                    else "Order completed successfully."
+                            }
+                            Text(
+                                text = progressMessage,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    // Payment Panel if open
+                    val payment = request.payment
+                    if (payment != null && request.paymentOpen) {
+                        PaymentPanel(
+                            amount = finalAmount,
+                            payment = payment,
+                            viewerId = currentUserId,
+                            payerName = request.userName,
+                            payeeName = request.acceptedVendorName ?: "Vendor",
+                            paymentNote = "HomeSajja custom item: ${request.title}",
+                            cashLabel = "Cash on delivery",
+                            busy = isBusy,
+                            onMarkPaid = onMarkPaid,
+                            onConfirmReceived = { },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        OutlinedButton(
                             text = VendorStrings.chatWithVendor(isHindi),
                             onClick = onChat,
                             enabled = !isBusy,
                             modifier = Modifier.weight(1f),
                         )
-                        SecondaryButton(
-                            text = VendorStrings.markFulfilled(isHindi),
-                            onClick = onFulfill,
-                            enabled = !isBusy,
-                            modifier = Modifier.weight(1f),
-                        )
+                        if (request.status == ItemRequestStatus.READY) {
+                            PrimaryButton(
+                                text = VendorStrings.markFulfilled(isHindi),
+                                onClick = onFulfill,
+                                enabled = !isBusy,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
                 }
-                ItemRequestStatus.FULFILLED -> {
-                    Text(
-                        text = "✓ ${VendorStrings.completed(isHindi)}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
+
                 ItemRequestStatus.CANCELLED -> {
                     Text(
-                        text = VendorStrings.cancel(isHindi),
+                        text = "✕ ${VendorStrings.cancel(isHindi)}",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.error,
                     )

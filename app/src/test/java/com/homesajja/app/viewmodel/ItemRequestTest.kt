@@ -4,6 +4,10 @@ import com.homesajja.app.data.model.EntityType
 import com.homesajja.app.data.model.FurnitureCategory
 import com.homesajja.app.data.model.ItemRequest
 import com.homesajja.app.data.model.ItemRequestStatus
+import com.homesajja.app.data.model.Payment
+import com.homesajja.app.data.model.PaymentMethod
+import com.homesajja.app.data.model.PaymentStatus
+import com.homesajja.app.data.model.Quote
 import com.homesajja.app.data.model.VendorBusinessType
 import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.ui.i18n.VendorStrings
@@ -34,10 +38,13 @@ class ItemRequestTest {
         assertNull(request.acceptedVendorId)
         assertNull(request.acceptedVendorName)
         assertNull(request.vendorNote)
+        assertNull(request.quote)
+        assertNull(request.payment)
+        assertFalse(request.isAgreed)
     }
 
     @Test
-    fun itemRequest_acceptedByVendor_recordsVendorDetails() {
+    fun itemRequest_quotedByVendor_recordsQuoteDetails() {
         val initial = ItemRequest(
             id = "req_1",
             userId = "user_123",
@@ -48,49 +55,123 @@ class ItemRequestTest {
             city = "Bengaluru",
         )
 
-        val accepted = initial.copy(
-            status = ItemRequestStatus.ACCEPTED,
+        val quote = Quote(
+            amount = 4800L,
+            estimatedDays = 4,
+            note = "Can craft with solid sheesham wood",
+            payeeUpiId = "vendor@okaxis",
+        )
+
+        val quoted = initial.copy(
+            status = ItemRequestStatus.QUOTED,
+            quote = quote,
             acceptedVendorId = "vendor_456",
             acceptedVendorName = "Classic Furnishings",
-            vendorNote = "We have this in stock and can deliver in 2 days",
+            vendorPhone = "9876543210",
         )
 
-        assertEquals(ItemRequestStatus.ACCEPTED, accepted.status)
-        assertEquals("vendor_456", accepted.acceptedVendorId)
-        assertEquals("Classic Furnishings", accepted.acceptedVendorName)
-        assertEquals("We have this in stock and can deliver in 2 days", accepted.vendorNote)
+        assertEquals(ItemRequestStatus.QUOTED, quoted.status)
+        assertEquals(4800L, quoted.quote?.amount)
+        assertEquals(4, quoted.quote?.estimatedDays)
+        assertEquals("vendor_456", quoted.acceptedVendorId)
+        assertEquals("Classic Furnishings", quoted.acceptedVendorName)
     }
 
     @Test
-    fun itemRequest_fulfilled_updatesStatus() {
-        val accepted = ItemRequest(
+    fun itemRequest_quoteAccepted_locksPriceAndOpensPayment() {
+        val quote = Quote(amount = 4500L, estimatedDays = 3, payeeUpiId = "shop@upi")
+        val quoted = ItemRequest(
             id = "req_1",
-            userId = "user_123",
-            status = ItemRequestStatus.ACCEPTED,
-            acceptedVendorId = "vendor_456",
+            userId = "user_1",
+            userName = "Amit",
+            title = "Bookshelf",
+            status = ItemRequestStatus.QUOTED,
+            quote = quote,
+            acceptedVendorId = "vendor_9",
+            acceptedVendorName = "Urban Crafts",
         )
 
-        val fulfilled = accepted.copy(status = ItemRequestStatus.FULFILLED)
-        assertEquals(ItemRequestStatus.FULFILLED, fulfilled.status)
+        val agreed = quoted.copy(
+            status = ItemRequestStatus.AGREED,
+            agreedAmount = quote.amount,
+            agreedAt = 1000L,
+            payment = Payment(
+                payerId = "user_1",
+                payeeId = "vendor_9",
+                payeeUpiId = quote.payeeUpiId,
+                status = PaymentStatus.UNPAID,
+            ),
+        )
+
+        assertTrue(agreed.isAgreed)
+        assertTrue(agreed.paymentOpen)
+        assertEquals(4500L, agreed.agreedAmount)
+        assertEquals(PaymentStatus.UNPAID, agreed.payment?.status)
+        assertEquals("user_1", agreed.payment?.payerId)
+        assertEquals("vendor_9", agreed.payment?.payeeId)
     }
 
     @Test
-    fun itemRequest_cancelled_updatesStatus() {
-        val open = ItemRequest(
+    fun itemRequest_productionProgress_movesThroughStages() {
+        val agreed = ItemRequest(
             id = "req_1",
-            userId = "user_123",
-            status = ItemRequestStatus.OPEN,
+            status = ItemRequestStatus.AGREED,
+            agreedAmount = 5000L,
         )
 
-        val cancelled = open.copy(status = ItemRequestStatus.CANCELLED)
-        assertEquals(ItemRequestStatus.CANCELLED, cancelled.status)
+        val inProgress = agreed.copy(status = ItemRequestStatus.IN_PROGRESS)
+        assertEquals(ItemRequestStatus.IN_PROGRESS, inProgress.status)
+        assertTrue(inProgress.isAgreed)
+
+        val ready = inProgress.copy(status = ItemRequestStatus.READY)
+        assertEquals(ItemRequestStatus.READY, ready.status)
+        assertTrue(ready.isAgreed)
+
+        val completed = ready.copy(status = ItemRequestStatus.COMPLETED)
+        assertEquals(ItemRequestStatus.COMPLETED, completed.status)
+        assertTrue(completed.isAgreed)
+    }
+
+    @Test
+    fun itemRequest_paymentConfirmation_integratesWithEarnings() {
+        val vendorId = "vendor_9"
+        val request = ItemRequest(
+            id = "req_100",
+            userId = "user_1",
+            userName = "Pooja",
+            title = "Custom TV Unit",
+            status = ItemRequestStatus.COMPLETED,
+            acceptedVendorId = vendorId,
+            agreedAmount = 7500L,
+            payment = Payment(
+                payerId = "user_1",
+                payeeId = vendorId,
+                method = PaymentMethod.UPI,
+                status = PaymentStatus.CONFIRMED,
+                confirmedAt = 12345678L,
+            ),
+        )
+
+        val earned = request.toEarnedItem(vendorId)
+        assertNotNull(earned)
+        assertEquals("req_100", earned?.id)
+        assertEquals(7500L, earned?.amount)
+        assertEquals(EarnedKind.ITEM_REQUEST, earned?.kind)
+        assertEquals("Custom TV Unit", earned?.title)
+        assertEquals("Pooja", earned?.counterpart)
+        assertEquals(PaymentMethod.UPI, earned?.method)
+
+        // Other person (not payee) earns nothing
+        assertNull(request.toEarnedItem("other_person"))
+
+        // Unpaid request earns nothing
+        val unpaid = request.copy(payment = request.payment?.copy(status = PaymentStatus.UNPAID))
+        assertNull(unpaid.toEarnedItem(vendorId))
     }
 
     @Test
     fun sectionsFor_allVendorsGetItemRequestsSection() {
-        // Every business type should have RequestSection.ITEM_REQUESTS
         val businessTypes = VendorBusinessType.entries + listOf(null)
-
         for (type in businessTypes) {
             val sections = sectionsFor(type)
             assertTrue("Expected ITEM_REQUESTS for $type", sections.contains(RequestSection.ITEM_REQUESTS))
@@ -131,12 +212,17 @@ class ItemRequestTest {
         assertEquals("ग्राहक से चैट करें", VendorStrings.chatWithBuyer(true))
         assertEquals("विक्रेता से चैट करें", VendorStrings.chatWithVendor(true))
         assertEquals("अनुरोध रद्द करें", VendorStrings.cancelRequest(true))
+        assertEquals("कोटेशन भेजें", VendorStrings.sendQuote(true))
+        assertEquals("कोटेशन स्वीकार करें", VendorStrings.acceptQuote(true))
+        assertEquals("अस्वीकार करें", VendorStrings.declineQuote(true))
 
         // English fallbacks
         assertEquals("Item requested", VendorStrings.itemRequests(false))
         assertEquals("Request item", VendorStrings.requestItem(false))
         assertEquals("Accept request", VendorStrings.acceptRequest(false))
         assertEquals("Accepted by Royal Wood", VendorStrings.acceptedByVendor("Royal Wood", false))
+        assertEquals("Send quote", VendorStrings.sendQuote(false))
+        assertEquals("Accept quote", VendorStrings.acceptQuote(false))
     }
 
     @Test
@@ -145,10 +231,16 @@ class ItemRequestTest {
         assertEquals("स्वीकृत", ItemRequestStatus.ACCEPTED.localizedLabel(true))
         assertEquals("पूर्ण हुआ", ItemRequestStatus.FULFILLED.localizedLabel(true))
         assertEquals("रद्द", ItemRequestStatus.CANCELLED.localizedLabel(true))
+        assertEquals("कोटेशन प्राप्त", ItemRequestStatus.QUOTED.localizedLabel(true))
+        assertEquals("प्रगति पर", ItemRequestStatus.IN_PROGRESS.localizedLabel(true))
+        assertEquals("तैयार", ItemRequestStatus.READY.localizedLabel(true))
 
         assertEquals("Open", ItemRequestStatus.OPEN.localizedLabel(false))
         assertEquals("Accepted", ItemRequestStatus.ACCEPTED.localizedLabel(false))
         assertEquals("Fulfilled", ItemRequestStatus.FULFILLED.localizedLabel(false))
         assertEquals("Cancelled", ItemRequestStatus.CANCELLED.localizedLabel(false))
+        assertEquals("Quoted", ItemRequestStatus.QUOTED.localizedLabel(false))
+        assertEquals("In progress", ItemRequestStatus.IN_PROGRESS.localizedLabel(false))
+        assertEquals("Ready", ItemRequestStatus.READY.localizedLabel(false))
     }
 }

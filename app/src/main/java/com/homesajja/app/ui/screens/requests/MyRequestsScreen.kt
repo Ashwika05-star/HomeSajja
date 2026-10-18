@@ -152,8 +152,12 @@ fun MyRequestsScreen(
                 is ItemRequestsUiState.Content -> {
                     UserItemRequestsList(
                         requests = itCurrent.userRequests,
+                        currentUserId = itemRequestsVm.currentUserId,
                         busyRequestId = itemRequestsVm.busyRequestId,
                         onRequestNew = { showCreateDialog = true },
+                        onAcceptQuote = { req -> itemRequestsVm.acceptQuote(req) },
+                        onDeclineQuote = { req -> itemRequestsVm.declineQuote(req) },
+                        onMarkPaid = { req, method, ref -> itemRequestsVm.markPaid(req, method, ref) },
                         onCancelRequest = { req -> itemRequestsVm.cancelRequest(req) },
                         onFulfillRequest = { req -> itemRequestsVm.fulfillRequest(req) },
                         onChatWithVendor = { req -> itemRequestsVm.chatWithUser(req) },
