@@ -16,6 +16,8 @@ import com.homesajja.app.repository.ExchangeRepository
 import com.homesajja.app.repository.NotificationSender
 import com.homesajja.app.repository.NotificationTemplates
 import com.homesajja.app.repository.ListingRepository
+import com.homesajja.app.repository.UserRepository
+import com.homesajja.app.repository.VendorRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -61,6 +63,8 @@ class ExchangeProposalViewModel(
     private val listingRepository: ListingRepository,
     private val exchangeRepository: ExchangeRepository,
     private val notificationSender: NotificationSender,
+    private val vendorRepository: VendorRepository? = null,
+    private val userRepository: UserRepository? = null,
 ) : ViewModel() {
 
     private val preselectedId: String? = savedStateHandle["requestedListingId"]
@@ -219,7 +223,12 @@ class ExchangeProposalViewModel(
                         requestedTitle = theirs.title,
                         requestedImageUrl = theirs.images.firstOrNull(),
                         senderId = uid,
-                        senderName = authRepository.currentUserDisplayName ?: authRepository.currentUserEmail ?: "Someone",
+                        senderName = (uid.let {
+                            val vp = vendorRepository?.getVendorProfile(it)
+                            vp?.businessName?.ifBlank { null } ?: vp?.name?.ifBlank { null } ?: userRepository?.getUserProfile(it)?.name
+                        } ?: authRepository.currentUserDisplayName
+                          ?: authRepository.currentUserEmail
+                          ?: "Someone"),
                         receiverId = theirs.ownerId,
                         receiverName = theirs.ownerName,
                         message = message.trim(),

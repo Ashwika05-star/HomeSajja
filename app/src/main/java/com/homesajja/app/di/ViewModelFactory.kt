@@ -130,6 +130,7 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
             ExchangeBrowseViewModel::class.java -> ExchangeBrowseViewModel(
                 container.authRepository,
                 container.userRepository,
+                container.vendorRepository,
                 container.listingRepository,
                 container.favouriteRepository,
             )
@@ -139,6 +140,8 @@ class ViewModelFactory(private val container: AppContainer) : ViewModelProvider.
                 container.listingRepository,
                 container.exchangeRepository,
                 container.notificationSender,
+                container.vendorRepository,
+                container.userRepository,
             )
             ExchangeRequestsViewModel::class.java -> ExchangeRequestsViewModel(
                 container.authRepository,

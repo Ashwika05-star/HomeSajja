@@ -199,7 +199,7 @@ fun HomeSajjaNavHost(navController: NavHostController = rememberNavController())
                 onSent = { requestId ->
                     // Replace the proposal flow with the request itself as confirmation.
                     navController.navigate(Routes.ExchangeDetail.createRoute(requestId)) {
-                        popUpTo(Routes.UserHome.route)
+                        popUpTo(Routes.ExchangeNew.route) { inclusive = true }
                     }
                 },
                 onSell = {
