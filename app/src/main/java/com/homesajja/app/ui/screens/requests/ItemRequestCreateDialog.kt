@@ -204,7 +204,6 @@ fun ItemRequestCreateDialog(
                             error = null
                         },
                         prefix = { Text("₹ ", fontWeight = FontWeight.Bold) },
-                        placeholder = { Text("15,000") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),

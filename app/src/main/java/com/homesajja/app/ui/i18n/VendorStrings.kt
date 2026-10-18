@@ -287,7 +287,7 @@ object VendorStrings {
     }
 
     // --- Custom Item Requests
-    fun itemRequests(isHindi: Boolean) = if (isHindi) "आइटम अनुरोध" else "Item requests"
+    fun itemRequests(isHindi: Boolean) = if (isHindi) "अनुरोध" else "Item requested"
     fun requestItem(isHindi: Boolean) = if (isHindi) "आइटम का अनुरोध करें" else "Request item"
     fun requestItemTitle(isHindi: Boolean) = if (isHindi) "फर्नीचर का अनुरोध करें" else "Request furniture"
     fun requestItemSubtitle(isHindi: Boolean) = if (isHindi) {

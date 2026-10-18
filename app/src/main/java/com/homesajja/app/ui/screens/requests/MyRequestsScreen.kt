@@ -126,17 +126,16 @@ fun MyRequestsScreen(
     Column(modifier = modifier.fillMaxSize()) {
         val content = state as? MyRequestsUiState.Content
         if (!receivedOnly) {
-            val userReqsCount = (itemState as? ItemRequestsUiState.Content)?.userRequests?.size
             val labels = if (includeItemRequests) {
                 listOf(
-                    "${VendorStrings.sent(isHindi)}${content?.let { " (${it.sent.size})" }.orEmpty()}",
-                    "${VendorStrings.received(isHindi)}${content?.let { " (${it.received.size})" }.orEmpty()}",
-                    "${VendorStrings.itemRequests(isHindi)}${userReqsCount?.let { " ($it)" }.orEmpty()}",
+                    VendorStrings.sent(isHindi),
+                    VendorStrings.received(isHindi),
+                    VendorStrings.itemRequests(isHindi),
                 )
             } else {
                 listOf(
-                    "${VendorStrings.sent(isHindi)}${content?.let { " (${it.sent.size})" }.orEmpty()}",
-                    "${VendorStrings.received(isHindi)}${content?.let { " (${it.received.size})" }.orEmpty()}",
+                    VendorStrings.sent(isHindi),
+                    VendorStrings.received(isHindi),
                 )
             }
             PillTabs(

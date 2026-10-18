@@ -33,12 +33,19 @@ fun PillTabs(
 ) {
     val dark = LocalDarkTheme.current
     val raised = if (dark) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainerLowest
+    val textStyle = when {
+        labels.size >= 4 -> MaterialTheme.typography.labelSmall
+        labels.size == 3 -> MaterialTheme.typography.labelMedium
+        else -> MaterialTheme.typography.labelLarge
+    }
+    val innerPad = if (labels.size >= 3) 4.dp else 8.dp
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
             .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(50))
-            .padding(4.dp),
+            .padding(3.dp),
     ) {
         labels.forEachIndexed { index, label ->
             val selected = index == selectedIndex
@@ -55,12 +62,13 @@ fun PillTabs(
                         },
                     )
                     .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(index) })
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = innerPad),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     label,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = textStyle,
+                    fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Medium,
                     color = when {
                         !selected -> MaterialTheme.colorScheme.onSurfaceVariant
                         dark -> MaterialTheme.colorScheme.onSurface

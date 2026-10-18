@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Inventory2
@@ -72,46 +74,63 @@ fun UserItemRequestsList(
         return
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = onRequestNew) {
-                Text("+ ${VendorStrings.requestItem(isHindi)}")
-            }
-            DateFilterDropdown(selected = dateFilter, onSelect = { dateFilter = it })
-        }
-
-        val visibleRequests = requests.filter { dateFilter.matches(it.createdAt) }
-        if (visibleRequests.isEmpty()) {
-            NoResultsState(
-                icon = Icons.Filled.FilterList,
-                title = if (isHindi) "इस अवधि में कोई अनुरोध नहीं मिला" else "No requests for this period",
-                subtitle = if (isHindi) "कृपया कोई अन्य तारीख चुनें" else "Try selecting another time range or clear the filter.",
-                actionLabel = if (isHindi) "सभी समय देखें" else "Show all time",
-                onActionClick = { dateFilter = DateFilter.All },
-            )
-        } else {
-            LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize(),
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                items(visibleRequests, key = { it.id }) { req ->
-                    UserItemRequestCard(
-                        request = req,
-                        isBusy = busyRequestId == req.id,
-                        onCancel = { pendingCancel = req },
-                        onFulfill = { pendingFulfill = req },
-                        onChat = { onChatWithVendor(req) },
-                    )
+                Text(
+                    text = if (isHindi) "मेरे अनुरोध" else "My Item Requests",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 4.dp),
+                )
+                DateFilterDropdown(selected = dateFilter, onSelect = { dateFilter = it })
+            }
+
+            val visibleRequests = requests.filter { dateFilter.matches(it.createdAt) }
+            if (visibleRequests.isEmpty()) {
+                NoResultsState(
+                    icon = Icons.Filled.FilterList,
+                    title = if (isHindi) "इस अवधि में कोई अनुरोध नहीं मिला" else "No requests for this period",
+                    subtitle = if (isHindi) "कृपया कोई अन्य तारीख चुनें" else "Try selecting another time range or clear the filter.",
+                    actionLabel = if (isHindi) "सभी समय देखें" else "Show all time",
+                    onActionClick = { dateFilter = DateFilter.All },
+                )
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 88.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    items(visibleRequests, key = { it.id }) { req ->
+                        UserItemRequestCard(
+                            request = req,
+                            isBusy = busyRequestId == req.id,
+                            onCancel = { pendingCancel = req },
+                            onFulfill = { pendingFulfill = req },
+                            onChat = { onChatWithVendor(req) },
+                        )
+                    }
                 }
             }
         }
+
+        // Request Item FAB - strictly inside Item Requested tab
+        androidx.compose.material3.ExtendedFloatingActionButton(
+            onClick = onRequestNew,
+            icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+            text = { Text(VendorStrings.requestItem(isHindi)) },
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+        )
     }
 
     pendingCancel?.let { req ->

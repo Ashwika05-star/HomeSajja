@@ -121,7 +121,7 @@ class ItemRequestTest {
 
     @Test
     fun itemRequest_hindiTranslations_areAccurate() {
-        assertEquals("आइटम अनुरोध", VendorStrings.itemRequests(true))
+        assertEquals("अनुरोध", VendorStrings.itemRequests(true))
         assertEquals("आइटम का अनुरोध करें", VendorStrings.requestItem(true))
         assertEquals("फर्नीचर का अनुरोध करें", VendorStrings.requestItemTitle(true))
         assertEquals("अनुरोध स्वीकार करें", VendorStrings.acceptRequest(true))
@@ -133,7 +133,7 @@ class ItemRequestTest {
         assertEquals("अनुरोध रद्द करें", VendorStrings.cancelRequest(true))
 
         // English fallbacks
-        assertEquals("Item requests", VendorStrings.itemRequests(false))
+        assertEquals("Item requested", VendorStrings.itemRequests(false))
         assertEquals("Request item", VendorStrings.requestItem(false))
         assertEquals("Accept request", VendorStrings.acceptRequest(false))
         assertEquals("Accepted by Royal Wood", VendorStrings.acceptedByVendor("Royal Wood", false))

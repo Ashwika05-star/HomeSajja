@@ -44,10 +44,6 @@ import com.homesajja.app.ui.components.RequestNotificationPermission
 import com.homesajja.app.ui.screens.exchange.ExchangeRequestsScreen
 import com.homesajja.app.ui.screens.explore.ExploreScreen
 import com.homesajja.app.ui.screens.mylistings.MyListingsScreen
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.homesajja.app.ui.screens.requests.ItemRequestCreateDialog
-import com.homesajja.app.viewmodel.ItemRequestsUiState
-import com.homesajja.app.viewmodel.ItemRequestsViewModel
 import com.homesajja.app.ui.screens.requests.MyRequestsScreen
 import com.homesajja.app.viewmodel.HomeViewModel
 
@@ -70,10 +66,8 @@ fun UserHomeScreen(
 ) {
     val homeViewModel: HomeViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val container = LocalAppContainer.current
-    val itemRequestsVm: ItemRequestsViewModel = viewModel(factory = ViewModelFactory(container))
     val selectedTab by container.homeTabs.user.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showItemRequestDialog by remember { mutableStateOf(false) }
     RequestNotificationPermission()
 
     Scaffold(
@@ -123,14 +117,7 @@ fun UserHomeScreen(
                     icon = { Icon(Icons.Filled.Add, contentDescription = null) },
                     text = { Text("New exchange") },
                 )
-                UserTab.MY_REQUESTS -> ExtendedFloatingActionButton(
-                    onClick = { showItemRequestDialog = true },
-                    modifier = Modifier.semantics { contentDescription = "Request furniture" },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                    text = { Text("Request item") },
-                )
+                UserTab.MY_REQUESTS -> Unit
                 UserTab.REPAIR -> ExtendedFloatingActionButton(
                     onClick = onRequestRepair,
                     modifier = Modifier.semantics { contentDescription = "Request a repair" },
@@ -171,18 +158,5 @@ fun UserHomeScreen(
                 modifier = contentModifier,
             )
         }
-    }
-
-    if (showItemRequestDialog) {
-        val itemState = itemRequestsVm.uiState.collectAsStateWithLifecycle().value
-        val initialCity = (itemState as? ItemRequestsUiState.Content)?.userCity.orEmpty()
-        ItemRequestCreateDialog(
-            initialCity = initialCity,
-            onDismiss = { showItemRequestDialog = false },
-            onSubmit = { title, category, budget, description, city ->
-                showItemRequestDialog = false
-                itemRequestsVm.createRequest(title, category, budget, description, city) {}
-            },
-        )
     }
 }
