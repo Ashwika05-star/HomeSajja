@@ -239,6 +239,14 @@ fun MyRequestsScreen(
     }
 }
 
+private fun SellerAction.localizedLabel(isHindi: Boolean): String = when (this) {
+    SellerAction.ACCEPT -> if (isHindi) "स्वीकार करें" else "Accept"
+    SellerAction.REJECT -> if (isHindi) "अस्वीकार करें" else "Reject"
+    SellerAction.MARK_READY -> if (isHindi) "तैयार चिह्नित करें" else "Ready for pickup"
+    SellerAction.COMPLETE -> if (isHindi) "पूर्ण हुआ" else "Mark completed"
+    SellerAction.CANCEL_ORDER -> if (isHindi) "रद्द करें" else "Cancel order"
+}
+
 @Composable
 private fun RequestCard(
     request: PurchaseRequest,
@@ -252,6 +260,7 @@ private fun RequestCard(
     onMarkPaid: (PaymentMethod, String?) -> Unit,
     onConfirmReceived: () -> Unit,
 ) {
+    val isHindi = isAppHindi
     var askUpiId by remember { mutableStateOf(false) }
     var askCancel by remember { mutableStateOf(false) }
     Card(
@@ -304,7 +313,7 @@ private fun RequestCard(
             if (isSent) {
                 if (request.status == PurchaseStatus.REQUESTED) {
                     OutlinedButton(
-                        text = "Cancel request",
+                        text = if (isHindi) "अनुरोध रद्द करें" else "Cancel request",
                         onClick = onCancel,
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth(),
@@ -329,14 +338,14 @@ private fun RequestCard(
                             }
                             if (index == 0) {
                                 PrimaryButton(
-                                    text = action.label,
+                                    text = action.localizedLabel(isHindi),
                                     onClick = onActionClick,
                                     enabled = !busy,
                                     modifier = Modifier.weight(1f),
                                 )
                             } else {
                                 OutlinedButton(
-                                    text = action.label,
+                                    text = action.localizedLabel(isHindi),
                                     onClick = onActionClick,
                                     enabled = !busy,
                                     modifier = Modifier.weight(1f),

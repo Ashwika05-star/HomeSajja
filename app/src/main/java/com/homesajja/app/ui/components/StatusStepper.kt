@@ -103,9 +103,13 @@ private fun StepperStep(
         }
         Text(
             text = label,
-            style = if (compact) MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, letterSpacing = 0.sp) else MaterialTheme.typography.labelSmall,
+            style = if (compact) MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, letterSpacing = 0.sp, lineHeight = 11.sp)
+                    else MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, letterSpacing = 0.sp, lineHeight = 12.sp),
             color = if (reached) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
+            maxLines = 3,
+            softWrap = true,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         )
     }
 }

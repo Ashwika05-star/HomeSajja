@@ -205,6 +205,7 @@ private fun VendorItemRequestCard(
                     text = "${request.category.displayName.uppercase()} · ${request.city}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp),
                 )
                 StatusBadge(status = request.status.localizedLabel(isHindi))
             }
@@ -321,6 +322,7 @@ private fun VendorItemRequestCard(
                                         text = "✓ ${VendorStrings.agreedPrice(isHindi)}: ${formatPrice(finalAmount)}",
                                         style = MaterialTheme.typography.titleSmall,
                                         color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp),
                                     )
                                     StatusBadge(status = request.status.localizedLabel(isHindi))
                                 }
@@ -353,9 +355,9 @@ private fun VendorItemRequestCard(
                         }
 
                         // Workflow progress buttons
-                        Row(
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             when (request.status) {
                                 ItemRequestStatus.AGREED, ItemRequestStatus.ACCEPTED -> {
@@ -363,7 +365,7 @@ private fun VendorItemRequestCard(
                                         text = VendorStrings.startWork(isHindi),
                                         onClick = { onUpdateStatus(ItemRequestStatus.IN_PROGRESS) },
                                         enabled = !isBusy,
-                                        modifier = Modifier.weight(1f),
+                                        modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
                                 ItemRequestStatus.IN_PROGRESS -> {
@@ -371,7 +373,7 @@ private fun VendorItemRequestCard(
                                         text = VendorStrings.markReady(isHindi),
                                         onClick = { onUpdateStatus(ItemRequestStatus.READY) },
                                         enabled = !isBusy,
-                                        modifier = Modifier.weight(1f),
+                                        modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
                                 ItemRequestStatus.READY -> {
@@ -379,7 +381,7 @@ private fun VendorItemRequestCard(
                                         text = VendorStrings.markCompleted(isHindi),
                                         onClick = { onUpdateStatus(ItemRequestStatus.COMPLETED) },
                                         enabled = !isBusy,
-                                        modifier = Modifier.weight(1f),
+                                        modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
                                 else -> Unit
@@ -388,7 +390,7 @@ private fun VendorItemRequestCard(
                                 text = VendorStrings.chatWithBuyer(isHindi),
                                 onClick = onChat,
                                 enabled = !isBusy,
-                                modifier = if (request.status == ItemRequestStatus.COMPLETED || request.status == ItemRequestStatus.FULFILLED) Modifier.fillMaxWidth() else Modifier.weight(1f),
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
                     } else {

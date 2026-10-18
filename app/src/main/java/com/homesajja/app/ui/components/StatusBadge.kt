@@ -40,11 +40,14 @@ fun StatusBadge(
     val (container, content) = statusColors(status)
     Text(
         text = status,
-        style = MaterialTheme.typography.labelMedium,
+        style = MaterialTheme.typography.labelSmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
         color = content,
+        maxLines = 1,
+        softWrap = false,
+        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         modifier = modifier
             .background(container, RoundedCornerShape(50))
-            .padding(horizontal = 12.dp, vertical = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 3.dp),
     )
 }
 
@@ -53,15 +56,15 @@ private fun statusColors(status: String): Pair<Color, Color> {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalDarkTheme.current
     return when (status.trim().lowercase()) {
-        "pending", "scheduled", "in progress", "in-progress" ->
+        "pending", "scheduled", "in progress", "in-progress", "प्रगति पर", "लंबित" ->
             if (dark) StatusInProgressDarkBg to StatusInProgressDarkText else StatusInProgressLightBg to StatusInProgressLightText
-        "accepted", "approved", "ready", "completed", "done", "agreed" ->
+        "accepted", "approved", "ready", "completed", "done", "agreed", "स्वीकृत", "तैयार", "पूर्ण हुआ", "सहमति बनी" ->
             if (dark) StatusAgreedDarkBg to StatusAgreedDarkText else StatusAgreedLightBg to StatusAgreedLightText
-        "quoted" ->
+        "quoted", "कोटेशन प्राप्त", "कोटेशन भेजा" ->
             if (dark) StatusQuotedDarkBg to StatusQuotedDarkText else StatusQuotedLightBg to StatusQuotedLightText
         "reserved" ->
             if (dark) StatusReservedDarkBg to StatusReservedDarkText else StatusReservedLightBg to StatusReservedLightText
-        "rejected", "cancelled", "canceled", "failed" -> scheme.errorContainer to scheme.onErrorContainer
+        "rejected", "cancelled", "canceled", "failed", "रद्द" -> scheme.errorContainer to scheme.onErrorContainer
         else -> scheme.surfaceContainerHigh to scheme.onSurfaceVariant
     }
 }

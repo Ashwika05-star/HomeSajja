@@ -259,6 +259,7 @@ private fun UserItemRequestCard(
                     text = request.category.displayName.uppercase(),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp),
                 )
                 StatusBadge(status = request.status.localizedLabel(isHindi))
             }
@@ -412,6 +413,7 @@ private fun UserItemRequestCard(
                                     text = "${VendorStrings.agreedPrice(isHindi)}: ${formatPrice(finalAmount)}",
                                     style = MaterialTheme.typography.titleSmall,
                                     color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp),
                                 )
                                 Text(
                                     text = request.acceptedVendorName.orEmpty().ifBlank { "Vendor" },
@@ -459,24 +461,24 @@ private fun UserItemRequestCard(
                         )
                     }
 
-                    Row(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        OutlinedButton(
-                            text = VendorStrings.chatWithVendor(isHindi),
-                            onClick = onChat,
-                            enabled = !isBusy,
-                            modifier = Modifier.weight(1f),
-                        )
                         if (request.status == ItemRequestStatus.READY) {
                             PrimaryButton(
                                 text = VendorStrings.markFulfilled(isHindi),
                                 onClick = onFulfill,
                                 enabled = !isBusy,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
+                        OutlinedButton(
+                            text = VendorStrings.chatWithVendor(isHindi),
+                            onClick = onChat,
+                            enabled = !isBusy,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                 }
 
