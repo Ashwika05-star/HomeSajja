@@ -119,7 +119,13 @@ class AppContainer(private val appContext: Context) {
     val aiRepository: AiRepository by lazy {
         GeminiAiRepository(
             appContext.contentResolver,
-            listOf(appContext.getString(R.string.gemini_model), appContext.getString(R.string.gemini_model_fallback)).distinct(),
+            listOf(
+                appContext.getString(R.string.gemini_model),
+                "gemini-1.5-flash",
+                "gemini-2.0-flash",
+                "gemini-1.5-pro",
+                appContext.getString(R.string.gemini_model_fallback),
+            ).distinct(),
         )
     }
 

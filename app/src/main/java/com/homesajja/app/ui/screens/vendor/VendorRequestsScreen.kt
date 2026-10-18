@@ -110,6 +110,7 @@ fun VendorRequestsScreen(
                                     onAcceptRequest = { req, note -> itemRequestsVm.acceptRequest(req, note) },
                                     onFulfillRequest = { req -> itemRequestsVm.fulfillRequest(req) },
                                     onChatWithCustomer = { req -> itemRequestsVm.chatWithUser(req) },
+                                    vendorCity = itCurrent.userCity,
                                 )
                             }
                         }

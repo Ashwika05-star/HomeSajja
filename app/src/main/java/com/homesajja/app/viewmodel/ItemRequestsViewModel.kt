@@ -75,22 +75,35 @@ class ItemRequestsViewModel(
 
         viewModelScope.launch {
             try {
-                val user = userRepository.getUserProfile(uid)
-                val vendor = if (user == null) vendorRepository.getVendorProfile(uid) else null
+                val vendor = vendorRepository.getVendorProfile(uid)
+                val user = if (vendor == null) userRepository.getUserProfile(uid) else null
                 val isVendor = vendor != null
-                val cityName = user?.city ?: vendor?.city.orEmpty()
-                val profileName = user?.name ?: vendor?.businessName?.ifBlank { vendor.name }.orEmpty()
+                val cityName = vendor?.city ?: user?.city.orEmpty()
+                val profileName = vendor?.businessName?.ifBlank { vendor.name } ?: user?.name.orEmpty()
 
                 val userRequests = itemRequestRepository.getRequestsByUser(uid)
                 val allRequests = itemRequestRepository.getAllRequests()
-                val openRequests = allRequests.filter { it.status == ItemRequestStatus.OPEN }
+
+                // Filter open requests by city for vendors so each vendor only sees requests in their city
+                val openRequests = if (isVendor && cityName.isNotBlank()) {
+                    allRequests.filter { it.status == ItemRequestStatus.OPEN && it.city.trim().equals(cityName.trim(), ignoreCase = true) }
+                } else {
+                    allRequests.filter { it.status == ItemRequestStatus.OPEN }
+                }
                 val myAccepted = allRequests.filter { it.acceptedVendorId == uid }
+
+                // Scope allRequests for vendors to their city or requests they accepted
+                val visibleAll = if (isVendor && cityName.isNotBlank()) {
+                    allRequests.filter { it.city.trim().equals(cityName.trim(), ignoreCase = true) || it.acceptedVendorId == uid }
+                } else {
+                    allRequests
+                }
 
                 _uiState.value = ItemRequestsUiState.Content(
                     userRequests = userRequests,
                     openRequests = openRequests,
                     myAcceptedRequests = myAccepted,
-                    allRequests = allRequests,
+                    allRequests = visibleAll,
                     isVendor = isVendor,
                     userCity = cityName,
                     userName = profileName,

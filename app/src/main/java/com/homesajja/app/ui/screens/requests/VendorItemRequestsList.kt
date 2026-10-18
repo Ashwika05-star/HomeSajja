@@ -56,6 +56,7 @@ fun VendorItemRequestsList(
     onFulfillRequest: (ItemRequest) -> Unit,
     onChatWithCustomer: (ItemRequest) -> Unit,
     modifier: Modifier = Modifier,
+    vendorCity: String = "",
 ) {
     val isHindi = isAppHindi
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
@@ -87,17 +88,34 @@ fun VendorItemRequestsList(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.End,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (vendorCity.isNotBlank() && selectedTab == 0) {
+                Text(
+                    text = if (isHindi) "📍 $vendorCity में खुले अनुरोध" else "📍 Open in $vendorCity",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            } else {
+                Text(
+                    text = "",
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
             DateFilterDropdown(selected = dateFilter, onSelect = { dateFilter = it })
         }
 
         if (currentList.isEmpty()) {
+            val emptySub = if (selectedTab == 0 && vendorCity.isNotBlank()) {
+                if (isHindi) "$vendorCity में अभी कोई नए अनुरोध नहीं हैं।" else "No open requests in $vendorCity right now."
+            } else {
+                VendorStrings.noItemRequestsVendorSub(isHindi)
+            }
             EmptyState(
                 icon = Icons.Filled.Inventory2,
                 title = VendorStrings.noItemRequestsYet(isHindi),
-                subtitle = VendorStrings.noItemRequestsVendorSub(isHindi),
+                subtitle = emptySub,
             )
         } else {
             val visibleRequests = currentList.filter { dateFilter.matches(it.createdAt) }
