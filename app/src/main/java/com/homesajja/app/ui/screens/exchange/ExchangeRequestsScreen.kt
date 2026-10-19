@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -29,10 +30,15 @@ import com.homesajja.app.ui.components.EmptyState
 import com.homesajja.app.ui.components.ErrorState
 import com.homesajja.app.ui.components.LoadingState
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import com.homesajja.app.ui.components.DateFilter
 import com.homesajja.app.ui.components.DateFilterDropdown
 import com.homesajja.app.ui.components.NoResultsState
@@ -92,15 +98,24 @@ fun ExchangeRequestsScreen(
                         } else {
                             VendorStrings.noOutgoingRequestsSub(isHindi)
                         },
-                        actionLabel = if (isIncoming) null else VendorStrings.newExchange(isHindi),
-                        onActionClick = if (isIncoming) null else onNewExchange,
+                        actionLabel = VendorStrings.newExchange(isHindi),
+                        onActionClick = onNewExchange,
                     )
                 } else {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.End,
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        Button(
+                            onClick = onNewExchange,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                            shape = MaterialTheme.shapes.small,
+                        ) {
+                            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(VendorStrings.newExchange(isHindi), style = MaterialTheme.typography.labelLarge)
+                        }
                         DateFilterDropdown(selected = dateFilter, onSelect = { dateFilter = it })
                     }
                     val visibleRequests = requests.filter { dateFilter.matches(it.createdAt) }
@@ -114,7 +129,7 @@ fun ExchangeRequestsScreen(
                         )
                     } else {
                         LazyColumn(
-                            contentPadding = PaddingValues(16.dp),
+                            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 88.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.fillMaxSize(),
                         ) {

@@ -1,5 +1,17 @@
 package com.homesajja.app.ui.screens.vendor
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import com.homesajja.app.ui.components.PillTabs
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -64,61 +76,76 @@ fun VendorRequestsScreen(
         is VendorRequestsUiState.Content -> {
             val sections = current.sections
             val section = RequestSection.entries[selected].takeIf { it in sections } ?: sections.first()
-            Column(modifier = modifier.fillMaxSize()) {
-                PillTabs(
-                    labels = sections.map { it.localizedLabel(isHindi) },
-                    selectedIndex = sections.indexOf(section),
-                    onSelect = { selected = sections[it].ordinal },
-                )
-                when (section) {
-                    RequestSection.PURCHASES -> MyRequestsScreen(
-                        snackbarHostState = snackbarHostState,
-                        onOpenListing = onOpenListing,
-                        onOpenChat = onOpenChat,
-                        receivedOnly = false,
-                        includeItemRequests = false,
-                        initialTab = 1,
+            Box(modifier = modifier.fillMaxSize()) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    PillTabs(
+                        labels = sections.map { it.localizedLabel(isHindi) },
+                        selectedIndex = sections.indexOf(section),
+                        onSelect = { selected = sections[it].ordinal },
                     )
-                    RequestSection.EXCHANGES -> ExchangeRequestsScreen(
-                        onOpenRequest = onOpenExchange,
-                        onNewExchange = onNewExchange,
-                        incomingOnly = false,
-                    )
-                    RequestSection.REPAIRS -> VendorRepairsList(onOpenRequest = onOpenRepair)
-                    RequestSection.ITEM_REQUESTS -> {
-                        val itemRequestsVm: ItemRequestsViewModel = viewModel(factory = ViewModelFactory(container))
-                        val itemState by itemRequestsVm.uiState.collectAsStateWithLifecycle()
-                        val authRepo = container.authRepository
+                    when (section) {
+                        RequestSection.PURCHASES -> MyRequestsScreen(
+                            snackbarHostState = snackbarHostState,
+                            onOpenListing = onOpenListing,
+                            onOpenChat = onOpenChat,
+                            receivedOnly = false,
+                            includeItemRequests = false,
+                            initialTab = 1,
+                        )
+                        RequestSection.EXCHANGES -> ExchangeRequestsScreen(
+                            onOpenRequest = onOpenExchange,
+                            onNewExchange = onNewExchange,
+                            incomingOnly = false,
+                        )
+                        RequestSection.REPAIRS -> VendorRepairsList(onOpenRequest = onOpenRepair)
+                        RequestSection.ITEM_REQUESTS -> {
+                            val itemRequestsVm: ItemRequestsViewModel = viewModel(factory = ViewModelFactory(container))
+                            val itemState by itemRequestsVm.uiState.collectAsStateWithLifecycle()
+                            val authRepo = container.authRepository
 
-                        LaunchedEffect(itemRequestsVm) {
-                            itemRequestsVm.messages.collect { snackbarHostState.showSnackbar(it) }
-                        }
-                        LaunchedEffect(itemRequestsVm) {
-                            itemRequestsVm.openChat.collect { onOpenChat(it) }
-                        }
+                            LaunchedEffect(itemRequestsVm) {
+                                itemRequestsVm.messages.collect { snackbarHostState.showSnackbar(it) }
+                            }
+                            LaunchedEffect(itemRequestsVm) {
+                                itemRequestsVm.openChat.collect { onOpenChat(it) }
+                            }
 
-                        when (val itCurrent = itemState) {
-                            ItemRequestsUiState.Loading -> LoadingState()
-                            is ItemRequestsUiState.Error -> ErrorState(message = itCurrent.message, onRetry = itemRequestsVm::retry)
-                            is ItemRequestsUiState.Content -> {
-                                VendorItemRequestsList(
-                                    openRequests = itCurrent.openRequests,
-                                    myAcceptedRequests = itCurrent.myAcceptedRequests,
-                                    allRequests = itCurrent.allRequests,
-                                    currentVendorId = authRepo.currentUserId,
-                                    vendorUpiId = itCurrent.vendorUpiId,
-                                    busyRequestId = itemRequestsVm.busyRequestId,
-                                    onSendQuote = { req, amount, days, note -> itemRequestsVm.sendQuote(req, amount, days, note) },
-                                    onUpdateStatus = { req, status -> itemRequestsVm.updateStatus(req, status) },
-                                    onConfirmPayment = { req -> itemRequestsVm.confirmPayment(req) },
-                                    onAcceptRequest = { req, note -> itemRequestsVm.acceptRequest(req, note) },
-                                    onFulfillRequest = { req -> itemRequestsVm.fulfillRequest(req) },
-                                    onChatWithCustomer = { req -> itemRequestsVm.chatWithUser(req) },
-                                    vendorCity = itCurrent.userCity,
-                                )
+                            when (val itCurrent = itemState) {
+                                ItemRequestsUiState.Loading -> LoadingState()
+                                is ItemRequestsUiState.Error -> ErrorState(message = itCurrent.message, onRetry = itemRequestsVm::retry)
+                                is ItemRequestsUiState.Content -> {
+                                    VendorItemRequestsList(
+                                        openRequests = itCurrent.openRequests,
+                                        myAcceptedRequests = itCurrent.myAcceptedRequests,
+                                        allRequests = itCurrent.allRequests,
+                                        currentVendorId = authRepo.currentUserId,
+                                        vendorUpiId = itCurrent.vendorUpiId,
+                                        busyRequestId = itemRequestsVm.busyRequestId,
+                                        onSendQuote = { req, amount, days, note -> itemRequestsVm.sendQuote(req, amount, days, note) },
+                                        onUpdateStatus = { req, status -> itemRequestsVm.updateStatus(req, status) },
+                                        onConfirmPayment = { req -> itemRequestsVm.confirmPayment(req) },
+                                        onAcceptRequest = { req, note -> itemRequestsVm.acceptRequest(req, note) },
+                                        onFulfillRequest = { req -> itemRequestsVm.fulfillRequest(req) },
+                                        onChatWithCustomer = { req -> itemRequestsVm.chatWithUser(req) },
+                                        vendorCity = itCurrent.userCity,
+                                    )
+                                }
                             }
                         }
                     }
+                }
+                if (section == RequestSection.EXCHANGES) {
+                    ExtendedFloatingActionButton(
+                        onClick = onNewExchange,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp)
+                            .semantics { contentDescription = VendorStrings.newExchange(isHindi) },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                        text = { Text(VendorStrings.newExchange(isHindi)) },
+                    )
                 }
             }
         }
