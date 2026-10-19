@@ -16,7 +16,8 @@ import com.homesajja.app.MainActivity
 import com.homesajja.app.R
 import com.homesajja.app.data.model.EntityType
 
-private const val CHANNEL_ID = "activity"
+private const val CHANNEL_ACTIVITY = "activity"
+private const val CHANNEL_CHAT = "chat_messages"
 
 /** Shows system notifications. Tapping one opens the app on the screen the notification is about. */
 object NotificationAlerts {
@@ -31,11 +32,29 @@ object NotificationAlerts {
         if (!allowed) return
 
         val manager = context.getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "Activity", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                description = "Messages, requests and updates"
-            },
-        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val chatChannel = NotificationChannel(
+                CHANNEL_CHAT,
+                "Chat Messages",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = "Direct messages and customer inquiries"
+                enableVibration(true)
+                enableLights(true)
+                setShowBadge(true)
+            }
+            val activityChannel = NotificationChannel(
+                CHANNEL_ACTIVITY,
+                "Activity & Updates",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = "Offers, exchanges, repair updates and quotes"
+                enableVibration(true)
+                setShowBadge(true)
+            }
+            manager.createNotificationChannel(chatChannel)
+            manager.createNotificationChannel(activityChannel)
+        }
 
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -48,17 +67,23 @@ object NotificationAlerts {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        // Same id for the same notification, so a push and a local alert for it replace each other.
-        manager.notify(
-            notificationId.hashCode(),
-            NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(title)
-                .setContentText(body)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-                .setAutoCancel(true)
-                .setContentIntent(tapAction)
-                .build(),
-        )
+
+        val channelId = if (relatedType == EntityType.CHAT) CHANNEL_CHAT else CHANNEL_ACTIVITY
+        val builder = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setAutoCancel(true)
+            .setContentIntent(tapAction)
+
+        if (relatedType == EntityType.CHAT) {
+            builder.setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            builder.setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+        }
+
+        manager.notify(notificationId.hashCode(), builder.build())
     }
 }

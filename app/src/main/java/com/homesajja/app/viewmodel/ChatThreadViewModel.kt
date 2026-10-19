@@ -39,7 +39,7 @@ class ChatThreadViewModel(
     private val notificationSender: NotificationSender,
 ) : ViewModel() {
 
-    private val chatId: String = checkNotNull(savedStateHandle["chatId"])
+    val chatId: String = checkNotNull(savedStateHandle["chatId"])
     private val myId: String? = authRepository.currentUserId
 
     private val _uiState = MutableStateFlow<ChatThreadUiState>(ChatThreadUiState.Loading)

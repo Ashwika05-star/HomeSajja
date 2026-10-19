@@ -25,17 +25,25 @@ class HomeSajjaMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        if (NotificationAlerts.isAppInForeground()) return
+        val container = (application as? HomeSajjaApp)?.container
         val data = message.data
-        val title = data["title"] ?: return
+        val title = data["title"] ?: message.notification?.title ?: return
+        val body = data["body"] ?: message.notification?.body.orEmpty()
         val type = EntityType.entries.firstOrNull { it.name == data["relatedType"] } ?: EntityType.CHAT
+        val relatedId = data["relatedId"].orEmpty()
+
+        // If the user is currently viewing this exact chat, suppress the alert
+        if (type == EntityType.CHAT && container?.activeChatId?.value == relatedId) {
+            return
+        }
+
         NotificationAlerts.show(
             context = applicationContext,
             notificationId = data["notificationId"] ?: message.messageId.orEmpty(),
             title = title,
-            body = data["body"].orEmpty(),
+            body = body,
             relatedType = type,
-            relatedId = data["relatedId"].orEmpty(),
+            relatedId = relatedId,
         )
     }
 }

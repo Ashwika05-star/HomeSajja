@@ -22,18 +22,36 @@ exports.pushOnNotification = onDocumentCreated('notifications/{notificationId}',
   const tokens = snapshot.docs.map((doc) => doc.id);
   if (tokens.length === 0) return;
 
-  // Data-only message: the app builds the alert itself (see HomeSajjaMessagingService), so it looks the
-  // same whether the app is in the background or in the foreground.
+  const isChat = String(notification.relatedType || '').toUpperCase() === 'CHAT';
+  const channelId = isChat ? 'chat_messages' : 'activity';
+
+  // Dual notification + data payload:
+  // - When the app is closed/killed, Android displays the notification directly in the system tray with heads-up alert.
+  // - When tapped, Android passes the data payload to MainActivity so NotificationRouting opens the exact chat/request screen.
+  // - When the app is open/foreground, HomeSajjaMessagingService receives it and shows the alert unless the user is already inside that thread.
   const result = await getMessaging().sendEachForMulticast({
     tokens,
+    notification: {
+      title: String(notification.title || (isChat ? 'New Message' : 'HomeSajja Notification')),
+      body: String(notification.body || ''),
+    },
     data: {
-      notificationId: event.params.notificationId,
+      notificationId: String(event.params.notificationId || ''),
       title: String(notification.title || ''),
       body: String(notification.body || ''),
       relatedType: String(notification.relatedType || ''),
       relatedId: String(notification.relatedId || ''),
     },
-    android: { priority: 'high' },
+    android: {
+      priority: 'high',
+      notification: {
+        channelId,
+        sound: 'default',
+        priority: 'high',
+        defaultSound: true,
+        defaultVibrateTimings: true,
+      },
+    },
   });
 
   // Forget phones whose token is no longer valid (app uninstalled, token rotated...).

@@ -38,6 +38,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import com.homesajja.app.ui.components.appTextFieldColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -66,11 +67,21 @@ import com.homesajja.app.viewmodel.ChatThreadViewModel
 /** One conversation: the record it is about pinned at the top, live message bubbles, and the message box. */
 @Composable
 fun ChatThreadScreen(onBackClick: () -> Unit, onOpenRoute: (String) -> Unit) {
-    val viewModel: ChatThreadViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
+    val container = LocalAppContainer.current
+    val viewModel: ChatThreadViewModel = viewModel(factory = ViewModelFactory(container))
     // The same instance the menu in the top bar uses, so blocking there updates this screen straight away.
-    val trust: TrustActionsViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
+    val trust: TrustActionsViewModel = viewModel(factory = ViewModelFactory(container))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    DisposableEffect(viewModel.chatId) {
+        container.activeChatId.value = viewModel.chatId
+        onDispose {
+            if (container.activeChatId.value == viewModel.chatId) {
+                container.activeChatId.value = null
+            }
+        }
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }

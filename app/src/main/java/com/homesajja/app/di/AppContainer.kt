@@ -108,7 +108,9 @@ class AppContainer(private val appContext: Context) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val notificationSender: NotificationSender by lazy { NotificationSender(notificationRepository, appScope) }
     val sessionServices: SessionServices by lazy {
-        SessionServices(appContext, appScope, authRepository, notificationRepository, deviceTokenRepository)
+        SessionServices(appContext, appScope, authRepository, notificationRepository, deviceTokenRepository) {
+            activeChatId.value
+        }
     }
 
     val accountRepository: AccountRepository by lazy {
@@ -137,6 +139,9 @@ class AppContainer(private val appContext: Context) {
 
     /** A screen to open once the app is signed in and showing, set when a system notification is tapped. */
     val pendingRoute = MutableStateFlow<String?>(null)
+
+    /** The chat thread currently on screen, so incoming messages for it don't trigger intrusive alerts. */
+    val activeChatId = MutableStateFlow<String?>(null)
     val reviewRepository: ReviewRepository by lazy { ReviewRepository(firestore) }
     val statsRepository: StatsRepository by lazy { StatsRepository(firestore) }
     val reportExporter: ReportExporter by lazy { ReportExporter(appContext) }

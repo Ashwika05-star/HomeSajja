@@ -25,6 +25,7 @@ class SessionServices(
     private val authRepository: AuthRepository,
     private val notificationRepository: NotificationRepository,
     private val deviceTokenRepository: DeviceTokenRepository,
+    private val activeChatId: () -> String? = { null },
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
     fun start() {
@@ -45,13 +46,18 @@ class SessionServices(
                 }
                 .catch { /* listener failed (offline or rules); alerts just pause */ }
                 .collect { list ->
-                    if (NotificationAlerts.isAppInForeground()) {
-                        // In the foreground the bell badge is enough; remember them so they aren't alerted later.
-                        list.forEach { alerted += it.id }
-                        return@collect
-                    }
-                    list.filter { !it.seen && it.createdAt >= startedAt && alerted.add(it.id) }.forEach {
-                        NotificationAlerts.show(context, it.id, it.title, it.body, it.relatedType, it.relatedId)
+                    val currentActiveChat = activeChatId()
+                    val inForeground = NotificationAlerts.isAppInForeground()
+                    list.filter { !it.seen && it.createdAt >= startedAt && alerted.add(it.id) }.forEach { item ->
+                        // Don't alert if the user is currently looking at this exact chat thread
+                        if (item.relatedType == com.homesajja.app.data.model.EntityType.CHAT && item.relatedId == currentActiveChat) {
+                            return@forEach
+                        }
+                        // For non-chat items in foreground, in-app bell badge is sufficient
+                        if (inForeground && item.relatedType != com.homesajja.app.data.model.EntityType.CHAT) {
+                            return@forEach
+                        }
+                        NotificationAlerts.show(context, item.id, item.title, item.body, item.relatedType, item.relatedId)
                     }
                 }
         }
