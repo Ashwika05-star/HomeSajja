@@ -10,14 +10,21 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -48,14 +55,16 @@ import com.homesajja.app.viewmodel.SajjaChatViewModel
 import com.homesajja.app.viewmodel.SajjaMessage
 
 /** Ask Sajja anything about furniture. When it points to listings, they appear under its answer. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SajjaChatScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Unit) {
     val viewModel: SajjaChatViewModel = viewModel(factory = ViewModelFactory(LocalAppContainer.current))
     val listState = rememberLazyListState()
     val messages = viewModel.messages
+    val isImeVisible = WindowInsets.isImeVisible
 
-    // Stay at the newest message, or the "thinking" line, as the conversation grows.
-    LaunchedEffect(messages.size, viewModel.thinking) {
+    // Stay at the newest message, or the "thinking" line, as the conversation grows or when the keyboard opens.
+    LaunchedEffect(messages.size, viewModel.thinking, isImeVisible) {
         val last = messages.size + (if (viewModel.thinking) 1 else 0) - 1
         if (last >= 0) listState.animateScrollToItem(last)
     }
@@ -63,9 +72,13 @@ fun SajjaChatScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Unit) {
     Scaffold(
         topBar = { AppTopBar(title = "Sajja AI", onBackClick = onBackClick) },
         containerColor = MaterialTheme.colorScheme.background,
-        modifier = Modifier.imePadding(),
+        contentWindowInsets = WindowInsets.statusBars,
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = padding.calculateTopPadding()),
+        ) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 if (messages.isEmpty()) {
                     Welcome(onSuggestion = viewModel::sendSuggestion)
@@ -83,11 +96,18 @@ fun SajjaChatScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Unit) {
                     }
                 }
             }
-            Surface(color = MaterialTheme.colorScheme.background) {
+            Surface(
+                color = MaterialTheme.colorScheme.background,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
+            ) {
                 Column {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Row(
-                        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
@@ -101,7 +121,15 @@ fun SajjaChatScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Unit) {
                             modifier = Modifier.weight(1f),
                         )
                         IconButton(onClick = viewModel::send, enabled = viewModel.draft.isNotBlank() && !viewModel.thinking) {
-                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Send",
+                                tint = if (viewModel.draft.isNotBlank() && !viewModel.thinking) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                                },
+                            )
                         }
                     }
                 }
@@ -114,7 +142,10 @@ fun SajjaChatScreen(onBackClick: () -> Unit, onOpenListing: (String) -> Unit) {
 @Composable
 private fun Welcome(onSuggestion: (String) -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

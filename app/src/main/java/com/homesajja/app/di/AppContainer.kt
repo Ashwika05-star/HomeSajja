@@ -121,9 +121,9 @@ class AppContainer(private val appContext: Context) {
             appContext.contentResolver,
             listOf(
                 appContext.getString(R.string.gemini_model),
-                "gemini-1.5-flash",
-                "gemini-2.0-flash",
-                "gemini-1.5-pro",
+                "gemini-3.8-flash",
+                "gemini-flash-latest",
+                "gemini-3.5-flash",
                 appContext.getString(R.string.gemini_model_fallback),
             ).distinct(),
         )

@@ -7,11 +7,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -83,9 +89,9 @@ fun ChatThreadScreen(onBackClick: () -> Unit, onOpenRoute: (String) -> Unit) {
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
-        modifier = Modifier.imePadding(),
+        contentWindowInsets = WindowInsets.statusBars,
     ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+        Box(modifier = Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize()) {
             when (val current = state) {
                 ChatThreadUiState.Loading -> LoadingState()
                 is ChatThreadUiState.Error -> ErrorState(message = current.message, onRetry = viewModel::retry)
@@ -104,6 +110,7 @@ fun ChatThreadScreen(onBackClick: () -> Unit, onOpenRoute: (String) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Thread(
     content: ChatThreadUiState.Content,
@@ -115,9 +122,10 @@ private fun Thread(
 ) {
     val listState = rememberLazyListState()
     val messages = content.messages
+    val isImeVisible = WindowInsets.isImeVisible
 
-    // Stay at the newest message when the thread opens and whenever one arrives.
-    LaunchedEffect(messages.size) {
+    // Stay at the newest message when the thread opens, whenever one arrives, or when keyboard opens.
+    LaunchedEffect(messages.size, isImeVisible) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
     }
 
@@ -144,7 +152,12 @@ private fun Thread(
             }
         }
 
-        Surface(color = MaterialTheme.colorScheme.background) {
+        Surface(
+            color = MaterialTheme.colorScheme.background,
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
+        ) {
             Column {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 if (iBlockedThem) {
@@ -152,10 +165,12 @@ private fun Thread(
                         "You've blocked ${content.chat.otherParticipantName(content.myId)}. Unblock them from the menu to send messages.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
                     )
                 } else Row(
-                    modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -169,7 +184,15 @@ private fun Thread(
                         modifier = Modifier.weight(1f),
                     )
                     IconButton(onClick = onSend, enabled = draft.isNotBlank()) {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
+                        Icon(
+                            Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            tint = if (draft.isNotBlank()) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                            },
+                        )
                     }
                 }
             }
